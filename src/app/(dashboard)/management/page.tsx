@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getProjects, getPartners, getClients, getAllEpisodes } from '@/lib/supabase/db';
+import {
+  getProjects, getPartners, getClients, getAllEpisodes,
+  getMyChecklists, insertChecklist, updateChecklist, deleteChecklist, clearCompletedChecklists,
+  ChecklistRow,
+} from '@/lib/supabase/db';
 import { Calendar, Clock, AlertCircle, CheckCircle, Users, Sparkles, Plus, Trash2, Bell, BellOff, X, Link2, Search, Repeat2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Project, Episode, Partner, Client } from '@/types';
 import ProjectWizardModal from '@/components/ProjectWizardModal';
 import DateTimePicker, { RepeatType } from '@/components/DateTimePicker';
-
-const CHECKLIST_STORAGE_KEY = 'video-moment-checklist';
 
 type LinkPickerType = 'episode' | 'project' | 'client' | 'partner' | null;
 
@@ -30,6 +32,48 @@ interface ChecklistItem {
   linkedClientName?: string;
   linkedPartnerId?: string;
   linkedPartnerName?: string;
+}
+
+// snake_case DB 행 → camelCase UI 아이템 변환
+function rowToItem(row: ChecklistRow): ChecklistItem {
+  return {
+    id: row.id,
+    text: row.text,
+    completed: row.completed,
+    reminderTime: row.reminder_time ?? undefined,
+    notified: row.notified,
+    repeatType: (row.repeat_type as RepeatType) ?? undefined,
+    repeatDays: row.repeat_days ?? undefined,
+    createdAt: row.created_at,
+    linkedEpisodeId: row.linked_episode_id ?? undefined,
+    linkedEpisodeTitle: row.linked_episode_title ?? undefined,
+    linkedEpisodeNumber: row.linked_episode_number ?? undefined,
+    linkedProjectId: row.linked_project_id ?? undefined,
+    linkedProjectTitle: row.linked_project_title ?? undefined,
+    linkedClientName: row.linked_client_name ?? undefined,
+    linkedPartnerId: row.linked_partner_id ?? undefined,
+    linkedPartnerName: row.linked_partner_name ?? undefined,
+  };
+}
+
+// camelCase UI 아이템 → snake_case DB 행 변환 (insert/update용)
+function itemToRow(item: ChecklistItem): Omit<ChecklistRow, 'id' | 'user_id' | 'created_at'> {
+  return {
+    text: item.text,
+    completed: item.completed,
+    reminder_time: item.reminderTime ?? null,
+    notified: item.notified ?? false,
+    repeat_type: item.repeatType ?? null,
+    repeat_days: item.repeatDays ?? null,
+    linked_episode_id: item.linkedEpisodeId ?? null,
+    linked_episode_title: item.linkedEpisodeTitle ?? null,
+    linked_episode_number: item.linkedEpisodeNumber ?? null,
+    linked_project_id: item.linkedProjectId ?? null,
+    linked_project_title: item.linkedProjectTitle ?? null,
+    linked_client_name: item.linkedClientName ?? null,
+    linked_partner_id: item.linkedPartnerId ?? null,
+    linked_partner_name: item.linkedPartnerName ?? null,
+  };
 }
 
 export default function ManagementPage() {
@@ -72,16 +116,16 @@ export default function ManagementPage() {
   const linkPickerRef = useRef<HTMLDivElement>(null);
   const notificationPermission = useRef<NotificationPermission>('default');
 
-  // 체크리스트 저장
-  const saveChecklist = (items: ChecklistItem[]) => {
-    localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(items));
-    setChecklistItems(items);
+  // 체크리스트 새로고침
+  const refreshChecklists = async () => {
+    const rows = await getMyChecklists();
+    setChecklistItems(rows.map(rowToItem));
   };
 
-  const addChecklistItem = () => {
+  const addChecklistItem = async () => {
     if (!newItemText.trim()) return;
-    const item: ChecklistItem = {
-      id: Date.now().toString(),
+    const newItem: ChecklistItem = {
+      id: '',
       text: newItemText.trim(),
       completed: false,
       reminderTime: newItemReminder || undefined,
@@ -89,9 +133,17 @@ export default function ManagementPage() {
       repeatType: repeatType !== 'none' ? repeatType : undefined,
       repeatDays: repeatType === 'days' ? repeatDays : undefined,
       createdAt: new Date().toISOString(),
-      ...formLink,
+      linkedEpisodeId: formLink.episodeId,
+      linkedEpisodeTitle: formLink.episodeTitle,
+      linkedEpisodeNumber: formLink.episodeNumber,
+      linkedProjectId: formLink.projectId,
+      linkedProjectTitle: formLink.projectTitle,
+      linkedClientName: formLink.clientName,
+      linkedPartnerId: formLink.partnerId,
+      linkedPartnerName: formLink.partnerName,
     };
-    saveChecklist([...checklistItems, item]);
+    await insertChecklist(itemToRow(newItem));
+    await refreshChecklists();
     setNewItemText('');
     setNewItemReminder('');
     setShowAddForm(false);
@@ -189,14 +241,16 @@ export default function ManagementPage() {
     });
   };
 
-  const toggleChecklistItem = (id: string) => {
-    saveChecklist(checklistItems.map(item =>
-      item.id === id ? { ...item, completed: !item.completed } : item
-    ));
+  const toggleChecklistItem = async (id: string) => {
+    const item = checklistItems.find(i => i.id === id);
+    if (!item) return;
+    await updateChecklist(id, { completed: !item.completed });
+    await refreshChecklists();
   };
 
-  const deleteChecklistItem = (id: string) => {
-    saveChecklist(checklistItems.filter(item => item.id !== id));
+  const deleteChecklistItem = async (id: string) => {
+    await deleteChecklist(id);
+    await refreshChecklists();
   };
 
   const requestNotificationPermission = async () => {
@@ -207,26 +261,20 @@ export default function ManagementPage() {
 
   useEffect(() => {
     const loadData = async () => {
-      const [projectsData, partnersData, clientsData, episodesData] = await Promise.all([
+      const [projectsData, partnersData, clientsData, episodesData, checklistRows] = await Promise.all([
         getProjects(),
         getPartners(),
         getClients(),
         getAllEpisodes(),
+        getMyChecklists(),
       ]);
       setProjects(projectsData);
       setPartners(partnersData);
       setClients(clientsData);
       setAllEpisodes(episodesData);
+      setChecklistItems(checklistRows.map(rowToItem));
     };
     loadData();
-
-    // 체크리스트 로드 (localStorage 유지)
-    try {
-      const stored = localStorage.getItem(CHECKLIST_STORAGE_KEY);
-      if (stored) setChecklistItems(JSON.parse(stored));
-    } catch (e) {
-      console.error('Failed to load checklist:', e);
-    }
 
     // 알림 권한 상태 초기화
     if ('Notification' in window) {
@@ -236,33 +284,25 @@ export default function ManagementPage() {
 
   // 알림 체크 (30초마다)
   useEffect(() => {
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       if (!('Notification' in window) || Notification.permission !== 'granted') return;
       const now = new Date();
-      setChecklistItems(prev => {
-        let changed = false;
-        const updated = prev.map(item => {
-          if (item.completed || item.notified || !item.reminderTime) return item;
-          const reminderDate = new Date(item.reminderTime);
-          if (reminderDate <= now) {
-            new Notification('📋 Video Moment 체크리스트', {
-              body: item.text,
-              icon: '/favicon.ico',
-            });
-            changed = true;
-            return { ...item, notified: true };
-          }
-          return item;
+      const itemsToNotify = checklistItems.filter(
+        item => !item.completed && !item.notified && !!item.reminderTime && new Date(item.reminderTime) <= now
+      );
+      if (itemsToNotify.length === 0) return;
+      await Promise.all(itemsToNotify.map(item => {
+        new Notification('📋 Video Moment 체크리스트', {
+          body: item.text,
+          icon: '/favicon.ico',
         });
-        if (changed) {
-          localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(updated));
-          return updated;
-        }
-        return prev;
-      });
+        return updateChecklist(item.id, { notified: true });
+      }));
+      await refreshChecklists();
     }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checklistItems]);
 
   // 현재 날짜 및 시간 계산
   const now = new Date();
@@ -923,7 +963,7 @@ export default function ManagementPage() {
         {/* 완료 항목 정리 */}
         {checklistItems.some(i => i.completed) && (
           <button
-            onClick={() => saveChecklist(checklistItems.filter(i => !i.completed))}
+            onClick={async () => { await clearCompletedChecklists(); await refreshChecklists(); }}
             className="w-full text-xs text-gray-400 hover:text-red-500 transition-colors py-2"
           >
             완료된 항목 모두 지우기

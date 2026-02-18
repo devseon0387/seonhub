@@ -630,3 +630,135 @@ export async function cleanupExpiredTrashItems(days = 30): Promise<number> {
   if (error) { console.error('cleanupExpiredTrash error:', error); return 0; }
   return expired.length;
 }
+
+// ─── User Profiles ───────────────────────────────────────────
+
+export async function getMyProfile(): Promise<{ id: string; role: string; name: string | null } | null> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (error) return null;
+  return data;
+}
+
+export async function upsertMyProfile(role: string, name: string): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase
+    .from('user_profiles')
+    .upsert({ id: user.id, role, name }, { onConflict: 'id' });
+
+  return !error;
+}
+
+export async function getAllUserProfiles(): Promise<{ id: string; role: string; name: string | null; email?: string }[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .order('created_at', { ascending: true });
+
+  if (error) return [];
+  return data || [];
+}
+
+export async function updateUserRole(userId: string, role: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('user_profiles')
+    .update({ role })
+    .eq('id', userId);
+
+  return !error;
+}
+
+export async function deleteUserProfile(userId: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('user_profiles')
+    .delete()
+    .eq('id', userId);
+
+  return !error;
+}
+
+// ─── Checklists ───────────────────────────────────────────────
+
+export interface ChecklistRow {
+  id: string;
+  user_id: string;
+  text: string;
+  completed: boolean;
+  reminder_time: string | null;
+  notified: boolean;
+  repeat_type: string | null;
+  repeat_days: number[] | null;
+  linked_episode_id: string | null;
+  linked_episode_title: string | null;
+  linked_episode_number: number | null;
+  linked_project_id: string | null;
+  linked_project_title: string | null;
+  linked_client_name: string | null;
+  linked_partner_id: string | null;
+  linked_partner_name: string | null;
+  created_at: string;
+}
+
+export async function getMyChecklists(): Promise<ChecklistRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('checklists')
+    .select('*')
+    .order('created_at', { ascending: true });
+  if (error) return [];
+  return data || [];
+}
+
+export async function insertChecklist(item: Omit<ChecklistRow, 'id' | 'user_id' | 'created_at'>): Promise<ChecklistRow | null> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data, error } = await supabase
+    .from('checklists')
+    .insert({ ...item, user_id: user.id })
+    .select()
+    .single();
+  if (error) return null;
+  return data;
+}
+
+export async function updateChecklist(id: string, updates: Partial<ChecklistRow>): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('checklists')
+    .update(updates)
+    .eq('id', id);
+  return !error;
+}
+
+export async function deleteChecklist(id: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('checklists')
+    .delete()
+    .eq('id', id);
+  return !error;
+}
+
+export async function clearCompletedChecklists(): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('checklists')
+    .delete()
+    .eq('completed', true);
+  return !error;
+}

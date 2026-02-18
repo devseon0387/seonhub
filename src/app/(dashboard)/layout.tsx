@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, FolderOpen, Settings, Briefcase, Trash2, Megaphone, LogOut, Menu, X, ClipboardCheck, ChevronDown, Building2, Wallet, Receipt, FileText, Target } from 'lucide-react';
+import { LayoutDashboard, Users, FolderOpen, Settings, Briefcase, Trash2, Megaphone, LogOut, Menu, X, ClipboardCheck, ChevronDown, Building2, Wallet, Receipt, FileText, Target, Shield } from 'lucide-react';
 import DashboardContent from '@/components/DashboardContent';
 import NavItem from '@/components/NavItem';
 import GlobalSearch from '@/components/GlobalSearch';
@@ -11,6 +11,7 @@ import CustomCursor from '@/components/CustomCursor';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
+import { getMyProfile } from '@/lib/supabase/db';
 
 export default function DashboardLayout({
   children,
@@ -21,6 +22,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
+  const [myRole, setMyRole] = useState<string>('manager');
   const isCustomerActive = pathname.startsWith('/partners') || pathname.startsWith('/clients');
   const [isCustomerOpen, setIsCustomerOpen] = useState(isCustomerActive);
   const isOperationsActive = pathname.startsWith('/finance') || pathname.startsWith('/settlement') || pathname.startsWith('/contract') || pathname.startsWith('/strategy');
@@ -34,6 +36,7 @@ export default function DashboardLayout({
         router.push('/login');
       } else {
         setUserEmail(user.email ?? '');
+        getMyProfile().then(p => { if (p) setMyRole(p.role); });
       }
     };
     checkAuth();
@@ -286,6 +289,11 @@ export default function DashboardLayout({
             <NavItem href="/settings" icon={<Settings size={20} />} onClick={() => setIsMobileMenuOpen(false)}>
               설정
             </NavItem>
+            {myRole === 'admin' && (
+              <NavItem href="/settings/users" icon={<Shield size={20} />} onClick={() => setIsMobileMenuOpen(false)}>
+                계정 관리
+              </NavItem>
+            )}
           </nav>
 
           {/* 사용자 정보 */}
