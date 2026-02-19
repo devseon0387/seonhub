@@ -6,7 +6,7 @@ import { Project, Client, Episode, Partner } from '@/types';
 import { ArrowLeft, Calendar, User, DollarSign, Tag, Edit, Trash2, TrendingUp, ChevronRight, X, UserCircle, FileText, Users, Video, Palette, Image, CheckCircle2, Clock, Pause, Target, ChevronDown, ClipboardCheck } from 'lucide-react';
 import { calculateReserve } from '@/lib/utils';
 import { addToTrash } from '@/lib/trash';
-import { updateEpisodesInStorage, deleteEpisodeFromStorage, deleteProjectEpisodesFromStorage, getProjectEpisodesFromStorage } from '@/lib/storage';
+import { deleteEpisodeFromStorage, deleteProjectEpisodesFromStorage } from '@/lib/storage';
 import { getProjects, updateProject, deleteProject, getClients as fetchClients, getProjectEpisodes, getPartners, upsertEpisode } from '@/lib/supabase/db';
 import Link from 'next/link';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
@@ -154,7 +154,11 @@ export default function ProjectDetailPage() {
   const handleEpisodeStatusChange = async (episodeId: string, newStatus: Episode['status']) => {
     const episode = episodes.find(e => e.id === episodeId);
     if (!episode) return;
-    const updated = { ...episode, status: newStatus };
+    const updated = {
+      ...episode,
+      status: newStatus,
+      completedAt: newStatus === 'completed' ? new Date().toISOString() : undefined,
+    };
     setEpisodes(prev => prev.map(e => e.id === episodeId ? updated : e));
     await upsertEpisode(updated);
   };
@@ -1208,11 +1212,8 @@ export default function ProjectDetailPage() {
                 updatedAt: new Date().toISOString(),
               };
 
-              const updatedEpisodes = [...episodes, newEpisode];
-              setEpisodes(updatedEpisodes);
-
-              // Supabase에 안전하게 저장
-              await updateEpisodesInStorage(updatedEpisodes);
+              setEpisodes(prev => [...prev, newEpisode]);
+              await upsertEpisode(newEpisode);
 
               // 바로 페이지 열기
               router.push(`/projects/${projectId}/episodes/${newEpisode.id}`);

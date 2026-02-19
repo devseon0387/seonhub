@@ -87,6 +87,7 @@ interface EpisodeRow {
   budget_management: number;
   work_steps: unknown | null;
   work_budgets: unknown | null;
+  completed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -283,6 +284,7 @@ function episodeFromRow(row: EpisodeRow): Episode & { projectId: string } {
     },
     workSteps: row.work_steps as Episode['workSteps'],
     workBudgets: row.work_budgets as Episode['workBudgets'],
+    completedAt: row.completed_at ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -309,6 +311,7 @@ function episodeToInsert(episode: Episode & { projectId: string }) {
     budget_management: episode.budget?.managementFee ?? 0,
     work_steps: episode.workSteps ?? null,
     work_budgets: episode.workBudgets ?? null,
+    completed_at: episode.completedAt ?? null,
   };
 }
 

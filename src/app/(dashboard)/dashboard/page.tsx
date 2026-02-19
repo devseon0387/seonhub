@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAllEpisodesFromStorage } from '@/lib/storage';
 import { Users, FolderOpen, CheckCircle, Clock, TrendingUp, Wallet, Calendar, X, ChevronDown, Sparkles, AlertTriangle, Megaphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -9,7 +8,7 @@ import { Project, Episode, Partner, Client } from '@/types';
 import { EmptyReviews, EmptyDeadlines } from '@/components/EmptyState';
 import { FloatingLabelInput, FloatingLabelTextarea } from '@/components/FloatingLabelInput';
 import ProjectWizardModal from '@/components/ProjectWizardModal';
-import { getProjects, getPartners, getClients, insertClient, insertPartner, insertProject } from '@/lib/supabase/db';
+import { getProjects, getPartners, getClients, insertClient, insertPartner, insertProject, getAllEpisodes } from '@/lib/supabase/db';
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -93,7 +92,7 @@ export default function DashboardPage() {
         getProjects(),
         getPartners(),
         getClients(),
-        getAllEpisodesFromStorage(),
+        getAllEpisodes(),
       ]);
       setProjects(projectsData);
       setPartners(partnersData);
