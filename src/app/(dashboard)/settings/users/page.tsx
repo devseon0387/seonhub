@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { getMyProfile, getAllUserProfiles, updateUserRole, getCustomRoles, addCustomRole, deleteCustomRole } from '@/lib/supabase/db';
 import { Shield, Users, Crown, Copy, Check, Plus, X, Tag } from 'lucide-react';
 
@@ -54,10 +53,6 @@ export default function UsersSettingsPage() {
       }
       setMyId(profile.id);
 
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) setMyId(user.id);
-
       const [all, roles] = await Promise.all([getAllUserProfiles(), getCustomRoles()]);
       setProfiles(all);
       setCustomRoles(roles);
@@ -73,6 +68,8 @@ export default function UsersSettingsPage() {
       setProfiles(prev =>
         prev.map(p => (p.id === userId ? { ...p, role: newRole } : p))
       );
+    } else {
+      alert('역할 변경에 실패했습니다. 다시 시도해주세요.');
     }
     setUpdatingId(null);
   };
@@ -88,6 +85,8 @@ export default function UsersSettingsPage() {
     if (ok) {
       setCustomRoles(prev => [...prev, trimmed]);
       setNewRoleName('');
+    } else {
+      alert('역할 추가에 실패했습니다. 다시 시도해주세요.');
     }
     setAddingRole(false);
   };
@@ -96,6 +95,8 @@ export default function UsersSettingsPage() {
     const ok = await deleteCustomRole(name);
     if (ok) {
       setCustomRoles(prev => prev.filter(r => r !== name));
+    } else {
+      alert('역할 삭제에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -107,7 +108,16 @@ export default function UsersSettingsPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback
+      const el = document.createElement('textarea');
+      el.value = signupUrl;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 

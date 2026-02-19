@@ -4,19 +4,22 @@ import { useState, useEffect } from 'react';
 import { Users, FolderOpen, CheckCircle, Clock, TrendingUp, Wallet, Calendar, X, ChevronDown, Sparkles, AlertTriangle, Megaphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { Project, Episode, Partner, Client } from '@/types';
+import { Project, Episode, Partner, Client, WorkContentType } from '@/types';
 import { EmptyReviews, EmptyDeadlines } from '@/components/EmptyState';
 import { FloatingLabelInput, FloatingLabelTextarea } from '@/components/FloatingLabelInput';
 import ProjectWizardModal from '@/components/ProjectWizardModal';
-import { getProjects, getPartners, getClients, insertClient, insertPartner, insertProject, getAllEpisodes } from '@/lib/supabase/db';
+import { getProjects, getPartners, getClients, insertClient, insertPartner, insertProject, getAllEpisodes, upsertEpisodes } from '@/lib/supabase/db';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function DashboardPage() {
+  const toast = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // 모든 에피소드 데이터 (프로젝트별로 저장되어 있음)
-  const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]);
+  const [allEpisodes, setAllEpisodes] = useState<(Episode & { projectId: string })[]>([]);
 
   // 위자드 모달 상태
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -98,6 +101,7 @@ export default function DashboardPage() {
       setPartners(partnersData);
       setClients(clientsData);
       setAllEpisodes(episodesData);
+      setLoading(false);
     };
     loadData();
   }, []);
@@ -124,6 +128,8 @@ export default function DashboardPage() {
       setClients(prev => [saved, ...prev]);
       setLastAddedClientName(saved.name);
       setIsClientSuccess(true);
+    } else {
+      toast.error('클라이언트 추가에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -179,6 +185,8 @@ export default function DashboardPage() {
       email: newPartner.email,
       phone: newPartner.phone,
       company: newPartner.company,
+      partnerType: newPartner.partnerType || 'freelancer',
+      generation: newPartner.generation ?? 1,
       role: newPartner.role || 'partner',
       status: newPartner.status || 'active',
     });
@@ -191,6 +199,8 @@ export default function DashboardPage() {
         setIsPartnerSuccess(false);
         setNewPartner({ name: '', email: '', phone: '', company: '', role: 'partner', status: 'active' });
       }, 1500);
+    } else {
+      toast.error('파트너 추가에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -206,6 +216,8 @@ export default function DashboardPage() {
       description: newProject.description || '',
       client: newProject.client!,
       partnerId: newProject.partnerId!,
+      partnerIds: newProject.partnerId ? [newProject.partnerId] : [],
+      managerIds: [],
       status: newProject.status || 'planning',
       budget: newProject.budget || { totalAmount: 0, partnerPayment: 0, managementFee: 0, marginRate: 0 },
       tags: newProject.tags || [],
@@ -224,6 +236,8 @@ export default function DashboardPage() {
           tags: [],
         });
       }, 1500);
+    } else {
+      toast.error('프로젝트 추가에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -236,8 +250,9 @@ export default function DashboardPage() {
 
   // 이번 달 프로젝트 필터링 (생성일 기준)
   const thisMonthProjects = projects.filter(p => {
-    const createdDate = new Date(p.createdAt);
-    return createdDate >= thisMonthStart && createdDate <= thisMonthEnd;
+    if (!p.completedAt) return false;
+    const completedDate = new Date(p.completedAt);
+    return completedDate >= thisMonthStart && completedDate <= thisMonthEnd;
   });
 
   // 이번 달 에피소드 필터링 (완료일 기준)
@@ -301,6 +316,14 @@ export default function DashboardPage() {
       total: partnerEpisodes.length,
     };
   }).filter(pw => pw.total > 0); // 작업이 있는 파트너만
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -420,7 +443,7 @@ export default function DashboardPage() {
                   <EmptyReviews />
                 ) : (
                   reviewingEpisodes.map((episode) => {
-                    const project = projects.find(p => p.id === (episode as any).projectId);
+                    const project = projects.find(p => p.id === episode.projectId);
                     const partner = partners.find(p => p.id === episode.assignee);
                     return (
                       <div key={episode.id} className="px-5 py-3.5 hover:bg-gray-50 transition-colors">
@@ -459,7 +482,7 @@ export default function DashboardPage() {
                   <EmptyDeadlines />
                 ) : (
                   upcomingDeadlines.map((episode) => {
-                    const project = projects.find(p => p.id === (episode as any).projectId);
+                    const project = projects.find(p => p.id === episode.projectId);
                     const daysUntilDue = Math.ceil((new Date(episode.dueDate!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
                     const isUrgent = daysUntilDue <= 2;
                     return (
@@ -543,7 +566,7 @@ export default function DashboardPage() {
               <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {projects.filter(p => p.status === 'in_progress' || p.status === 'planning').slice(0, 6).map((project) => {
                   const partner = partners.find(p => p.id === project.partnerId);
-                  const projectEpisodes = allEpisodes.filter(ep => (ep as any).projectId === project.id);
+                  const projectEpisodes = allEpisodes.filter(ep => ep.projectId === project.id);
                   const totalEpisodes = projectEpisodes.length;
                   const completedEpisodes = projectEpisodes.filter(ep => ep.status === 'completed').length;
                   const progressRate = totalEpisodes > 0 ? Math.round((completedEpisodes / totalEpisodes) * 100) : 0;
@@ -690,8 +713,55 @@ export default function DashboardPage() {
       <ProjectWizardModal
         isOpen={isWizardOpen}
         onClose={() => setIsWizardOpen(false)}
-        onComplete={(data) => {
-          console.log('프로젝트 생성:', data);
+        onComplete={async (data) => {
+          if (!data.project.title) { setIsWizardOpen(false); return; }
+
+          let clientName = '';
+          if (data.client?.isNew && data.client.name) {
+            const saved = await insertClient({ name: data.client.name, contactPerson: data.client.contact, email: data.client.email, status: 'active' });
+            clientName = saved?.name || data.client.name;
+            if (saved) setClients(prev => [saved, ...prev]);
+          } else if (data.client?.id) {
+            clientName = clients.find(c => c.id === data.client!.id)?.name || '';
+          }
+
+          const savedProject = await insertProject({
+            title: data.project.title,
+            description: data.project.description || '',
+            client: clientName,
+            partnerId: data.project.partnerIds[0] || '',
+            partnerIds: data.project.partnerIds,
+            managerIds: [],
+            category: data.project.category,
+            status: 'planning',
+            budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0, marginRate: 0 },
+            workContent: [],
+            tags: data.project.category ? [data.project.category] : [],
+          });
+
+          if (!savedProject) { toast.error('프로젝트 생성에 실패했습니다.'); setIsWizardOpen(false); return; }
+          setProjects(prev => [savedProject, ...prev]);
+
+          if (data.episodes.shouldCreate && data.episodes.count) {
+            const now = new Date().toISOString();
+            const episodes: (Episode & { projectId: string })[] = Array.from({ length: data.episodes.count }, (_, i) => ({
+              id: crypto.randomUUID(),
+              projectId: savedProject.id,
+              episodeNumber: i + 1,
+              title: `${i + 1}회차`,
+              workContent: [] as WorkContentType[],
+              status: 'waiting' as const,
+              assignee: '',
+              manager: '',
+              startDate: data.episodes.dates?.[i]?.startDate || '',
+              endDate: data.episodes.dates?.[i]?.endDate || '',
+              createdAt: now,
+              updatedAt: now,
+            }));
+            const ok = await upsertEpisodes(episodes);
+            if (ok) setAllEpisodes(prev => [...prev, ...episodes]);
+          }
+
           setIsWizardOpen(false);
         }}
         clients={clients}
@@ -1385,16 +1455,16 @@ export default function DashboardPage() {
 // 상태 배지 컴포넌트
 function StatusBadge({ status }: { status: string }) {
   const statusMap: Record<string, { label: string; color: string }> = {
-    planning: { label: '시작 전', color: 'bg-blue-100 text-blue-800' },
-    in_progress: { label: '진행 중', color: 'bg-yellow-100 text-yellow-800' },
-    completed: { label: '종료', color: 'bg-green-100 text-green-800' },
-    on_hold: { label: '보류', color: 'bg-gray-100 text-gray-800' },
+    planning: { label: '시작 전', color: 'bg-blue-50 text-blue-600' },
+    in_progress: { label: '진행 중', color: 'bg-yellow-50 text-yellow-700' },
+    completed: { label: '종료', color: 'bg-gray-100 text-gray-500' },
+    on_hold: { label: '보류', color: 'bg-orange-50 text-orange-500' },
   };
 
   const { label, color } = statusMap[status] || statusMap.on_hold;
 
   return (
-    <span className={`px-3 py-1 rounded-full text-xs font-medium ${color}`}>
+    <span className={`px-2 py-0.5 rounded-lg text-xs font-medium whitespace-nowrap ${color}`}>
       {label}
     </span>
   );

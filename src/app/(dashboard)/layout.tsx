@@ -24,9 +24,17 @@ export default function DashboardLayout({
   const [userEmail, setUserEmail] = useState<string>('');
   const [myRole, setMyRole] = useState<string>('manager');
   const isCustomerActive = pathname.startsWith('/partners') || pathname.startsWith('/clients');
-  const [isCustomerOpen, setIsCustomerOpen] = useState(isCustomerActive);
   const isOperationsActive = pathname.startsWith('/finance') || pathname.startsWith('/settlement') || pathname.startsWith('/contract') || pathname.startsWith('/strategy');
+  const [isCustomerOpen, setIsCustomerOpen] = useState(isCustomerActive);
   const [isOperationsOpen, setIsOperationsOpen] = useState(isOperationsActive);
+
+  useEffect(() => {
+    if (isCustomerActive) setIsCustomerOpen(true);
+  }, [isCustomerActive]);
+
+  useEffect(() => {
+    if (isOperationsActive) setIsOperationsOpen(true);
+  }, [isOperationsActive]);
 
   useEffect(() => {
     const checkAuth = async () => {

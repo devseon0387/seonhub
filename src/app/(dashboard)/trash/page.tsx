@@ -16,9 +16,12 @@ import {
 } from '@/lib/supabase/db';
 import { Trash2, RotateCcw, AlertTriangle, Calendar, Folder, Film, Briefcase, Users } from 'lucide-react';
 import { EmptyTrash } from '@/components/EmptyState';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function TrashPage() {
+  const toast = useToast();
   const [trashItems, setTrashItems] = useState<TrashItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [confirmEmptyTrash, setConfirmEmptyTrash] = useState(false);
   const [permanentDeleteId, setPermanentDeleteId] = useState<string | null>(null);
 
@@ -37,6 +40,7 @@ export default function TrashPage() {
   const loadTrashItems = async () => {
     const items = await getTrash();
     setTrashItems(items);
+    setLoading(false);
   };
 
   const handleRestore = async (trashItem: TrashItem) => {
@@ -48,7 +52,10 @@ export default function TrashPage() {
     if (restored.type === 'project') {
       await restoreProjectToTable(restored.data as Project);
     } else if (restored.type === 'episode') {
-      const ep = restored.data as Episode & { projectId: string };
+      const ep = {
+        ...(restored.data as Episode),
+        projectId: (restored.data as Episode & { projectId?: string }).projectId ?? restored.originalProjectId ?? '',
+      };
       await restoreEpisodeToTable(ep);
     } else if (restored.type === 'client') {
       await restoreClientToTable(restored.data as Client);
@@ -57,7 +64,7 @@ export default function TrashPage() {
     }
 
     await loadTrashItems();
-    alert('복구되었습니다!');
+    toast.success('복구되었습니다!');
   };
 
   const handlePermanentDelete = async () => {
@@ -74,7 +81,7 @@ export default function TrashPage() {
     await emptyTrashAll();
     await loadTrashItems();
     setConfirmEmptyTrash(false);
-    alert(`${count}개 항목이 영구 삭제되었습니다.`);
+    toast.success(`${count}개 항목이 영구 삭제되었습니다.`);
   };
 
   const getItemIcon = (type: string) => {
@@ -115,6 +122,14 @@ export default function TrashPage() {
       default: return '항목';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

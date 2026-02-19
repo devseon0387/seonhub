@@ -26,7 +26,22 @@ export async function middleware(request: NextRequest) {
   );
 
   // 세션 토큰 자동 갱신 (IMPORTANT: getUser 호출 필수)
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup');
+
+  if (!user && !isAuthPage) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = '/login';
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (user && isAuthPage) {
+    const dashboardUrl = request.nextUrl.clone();
+    dashboardUrl.pathname = '/dashboard';
+    return NextResponse.redirect(dashboardUrl);
+  }
 
   return supabaseResponse;
 }

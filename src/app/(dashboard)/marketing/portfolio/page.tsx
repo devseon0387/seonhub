@@ -22,10 +22,12 @@ import { FloatingLabelInput, FloatingLabelTextarea } from '@/components/Floating
 import {
   getPortfolioItems,
   insertPortfolioItem,
+  updatePortfolioItem,
   deletePortfolioItem,
   togglePortfolioPublished,
   getPartners,
 } from '@/lib/supabase/db';
+import { useToast } from '@/contexts/ToastContext';
 
 type ViewMode = 'grid' | 'list';
 type FilterType = 'all' | 'published' | 'unpublished';
@@ -51,6 +53,7 @@ const getYouTubeThumbnail = (url: string): string | null => {
 };
 
 export default function PortfolioPage() {
+  const toast = useToast();
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +74,13 @@ export default function PortfolioPage() {
   });
   const [tagInput, setTagInput] = useState('');
   const [isPartnerDropdownOpen, setIsPartnerDropdownOpen] = useState(false);
+
+  // 수정 관련 상태
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<PortfolioItem | null>(null);
+  const [editTagInput, setEditTagInput] = useState('');
+  const [isEditPartnerDropdownOpen, setIsEditPartnerDropdownOpen] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -112,7 +122,60 @@ export default function PortfolioPage() {
       setPortfolioItems(items =>
         items.map(i => i.id === itemId ? { ...i, isPublished: newPublished } : i)
       );
+    } else {
+      toast.error('공개 상태 변경에 실패했습니다.');
     }
+  };
+
+  const handleEdit = (item: PortfolioItem) => {
+    setEditingItem({ ...item });
+    setEditTagInput('');
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    const ok = await updatePortfolioItem(editingItem.id, {
+      title: editingItem.title,
+      description: editingItem.description,
+      client: editingItem.client,
+      partnerId: editingItem.partnerId,
+      completedAt: editingItem.completedAt,
+      tags: editingItem.tags,
+      youtubeUrl: editingItem.youtubeUrl,
+      isPublished: editingItem.isPublished,
+    });
+    if (ok) {
+      setPortfolioItems(items =>
+        items.map(i => i.id === editingItem.id ? { ...editingItem } : i)
+      );
+      setIsEditModalOpen(false);
+      setEditingItem(null);
+      toast.success('수정되었습니다.');
+    } else {
+      toast.error('수정에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
+
+  const handleShareItem = async (item: PortfolioItem) => {
+    try {
+      await navigator.clipboard.writeText(item.youtubeUrl);
+      setCopiedId(item.id);
+      setTimeout(() => setCopiedId(null), 2000);
+      toast.success('링크가 복사되었습니다.');
+    } catch {
+      toast.error('복사에 실패했습니다.');
+    }
+  };
+
+  const handleDownloadThumbnail = (item: PortfolioItem) => {
+    const videoId = extractYouTubeId(item.youtubeUrl);
+    if (!videoId) { toast.error('유효한 유튜브 URL이 없습니다.'); return; }
+    const link = document.createElement('a');
+    link.href = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    link.download = `${item.title}-thumbnail.jpg`;
+    link.target = '_blank';
+    link.click();
   };
 
   const handleAddItem = async () => {
@@ -142,9 +205,11 @@ export default function PortfolioPage() {
     };
 
     const inserted = await insertPortfolioItem(itemToInsert);
-    if (inserted) {
-      setPortfolioItems(prev => [inserted, ...prev]);
+    if (!inserted) {
+      alert('포트폴리오 추가에 실패했습니다. 다시 시도해주세요.');
+      return;
     }
+    setPortfolioItems(prev => [inserted, ...prev]);
 
     setIsAddModalOpen(false);
     setNewItem({
@@ -176,6 +241,9 @@ export default function PortfolioPage() {
       const ok = await deletePortfolioItem(itemId);
       if (ok) {
         setPortfolioItems(items => items.filter(item => item.id !== itemId));
+        toast.success('삭제되었습니다.');
+      } else {
+        toast.error('삭제에 실패했습니다. 다시 시도해주세요.');
       }
     }
   };
@@ -201,7 +269,14 @@ export default function PortfolioPage() {
           <p className="text-gray-500 mt-2">작업물을 업로드하고 포트폴리오로 관리하세요</p>
         </div>
         <div className="flex items-center gap-3">
-          <button type="button" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              const url = typeof window !== 'undefined' ? window.location.href : '';
+              navigator.clipboard.writeText(url).then(() => toast.success('페이지 링크가 복사되었습니다.')).catch(() => toast.error('복사에 실패했습니다.'));
+            }}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium flex items-center gap-2"
+          >
             <Share2 size={18} />
             공유하기
           </button>
@@ -424,10 +499,13 @@ export default function PortfolioPage() {
                     </div>
                   )}
                   <div className="flex gap-2">
-                    <button type="button" className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium">
+                    <button type="button" onClick={() => handleEdit(item)} className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium">
                       수정
                     </button>
-                    <button type="button" className="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+                    <button type="button" onClick={() => handleShareItem(item)} className="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors" title="링크 복사">
+                      {copiedId === item.id ? <CheckCircle size={16} className="text-green-500" /> : <Share2 size={16} />}
+                    </button>
+                    <button type="button" onClick={() => handleDownloadThumbnail(item)} className="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors" title="썸네일 다운로드">
                       <Download size={16} />
                     </button>
                   </div>
@@ -537,6 +615,69 @@ export default function PortfolioPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* 포트폴리오 수정 모달 */}
+      {isEditModalOpen && editingItem && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" onClick={() => setIsEditModalOpen(false)} />
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">포트폴리오 수정</h2>
+                <button type="button" onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="px-6 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">제목 *</label>
+                  <input type="text" value={editingItem.title} onChange={e => setEditingItem({ ...editingItem, title: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">클라이언트 *</label>
+                  <input type="text" value={editingItem.client} onChange={e => setEditingItem({ ...editingItem, client: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">유튜브 URL *</label>
+                  <input type="url" value={editingItem.youtubeUrl} onChange={e => setEditingItem({ ...editingItem, youtubeUrl: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">설명</label>
+                  <textarea value={editingItem.description} onChange={e => setEditingItem({ ...editingItem, description: e.target.value })} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">완료일</label>
+                  <input type="date" value={editingItem.completedAt || ''} onChange={e => setEditingItem({ ...editingItem, completedAt: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">태그</label>
+                  {editingItem.tags && editingItem.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {editingItem.tags.map((tag, i) => (
+                        <span key={i} className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-sm">
+                          #{tag}
+                          <button type="button" onClick={() => setEditingItem({ ...editingItem, tags: editingItem.tags!.filter((_, j) => j !== i) })} className="hover:text-red-500"><X size={12} /></button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input type="text" value={editTagInput} onChange={e => setEditTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && editTagInput.trim()) { setEditingItem({ ...editingItem, tags: [...(editingItem.tags || []), editTagInput.trim()] }); setEditTagInput(''); } }} placeholder="태그 입력 후 Enter" className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="edit-publish" checked={editingItem.isPublished} onChange={e => setEditingItem({ ...editingItem, isPublished: e.target.checked })} className="w-4 h-4 text-blue-600 border-gray-300 rounded" />
+                  <label htmlFor="edit-publish" className="text-sm text-gray-700">공개 상태</label>
+                </div>
+              </div>
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">취소</button>
+                <button type="button" onClick={handleSaveEdit} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">저장</button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

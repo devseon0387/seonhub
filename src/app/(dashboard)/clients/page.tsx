@@ -8,17 +8,21 @@ import { addToTrash } from '@/lib/trash';
 import { FloatingLabelInput, FloatingLabelTextarea } from '@/components/FloatingLabelInput';
 import { EmptyClients, EmptySearch } from '@/components/EmptyState';
 import { getClients, insertClient, updateClient, deleteClient, getProjects } from '@/lib/supabase/db';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function ClientsPage() {
   const router = useRouter();
+  const toast = useToast();
 
   const [clients, setClients] = useState<Client[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([getClients(), getProjects()]).then(([c, p]) => {
       setClients(c);
       setAllProjects(p);
+      setLoading(false);
     });
   }, []);
 
@@ -66,6 +70,8 @@ export default function ClientsPage() {
         setIsClientSuccess(false);
         setNewClient({ name: '', contactPerson: '', email: '', phone: '', company: '', address: '', notes: '', status: 'active' });
       }, 1500);
+    } else {
+      toast.error('클라이언트 추가에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -94,8 +100,12 @@ export default function ClientsPage() {
       const client = clients.find(c => c.id === clientToDelete.id);
       if (client) {
         await addToTrash('client', client);
-        await deleteClient(clientToDelete.id);
-        setClients(prev => prev.filter(c => c.id !== clientToDelete.id));
+        const deleted = await deleteClient(clientToDelete.id);
+        if (deleted) {
+          setClients(prev => prev.filter(c => c.id !== clientToDelete.id));
+        } else {
+          alert('삭제에 실패했습니다. 다시 시도해주세요.');
+        }
       }
       setIsDeleteModalOpen(false);
       setClientToDelete(null);
@@ -104,12 +114,16 @@ export default function ClientsPage() {
 
   const handleDeactivateClient = async () => {
     if (clientToDelete) {
-      await updateClient(clientToDelete.id, { status: 'inactive' });
-      setClients(prev => prev.map(c =>
-        c.id === clientToDelete.id
-          ? { ...c, status: 'inactive' as const, updatedAt: new Date().toISOString() }
-          : c
-      ));
+      const ok = await updateClient(clientToDelete.id, { status: 'inactive' });
+      if (ok) {
+        setClients(prev => prev.map(c =>
+          c.id === clientToDelete.id
+            ? { ...c, status: 'inactive' as const, updatedAt: new Date().toISOString() }
+            : c
+        ));
+      } else {
+        alert('상태 변경에 실패했습니다. 다시 시도해주세요.');
+      }
       setIsDeleteModalOpen(false);
       setClientToDelete(null);
     }
@@ -134,6 +148,14 @@ export default function ClientsPage() {
       client.address?.toLowerCase().includes(query)
     );
   });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

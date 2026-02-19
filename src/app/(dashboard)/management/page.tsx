@@ -119,6 +119,9 @@ export default function ManagementPage() {
       description: data.project.description || '',
       client: clientName,
       partnerId: data.project.partnerIds[0] || '',
+      partnerIds: data.project.partnerIds,
+      managerIds: [],
+      category: data.project.category,
       status: 'planning',
       budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0, marginRate: 0 },
       workContent: [],
@@ -145,8 +148,8 @@ export default function ManagementPage() {
         createdAt: now,
         updatedAt: now,
       }));
-      await upsertEpisodes(episodes);
-      setAllEpisodes(prev => [...prev, ...episodes]);
+      const ok = await upsertEpisodes(episodes);
+      if (ok) setAllEpisodes(prev => [...prev, ...episodes]);
     }
 
     setIsWizardOpen(false);
@@ -203,7 +206,11 @@ export default function ManagementPage() {
       linkedPartnerId: formLink.partnerId,
       linkedPartnerName: formLink.partnerName,
     };
-    await insertChecklist(itemToRow(newItem));
+    const saved = await insertChecklist(itemToRow(newItem));
+    if (!saved) {
+      alert('체크리스트 추가에 실패했습니다. 다시 시도해주세요.');
+      return;
+    }
     await refreshChecklists();
     setNewItemText('');
     setNewItemReminder('');
@@ -305,12 +312,20 @@ export default function ManagementPage() {
   const toggleChecklistItem = async (id: string) => {
     const item = checklistItems.find(i => i.id === id);
     if (!item) return;
-    await updateChecklist(id, { completed: !item.completed });
+    const ok = await updateChecklist(id, { completed: !item.completed });
+    if (!ok) {
+      alert('체크리스트 업데이트에 실패했습니다.');
+      return;
+    }
     await refreshChecklists();
   };
 
   const deleteChecklistItem = async (id: string) => {
-    await deleteChecklist(id);
+    const ok = await deleteChecklist(id);
+    if (!ok) {
+      alert('체크리스트 삭제에 실패했습니다.');
+      return;
+    }
     await refreshChecklists();
   };
 
@@ -319,6 +334,8 @@ export default function ManagementPage() {
     const permission = await Notification.requestPermission();
     notificationPermission.current = permission;
   };
+
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
@@ -334,6 +351,7 @@ export default function ManagementPage() {
       setClients(clientsData);
       setAllEpisodes(episodesData);
       setChecklistItems(checklistRows.map(rowToItem));
+      setLoading(false);
     };
     loadData();
 
@@ -343,12 +361,15 @@ export default function ManagementPage() {
     }
   }, []);
 
-  // 알림 체크 (30초마다)
+  // 알림 체크 (30초마다) - checklistItems를 ref로 참조해 인터벌 재생성 방지
+  const checklistItemsRef = useRef<ChecklistItem[]>([]);
+  checklistItemsRef.current = checklistItems;
+
   useEffect(() => {
     const interval = setInterval(async () => {
       if (!('Notification' in window) || Notification.permission !== 'granted') return;
       const now = new Date();
-      const itemsToNotify = checklistItems.filter(
+      const itemsToNotify = checklistItemsRef.current.filter(
         item => !item.completed && !item.notified && !!item.reminderTime && new Date(item.reminderTime) <= now
       );
       if (itemsToNotify.length === 0) return;
@@ -362,8 +383,7 @@ export default function ManagementPage() {
       await refreshChecklists();
     }, 30000);
     return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checklistItems]);
+  }, []);
 
   // 현재 날짜 및 시간 계산
   const now = new Date();
@@ -443,6 +463,14 @@ export default function ManagementPage() {
     const partner = partners.find(p => p.id === episode.assignee);
     return { project, partner };
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

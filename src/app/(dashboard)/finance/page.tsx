@@ -8,6 +8,7 @@ import { getProjects } from '@/lib/supabase/db';
 
 export default function FinancePage() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'month' | 'all'>('month');
   const [tabDirection, setTabDirection] = useState(1);
 
@@ -18,7 +19,7 @@ export default function FinancePage() {
   };
 
   useEffect(() => {
-    getProjects().then(setProjects);
+    getProjects().then(data => { setProjects(data); setLoading(false); });
   }, []);
 
   const now = new Date();
@@ -26,7 +27,8 @@ export default function FinancePage() {
   const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
   const thisMonthProjects = projects.filter(p => {
-    const d = new Date(p.createdAt);
+    if (!p.completedAt) return false;
+    const d = new Date(p.completedAt);
     return d >= thisMonthStart && d <= thisMonthEnd;
   });
 
@@ -39,6 +41,14 @@ export default function FinancePage() {
   const avgMarginRate = displayProjects.length > 0
     ? (displayProjects.reduce((s, p) => s + p.budget.marginRate, 0) / displayProjects.length).toFixed(1)
     : '0';
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -117,40 +127,42 @@ export default function FinancePage() {
             <p className="font-medium text-gray-500">등록된 프로젝트가 없어요</p>
           </div>
         ) : (
-          <>
-            <div className="px-6 py-3 bg-gray-50 grid grid-cols-[1fr_80px_80px_80px_80px] gap-4 text-xs font-semibold text-gray-400 uppercase tracking-wide">
-              <span>프로젝트</span>
-              <span className="text-right">총 매출</span>
-              <span className="text-right">파트너</span>
-              <span className="text-right">매니징</span>
-              <span className="text-right">유보금</span>
-            </div>
-            <div className="divide-y divide-gray-50">
-              {displayProjects.map((project) => {
-                const margin = project.budget.totalAmount - project.budget.partnerPayment - project.budget.managementFee;
-                return (
-                  <div key={project.id} className="px-6 py-4 hover:bg-gray-50 transition-colors grid grid-cols-[1fr_80px_80px_80px_80px] gap-4 items-center">
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{project.title}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{project.client}</p>
+          <div className="overflow-x-auto">
+            <div className="min-w-[480px]">
+              <div className="px-6 py-3 bg-gray-50 grid grid-cols-[1fr_80px_80px_80px_80px] gap-4 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                <span>프로젝트</span>
+                <span className="text-right">총 매출</span>
+                <span className="text-right">파트너</span>
+                <span className="text-right">매니징</span>
+                <span className="text-right">유보금</span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {displayProjects.map((project) => {
+                  const margin = project.budget.totalAmount - project.budget.partnerPayment - project.budget.managementFee;
+                  return (
+                    <div key={project.id} className="px-6 py-4 hover:bg-gray-50 transition-colors grid grid-cols-[1fr_80px_80px_80px_80px] gap-4 items-center">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 truncate">{project.title}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{project.client}</p>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900 text-right">{(project.budget.totalAmount / 10000).toFixed(0)}만</p>
+                      <p className="text-sm font-semibold text-purple-600 text-right">{(project.budget.partnerPayment / 10000).toFixed(0)}만</p>
+                      <p className="text-sm font-semibold text-orange-500 text-right">{(project.budget.managementFee / 10000).toFixed(0)}만</p>
+                      <p className="text-sm font-semibold text-emerald-600 text-right">{(margin / 10000).toFixed(0)}만</p>
                     </div>
-                    <p className="text-sm font-semibold text-gray-900 text-right">{(project.budget.totalAmount / 10000).toFixed(0)}만</p>
-                    <p className="text-sm font-semibold text-purple-600 text-right">{(project.budget.partnerPayment / 10000).toFixed(0)}만</p>
-                    <p className="text-sm font-semibold text-orange-500 text-right">{(project.budget.managementFee / 10000).toFixed(0)}만</p>
-                    <p className="text-sm font-semibold text-emerald-600 text-right">{(margin / 10000).toFixed(0)}만</p>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+              {/* 합계 행 */}
+              <div className="px-6 py-4 bg-gray-50 grid grid-cols-[1fr_80px_80px_80px_80px] gap-4 items-center border-t border-gray-100">
+                <p className="text-sm font-bold text-gray-700">합계</p>
+                <p className="text-sm font-bold text-gray-900 text-right">{(totalRevenue / 10000).toFixed(0)}만</p>
+                <p className="text-sm font-bold text-purple-600 text-right">{(totalPartnerPayment / 10000).toFixed(0)}만</p>
+                <p className="text-sm font-bold text-orange-500 text-right">{(totalManagementFee / 10000).toFixed(0)}만</p>
+                <p className="text-sm font-bold text-emerald-600 text-right">{(totalMargin / 10000).toFixed(0)}만</p>
+              </div>
             </div>
-            {/* 합계 행 */}
-            <div className="px-6 py-4 bg-gray-50 grid grid-cols-[1fr_80px_80px_80px_80px] gap-4 items-center border-t border-gray-100">
-              <p className="text-sm font-bold text-gray-700">합계</p>
-              <p className="text-sm font-bold text-gray-900 text-right">{(totalRevenue / 10000).toFixed(0)}만</p>
-              <p className="text-sm font-bold text-purple-600 text-right">{(totalPartnerPayment / 10000).toFixed(0)}만</p>
-              <p className="text-sm font-bold text-orange-500 text-right">{(totalManagementFee / 10000).toFixed(0)}만</p>
-              <p className="text-sm font-bold text-emerald-600 text-right">{(totalMargin / 10000).toFixed(0)}만</p>
-            </div>
-          </>
+          </div>
         )}
       </div>
     </div>

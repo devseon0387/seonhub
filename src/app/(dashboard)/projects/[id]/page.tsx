@@ -6,8 +6,7 @@ import { Project, Client, Episode, Partner } from '@/types';
 import { ArrowLeft, Calendar, User, DollarSign, Tag, Edit, Trash2, TrendingUp, ChevronRight, X, UserCircle, FileText, Users, Video, Palette, Image, CheckCircle2, Clock, Pause, Target, ChevronDown, ClipboardCheck } from 'lucide-react';
 import { calculateReserve } from '@/lib/utils';
 import { addToTrash } from '@/lib/trash';
-import { deleteEpisodeFromStorage, deleteProjectEpisodesFromStorage } from '@/lib/storage';
-import { getProjects, updateProject, deleteProject, getClients as fetchClients, getProjectEpisodes, getPartners, upsertEpisode } from '@/lib/supabase/db';
+import { getProjectById, updateProject, deleteProject, getClients as fetchClients, getProjectEpisodes, getPartners, upsertEpisode, deleteEpisode, deleteProjectEpisodes } from '@/lib/supabase/db';
 import Link from 'next/link';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
 import ProjectChecklistModal from '@/components/ProjectChecklistModal';
@@ -67,6 +66,8 @@ export default function ProjectDetailPage() {
   });
 
   const [deleteEpisodeId, setDeleteEpisodeId] = useState<string | null>(null);
+  const [isSavingProject, setIsSavingProject] = useState(false);
+  const [isLoadingProject, setIsLoadingProject] = useState(true);
   const [activeTab, setActiveTab] = useState<'in-progress' | 'episodes' | 'overview'>('in-progress');
 
   // 토스트 알림
@@ -85,17 +86,18 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     const loadData = async () => {
-      // Load project
-      const projects = await getProjects();
-      const foundProject = projects.find(p => p.id === projectId);
-      setProject(foundProject || null);
+      const [foundProject, clientsData, partnersData, eps] = await Promise.all([
+        getProjectById(projectId),
+        fetchClients(),
+        getPartners(),
+        getProjectEpisodes(projectId),
+      ]);
+      setProject(foundProject);
       if (foundProject) {
-        const ids = (foundProject as any).partnerIds || (foundProject.partnerId ? [foundProject.partnerId] : []);
-        setPartnerIds(ids);
-        const mgrIds = (foundProject as any).managerIds || [];
-        setManagerIds(mgrIds);
+        setPartnerIds(foundProject.partnerIds);
+        setManagerIds(foundProject.managerIds);
         setSelectedClient(foundProject.client || '');
-        setSelectedCategory((foundProject as any).category || '');
+        setSelectedCategory(foundProject.category || '');
         const defaultCosts = {
           '롱폼': { partnerCost: 0, managementCost: 0 },
           '기획 숏폼': { partnerCost: 0, managementCost: 0 },
@@ -103,20 +105,14 @@ export default function ProjectDetailPage() {
           '썸네일': { partnerCost: 0, managementCost: 0 },
         };
         const costs = foundProject.workTypeCosts ? { ...defaultCosts, ...foundProject.workTypeCosts } : defaultCosts;
-        setWorkTypeCosts(costs as any);
-        const total = (foundProject as any).totalAmount || foundProject.budget.totalAmount || 0;
-        setTotalAmount(total);
+        setWorkTypeCosts(costs);
+        setTotalAmount(foundProject.budget.totalAmount);
         setTempWorkContent(foundProject.workContent || []);
       }
-
-      // Load clients and partners in parallel
-      const [clientsData, partnersData] = await Promise.all([fetchClients(), getPartners()]);
       setClients(clientsData);
       setAllPartners(partnersData);
-
-      // Load episodes
-      const eps = await getProjectEpisodes(projectId);
       setEpisodes(eps);
+      setIsLoadingProject(false);
     };
     loadData();
   }, [projectId]);
@@ -160,21 +156,30 @@ export default function ProjectDetailPage() {
       completedAt: newStatus === 'completed' ? new Date().toISOString() : undefined,
     };
     setEpisodes(prev => prev.map(e => e.id === episodeId ? updated : e));
-    await upsertEpisode(updated);
+    const ok = await upsertEpisode(updated);
+    if (!ok) {
+      setEpisodes(prev => prev.map(e => e.id === episodeId ? episode : e));
+      showToastMessage('상태 변경에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const handleDelete = async () => {
     if (!project) return;
-    // Move to trash
-    await addToTrash('project', project);
-    await deleteProject(project.id);
 
-    // Move episodes to trash too
+    // 에피소드를 먼저 휴지통으로 이전 (프로젝트 삭제 전에 해야 조회 가능)
     const eps = await getProjectEpisodes(projectId);
     for (const ep of eps) {
       await addToTrash('episode', ep, projectId);
     }
-    await deleteProjectEpisodesFromStorage(projectId);
+    await deleteProjectEpisodes(projectId);
+
+    // 프로젝트 휴지통 이전 후 삭제
+    await addToTrash('project', project);
+    const deleted = await deleteProject(project.id);
+    if (!deleted) {
+      showToastMessage('프로젝트 삭제에 실패했습니다. 다시 시도해주세요.');
+      return;
+    }
 
     router.push('/projects');
   };
@@ -195,7 +200,8 @@ export default function ProjectDetailPage() {
   };
 
   const updateProjectPartners = async (newPartnerIds: string[]) => {
-    await updateProject(projectId, { partnerId: newPartnerIds[0], ...({ partnerIds: newPartnerIds } as any) });
+    const ok = await updateProject(projectId, { partnerIds: newPartnerIds });
+    if (!ok) showToastMessage('파트너 저장에 실패했습니다.');
   };
 
   const handleCategorySelect = (category: string) => {
@@ -205,7 +211,8 @@ export default function ProjectDetailPage() {
   };
 
   const updateProjectCategory = async (category: string) => {
-    await updateProject(projectId, { ...({ category } as any) });
+    const ok = await updateProject(projectId, { category });
+    if (!ok) showToastMessage('카테고리 저장에 실패했습니다.');
   };
 
   const handleClientSelect = (clientName: string) => {
@@ -215,8 +222,12 @@ export default function ProjectDetailPage() {
   };
 
   const updateProjectClient = async (clientName: string) => {
-    await updateProject(projectId, { client: clientName });
-    if (project) setProject({ ...project, client: clientName });
+    const ok = await updateProject(projectId, { client: clientName });
+    if (ok) {
+      if (project) setProject({ ...project, client: clientName });
+    } else {
+      showToastMessage('클라이언트 저장에 실패했습니다.');
+    }
   };
 
   const handleAddManager = (managerId: string) => {
@@ -235,7 +246,8 @@ export default function ProjectDetailPage() {
   };
 
   const updateProjectManagers = async (newManagerIds: string[]) => {
-    await updateProject(projectId, { ...({ managerIds: newManagerIds } as any) });
+    const ok = await updateProject(projectId, { managerIds: newManagerIds });
+    if (!ok) showToastMessage('매니저 저장에 실패했습니다.');
   };
 
   // 토스트 표시 함수
@@ -296,8 +308,13 @@ export default function ProjectDetailPage() {
     if (!deleteEpisodeId) return;
     const episodeToDelete = episodes.find(ep => ep.id === deleteEpisodeId);
     if (episodeToDelete) {
+      const deleted = await deleteEpisode(deleteEpisodeId);
+      if (!deleted) {
+        showToastMessage('에피소드 삭제에 실패했습니다. 다시 시도해주세요.');
+        setDeleteEpisodeId(null);
+        return;
+      }
       await addToTrash('episode', episodeToDelete, projectId);
-      await deleteEpisodeFromStorage(deleteEpisodeId);
       setEpisodes(episodes.filter(ep => ep.id !== deleteEpisodeId));
     }
     setDeleteEpisodeId(null);
@@ -337,6 +354,14 @@ export default function ProjectDetailPage() {
     return ((reserve / totalAmount) * 100).toFixed(1);
   };
 
+
+  if (isLoadingProject) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
 
   if (!project) {
     return (
@@ -452,20 +477,38 @@ export default function ProjectDetailPage() {
 
   // 통합 모달 저장
   const saveProjectEditModal = async () => {
+    if (isSavingProject) return;
     if (!project || !tempEditedProject.title) {
       alert('프로젝트 이름을 입력해주세요.');
       return;
     }
+    setIsSavingProject(true);
 
-    const updates = {
+    const partnerPayment = Object.values(tempWorkTypeCosts).reduce((s, c) => s + c.partnerCost, 0);
+    const managementFee = Object.values(tempWorkTypeCosts).reduce((s, c) => s + c.managementCost, 0);
+    const marginRate = tempTotalAmount > 0
+      ? Math.round(((tempTotalAmount - partnerPayment - managementFee) / tempTotalAmount) * 100 * 10) / 10
+      : 0;
+
+    const updates: Partial<Project> = {
       ...tempEditedProject,
       tags: tempEditTags,
       client: tempSelectedClient,
+      partnerIds: tempPartnerIds,
+      managerIds: tempManagerIds,
+      category: tempSelectedCategory,
       workContent: tempWorkContent,
       workTypeCosts: tempWorkTypeCosts,
-    } as Partial<Project>;
+      budget: {
+        totalAmount: tempTotalAmount,
+        partnerPayment,
+        managementFee,
+        marginRate,
+      },
+    };
 
     const success = await updateProject(projectId, updates);
+    setIsSavingProject(false);
     if (success) {
       setProject({
         ...project,
@@ -480,6 +523,8 @@ export default function ProjectDetailPage() {
       setWorkTypeCosts(tempWorkTypeCosts);
       showToastMessage('프로젝트가 저장되었습니다!');
       cancelProjectEditModal();
+    } else {
+      showToastMessage('저장에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -1208,14 +1253,17 @@ export default function ProjectDetailPage() {
                 assignee: defaultAssignee,
                 manager: defaultManager,
                 startDate: new Date().toISOString(),
+                budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0 },
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
               };
 
+              const ok = await upsertEpisode(newEpisode);
+              if (!ok) {
+                showToastMessage('회차 추가에 실패했습니다. 다시 시도해주세요.');
+                return;
+              }
               setEpisodes(prev => [...prev, newEpisode]);
-              await upsertEpisode(newEpisode);
-
-              // 바로 페이지 열기
               router.push(`/projects/${projectId}/episodes/${newEpisode.id}`);
             }}
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
@@ -2159,9 +2207,10 @@ export default function ProjectDetailPage() {
                 </button>
                 <button
                   onClick={saveProjectEditModal}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                  disabled={isSavingProject}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  저장
+                  {isSavingProject ? '저장 중...' : '저장'}
                 </button>
               </div>
             </div>
@@ -2207,7 +2256,7 @@ export default function ProjectDetailPage() {
       )}
 
       {/* 체크리스트 모달 */}
-      <ProjectChecklistModal
+      {project && <ProjectChecklistModal
         project={project}
         episodes={episodes}
         isOpen={isChecklistModalOpen}
@@ -2216,7 +2265,7 @@ export default function ProjectDetailPage() {
           setSelectedEpisodeForDetail(episode);
           setIsChecklistModalOpen(false);
         }}
-      />
+      />}
 
       {/* 에피소드 상세 모달 */}
       {selectedEpisodeForDetail && (
@@ -2228,10 +2277,15 @@ export default function ProjectDetailPage() {
           isOpen={!!selectedEpisodeForDetail}
           onClose={() => setSelectedEpisodeForDetail(null)}
           onSave={async (updatedEpisode) => {
-            setEpisodes(prev =>
-              prev.map(e => e.id === updatedEpisode.id ? { ...updatedEpisode, projectId } : e)
-            );
-            await upsertEpisode({ ...updatedEpisode, projectId });
+            const ok = await upsertEpisode({ ...updatedEpisode, projectId });
+            if (ok) {
+              setEpisodes(prev =>
+                prev.map(e => e.id === updatedEpisode.id ? { ...updatedEpisode, projectId } : e)
+              );
+              showToastMessage('회차가 저장되었습니다.');
+            } else {
+              showToastMessage('저장에 실패했습니다. 다시 시도해주세요.');
+            }
           }}
         />
       )}

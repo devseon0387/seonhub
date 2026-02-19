@@ -22,6 +22,9 @@ interface ProjectRow {
   description: string | null;
   client: string | null;
   partner_id: string | null;
+  partner_ids: string[] | null;
+  manager_ids: string[] | null;
+  category: string | null;
   status: string;
   total_amount: number;
   partner_payment: number;
@@ -103,12 +106,16 @@ interface TrashRow {
 // ─── Mappers ─────────────────────────────────────────────────
 
 function projectFromRow(row: ProjectRow): Project {
+  const partnerIds = row.partner_ids ?? (row.partner_id ? [row.partner_id] : []);
   return {
     id: row.id,
     title: row.title,
     description: row.description ?? '',
     client: row.client ?? '',
-    partnerId: row.partner_id ?? '',
+    partnerId: row.partner_id ?? partnerIds[0] ?? '',
+    partnerIds,
+    managerIds: row.manager_ids ?? [],
+    category: row.category ?? undefined,
     status: row.status as Project['status'],
     budget: {
       totalAmount: row.total_amount,
@@ -128,11 +135,15 @@ function projectFromRow(row: ProjectRow): Project {
 }
 
 function projectToInsert(project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) {
+  const partnerIds = project.partnerIds ?? (project.partnerId ? [project.partnerId] : []);
   return {
     title: project.title,
     description: project.description,
     client: project.client,
-    partner_id: project.partnerId,
+    partner_id: partnerIds[0] ?? project.partnerId ?? null,
+    partner_ids: partnerIds,
+    manager_ids: project.managerIds ?? [],
+    category: project.category ?? null,
     status: project.status,
     total_amount: project.budget?.totalAmount ?? 0,
     partner_payment: project.budget?.partnerPayment ?? 0,
@@ -152,7 +163,14 @@ function projectToUpdate(project: Partial<Project>) {
   if (project.title !== undefined) row.title = project.title;
   if (project.description !== undefined) row.description = project.description;
   if (project.client !== undefined) row.client = project.client;
-  if (project.partnerId !== undefined) row.partner_id = project.partnerId;
+  if (project.partnerIds !== undefined) {
+    row.partner_ids = project.partnerIds;
+    row.partner_id = project.partnerIds[0] ?? null;
+  } else if (project.partnerId !== undefined) {
+    row.partner_id = project.partnerId;
+  }
+  if (project.managerIds !== undefined) row.manager_ids = project.managerIds;
+  if (project.category !== undefined) row.category = project.category;
   if (project.status !== undefined) row.status = project.status;
   if (project.budget) {
     row.total_amount = project.budget.totalAmount;
@@ -335,6 +353,17 @@ export async function getProjects(): Promise<Project[]> {
     .order('created_at', { ascending: false });
   if (error || !data) return [];
   return (data as ProjectRow[]).map(projectFromRow);
+}
+
+export async function getProjectById(id: string): Promise<Project | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error || !data) return null;
+  return projectFromRow(data as ProjectRow);
 }
 
 export async function insertProject(
@@ -565,7 +594,7 @@ export async function permanentDeleteTrash(id: string): Promise<boolean> {
 
 export async function emptyTrashAll(): Promise<boolean> {
   const supabase = createClient();
-  const { error } = await supabase.from('trash').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  const { error } = await supabase.from('trash').delete().gte('deleted_at', '1970-01-01');
   if (error) console.error('emptyTrashAll error:', error);
   return !error;
 }
@@ -859,9 +888,11 @@ export async function getMyChecklists(): Promise<ChecklistRow[]> {
 
 export async function insertChecklist(item: Omit<ChecklistRow, 'id' | 'user_id' | 'created_at'>): Promise<ChecklistRow | null> {
   const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const userId = user?.id ?? 'local';
   const { data, error } = await supabase
     .from('checklists')
-    .insert({ ...item, user_id: 'local' })
+    .insert({ ...item, user_id: userId })
     .select()
     .single();
   if (error) return null;

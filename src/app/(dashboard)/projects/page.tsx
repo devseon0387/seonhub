@@ -18,6 +18,7 @@ interface EpisodeWithProjectId extends Episode {
 export default function ProjectsPage() {
   // Supabase에서 프로젝트 데이터 로드
   const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Supabase에서 클라이언트 데이터 로드
   const [clients, setClients] = useState<Client[]>([]);
@@ -27,9 +28,6 @@ export default function ProjectsPage() {
 
   // Supabase에서 파트너 데이터 로드
   const [allPartners, setAllPartners] = useState<Partner[]>([]);
-
-  // 초기 로드 완료 여부 추적
-  const isInitialMount = useRef(true);
 
   useEffect(() => {
     const loadData = async () => {
@@ -43,7 +41,7 @@ export default function ProjectsPage() {
       setClients(clientsData);
       setEpisodes(episodesData);
       setAllPartners(partnersData);
-      isInitialMount.current = false;
+      setLoading(false);
     };
     loadData();
   }, []);
@@ -174,11 +172,13 @@ export default function ProjectsPage() {
       return;
     }
 
-    const projectData = {
+    const projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt'> = {
       title: newProject.title!,
       description: newProject.description || '',
       client: newProject.client!,
       partnerId: newProject.partnerId!,
+      partnerIds: newProject.partnerId ? [newProject.partnerId] : [],
+      managerIds: [],
       status: newProject.status || 'planning',
       budget: newProject.budget || {
         totalAmount: 0,
@@ -188,7 +188,7 @@ export default function ProjectsPage() {
       },
       tags: newProject.tags || [],
       workContent: [],
-    } as Omit<Project, 'id' | 'createdAt' | 'updatedAt'>;
+    };
 
     const saved = await insertProject(projectData);
     if (saved) {
@@ -207,6 +207,8 @@ export default function ProjectsPage() {
           tags: [],
         });
       }, 1500);
+    } else {
+      alert('프로젝트 저장에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -228,6 +230,14 @@ export default function ProjectsPage() {
       tags: [],
     });
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -345,7 +355,7 @@ export default function ProjectsPage() {
           </div>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) => setSortBy(e.target.value as 'recent' | 'amount' | 'name')}
             className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none text-xs text-gray-600"
           >
             <option value="recent">최신순</option>
@@ -808,6 +818,7 @@ export default function ProjectsPage() {
                                 {step.status !== 'completed' && (
                                   <button
                                     onClick={async () => {
+                                      const prevEpisodes = episodes;
                                       const updatedEpisodes = episodes.map(ep => {
                                         if (ep.id === selectedWorkTypeModal.episodeId) {
                                           const updatedSteps = [...steps];
@@ -820,10 +831,14 @@ export default function ProjectsPage() {
                                         return ep;
                                       });
                                       setEpisodes(updatedEpisodes);
-                                      // Supabase에 안전하게 저장
                                       const updatedEpisode = updatedEpisodes.find(e => e.id === selectedWorkTypeModal.episodeId);
                                       if (updatedEpisode) {
-                                        await updateEpisodeInStorage(updatedEpisode);
+                                        const ok = await updateEpisodeInStorage(updatedEpisode);
+                                        if (!ok) {
+                                          setEpisodes(prevEpisodes);
+                                          showToast('저장에 실패했습니다. 다시 시도해주세요.');
+                                          return;
+                                        }
                                       }
                                       showToast(`"${step.label || `작업 ${index + 1}`}"을(를) 완료로 표시했습니다.`);
                                     }}
@@ -835,6 +850,7 @@ export default function ProjectsPage() {
                                 {step.status === 'completed' && (
                                   <button
                                     onClick={async () => {
+                                      const prevEpisodes = episodes;
                                       const updatedEpisodes = episodes.map(ep => {
                                         if (ep.id === selectedWorkTypeModal.episodeId) {
                                           const updatedSteps = [...steps];
@@ -847,10 +863,14 @@ export default function ProjectsPage() {
                                         return ep;
                                       });
                                       setEpisodes(updatedEpisodes);
-                                      // Supabase에 안전하게 저장
                                       const updatedEpisode = updatedEpisodes.find(e => e.id === selectedWorkTypeModal.episodeId);
                                       if (updatedEpisode) {
-                                        await updateEpisodeInStorage(updatedEpisode);
+                                        const ok = await updateEpisodeInStorage(updatedEpisode);
+                                        if (!ok) {
+                                          setEpisodes(prevEpisodes);
+                                          showToast('저장에 실패했습니다. 다시 시도해주세요.');
+                                          return;
+                                        }
                                       }
                                       showToast(`"${step.label || `작업 ${index + 1}`}"을(를) 진행중으로 변경했습니다.`);
                                     }}

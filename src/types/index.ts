@@ -35,7 +35,10 @@ export interface Project {
   title: string;
   description: string;
   client: string;
-  partnerId: string; // 담당 파트너
+  partnerId: string; // 담당 파트너 (첫 번째 파트너 / 하위 호환용)
+  partnerIds: string[]; // 담당 파트너 목록 (복수)
+  managerIds: string[]; // 매니저 목록
+  category?: string; // 프로젝트 카테고리
   status: ProjectStatus;
   budget: ProjectBudget; // 비용 정보
   workContent?: WorkContentType[]; // 작업 내용 (복수 선택 가능)

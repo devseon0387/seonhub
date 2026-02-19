@@ -2,19 +2,22 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // 로그인 상태 확인
-    const isAuthenticated = localStorage.getItem('isAuthenticated');
-
-    if (isAuthenticated === 'true') {
-      router.push('/dashboard');
-    } else {
-      router.push('/login');
-    }
+    const checkSession = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        router.push('/dashboard');
+      } else {
+        router.push('/login');
+      }
+    };
+    checkSession();
   }, [router]);
 
   return (

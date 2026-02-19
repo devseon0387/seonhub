@@ -43,7 +43,12 @@ export default function NotificationDropdown() {
       });
 
       const savedChecklist = localStorage.getItem(CHECKLIST_STORAGE_KEY);
-      const checkedItems = savedChecklist ? JSON.parse(savedChecklist) : {};
+      let checkedItems: Record<string, boolean> = {};
+      try {
+        checkedItems = savedChecklist ? JSON.parse(savedChecklist) : {};
+      } catch {
+        checkedItems = {};
+      }
 
       setChecklist([
         { id: 'review', type: 'review', count: reviewingEpisodes.length, label: '검수 완료 필요', checked: checkedItems.review || false, route: '/management' },

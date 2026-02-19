@@ -134,6 +134,10 @@ export default function ProjectWizardModal({
     }
 
     if (currentStep === 3) {
+      if (addProjectNow === null) {
+        showToast('프로젝트 추가 여부를 선택해주세요.');
+        return;
+      }
       if (addProjectNow === true && !projectTitle) {
         showToast('프로젝트 이름을 입력해주세요.');
         return;

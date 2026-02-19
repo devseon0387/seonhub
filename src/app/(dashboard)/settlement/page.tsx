@@ -16,6 +16,7 @@ export default function SettlementPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'client' | 'partner' | 'manager'>('client');
   const [tabDirection, setTabDirection] = useState(1);
   const [openClients, setOpenClients] = useState<Record<string, boolean>>({});
@@ -38,6 +39,7 @@ export default function SettlementPage() {
         setProjects(projectsData);
         setPartners(partnersData);
         setClients(clientsData);
+        setLoading(false);
       }
     );
   }, []);
@@ -59,7 +61,7 @@ export default function SettlementPage() {
 
   // 파트너 정산
   const partnerSettlements = partners.map(partner => {
-    const partnerProjects = projects.filter(p => p.partnerId === partner.id);
+    const partnerProjects = projects.filter(p => p.partnerIds?.includes(partner.id) || p.partnerId === partner.id);
     const totalAmount = partnerProjects.reduce((s, p) => s + p.budget.partnerPayment, 0);
     return { partner, partnerProjects, totalAmount, projectCount: partnerProjects.length };
   }).filter(ps => ps.projectCount > 0);
@@ -112,6 +114,12 @@ export default function SettlementPage() {
           </div>
         </div>
       </div>
+
+      {loading && (
+        <div className="flex items-center justify-center h-32">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        </div>
+      )}
 
       {/* 탭 네비게이션 */}
       <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-200 inline-flex gap-2">
@@ -324,7 +332,8 @@ export default function SettlementPage() {
                   <p className="font-medium text-gray-500">정산 내역이 없어요</p>
                 </div>
               ) : (
-                <>
+                <div className="overflow-x-auto">
+                  <div className="min-w-[380px]">
                   {/* 컬럼 헤더 */}
                   <div className="px-5 py-2.5 bg-gray-50 grid grid-cols-[1fr_72px_84px_60px] gap-3 text-xs font-semibold text-gray-400 border-b border-gray-100">
                     <span>프로젝트</span>
@@ -357,7 +366,8 @@ export default function SettlementPage() {
                     <span className="text-base font-bold text-orange-500 text-right">{(managerTotal / 10000).toFixed(0)}만원</span>
                     <span className="text-sm font-semibold text-emerald-600 text-right">{avgMarginRate}%</span>
                   </div>
-                </>
+                  </div>
+                </div>
               )}
             </div>
           )}

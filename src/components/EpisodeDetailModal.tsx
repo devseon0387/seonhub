@@ -77,23 +77,26 @@ export default function EpisodeDetailModal({
     '썸네일': true,
   });
 
-  // Update edited episode when episode prop changes
+  // episode prop이 바뀌면 편집 상태 초기화
   useEffect(() => {
     setEditedEpisode(episode);
+  }, [episode]);
 
-    // 기존 작업 타입들의 비용을 프로젝트 설정에서 자동으로 가져오기
-    if (projectWorkTypeCosts && episode.workContent) {
-      const newBudgets = { ...workBudgets };
+  // episode나 projectWorkTypeCosts가 바뀌면 작업별 비용 자동 설정
+  useEffect(() => {
+    if (!projectWorkTypeCosts || !episode.workContent) return;
+    setWorkBudgets(prev => {
+      const next = { ...prev };
       episode.workContent.forEach(workType => {
         if (projectWorkTypeCosts[workType]) {
-          newBudgets[workType] = {
+          next[workType] = {
             partnerPayment: projectWorkTypeCosts[workType].partnerCost,
             managementFee: projectWorkTypeCosts[workType].managementCost,
           };
         }
       });
-      setWorkBudgets(newBudgets);
-    }
+      return next;
+    });
   }, [episode, projectWorkTypeCosts]);
 
   const partner = partners.find(p => p.id === editedEpisode.assignee) || initialPartner;
@@ -171,13 +174,7 @@ export default function EpisodeDetailModal({
           managementFee: projectWorkTypeCosts[workType].managementCost,
         },
       }));
-      console.log('💰 Auto-filled budget for', workType, ':', {
-        partnerPayment: projectWorkTypeCosts[workType].partnerCost,
-        managementFee: projectWorkTypeCosts[workType].managementCost,
-      });
     }
-
-    console.log('➕ Work type added:', workType);
   };
 
   // 작업 제거 (활성화 → 비활성화)
@@ -197,7 +194,6 @@ export default function EpisodeDetailModal({
       [workType]: [],
     }));
 
-    console.log('➖ Work type removed:', workType);
   };
 
   // 작업 단계 추가
@@ -216,7 +212,6 @@ export default function EpisodeDetailModal({
       [workType]: [...(prev[workType] || []), newStep],
     }));
 
-    console.log('➕ Work step added:', workType, newStep);
   };
 
   // 작업 단계 제거
@@ -226,7 +221,6 @@ export default function EpisodeDetailModal({
       [workType]: prev[workType].filter(step => step.id !== stepId),
     }));
 
-    console.log('➖ Work step removed:', workType, stepId);
   };
 
   // 작업 단계 업데이트
@@ -309,9 +303,12 @@ export default function EpisodeDetailModal({
   };
 
   const handleClose = () => {
-    // Save changes when closing
     if (onSave) {
-      onSave(editedEpisode);
+      onSave({
+        ...editedEpisode,
+        workSteps: workSteps as Episode['workSteps'],
+        workBudgets: workBudgets as Episode['workBudgets'],
+      });
     }
     onClose();
   };

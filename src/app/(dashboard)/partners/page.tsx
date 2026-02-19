@@ -15,7 +15,7 @@ function computePartnerStats(
   projects: Project[],
   allEpisodes: (Episode & { projectId: string })[]
 ) {
-  const partnerProjects = projects.filter(p => p.partnerId === partnerId);
+  const partnerProjects = projects.filter(p => p.partnerIds?.includes(partnerId) || p.partnerId === partnerId);
   const now = new Date();
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -60,6 +60,7 @@ export default function PartnersPage() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [allProjectsData, setAllProjectsData] = useState<Project[]>([]);
   const [allEpisodesData, setAllEpisodesData] = useState<(Episode & { projectId: string })[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([getPartners(), getProjects(), getAllEpisodes()]).then(
@@ -67,6 +68,7 @@ export default function PartnersPage() {
         setPartners(p);
         setAllProjectsData(proj);
         setAllEpisodesData(eps);
+        setLoading(false);
       }
     );
   }, []);
@@ -144,9 +146,13 @@ export default function PartnersPage() {
       const partner = partners.find(p => p.id === partnerToDelete.id);
       if (partner) {
         await addToTrash('partner', partner);
-        await deletePartner(partnerToDelete.id);
-        setPartners(prev => prev.filter(p => p.id !== partnerToDelete.id));
-        toast.success(`${partnerToDelete.name} 파트너가 휴지통으로 이동되었습니다.`);
+        const deleted = await deletePartner(partnerToDelete.id);
+        if (deleted) {
+          setPartners(prev => prev.filter(p => p.id !== partnerToDelete.id));
+          toast.success(`${partnerToDelete.name} 파트너가 휴지통으로 이동되었습니다.`);
+        } else {
+          toast.error(`삭제에 실패했습니다. 다시 시도해주세요.`);
+        }
       }
       setIsDeleteModalOpen(false);
       setPartnerToDelete(null);
@@ -194,12 +200,15 @@ export default function PartnersPage() {
       role: editForm.role,
       status: editForm.status,
     };
-    await updatePartner(partnerToEdit.id, updates);
-    setPartners(prev => prev.map(p =>
-      p.id === partnerToEdit.id ? { ...p, ...updates } : p
-    ));
-
-    toast.success(`${editForm.name} 파트너 정보가 수정되었습니다.`);
+    const ok = await updatePartner(partnerToEdit.id, updates);
+    if (ok) {
+      setPartners(prev => prev.map(p =>
+        p.id === partnerToEdit.id ? { ...p, ...updates } : p
+      ));
+      toast.success(`${editForm.name} 파트너 정보가 수정되었습니다.`);
+    } else {
+      toast.error('수정에 실패했습니다. 다시 시도해주세요.');
+    }
     setIsEditModalOpen(false);
     setPartnerToEdit(null);
   };
@@ -246,6 +255,8 @@ export default function PartnersPage() {
           generation: 1,
         });
       }, 1500);
+    } else {
+      toast.error('파트너 추가에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -341,6 +352,14 @@ export default function PartnersPage() {
       partner.company?.toLowerCase().includes(query)
     );
   });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
