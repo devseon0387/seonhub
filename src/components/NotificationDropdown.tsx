@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bell, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { mockEpisodes as initialEpisodes } from '@/lib/mock-data';
+import { getAllEpisodes } from '@/lib/supabase/db';
 
 const CHECKLIST_STORAGE_KEY = 'video-moment-checklist';
 
@@ -24,60 +24,34 @@ export default function NotificationDropdown() {
 
   // 체크리스트 초기화
   useEffect(() => {
-    const allEpisodes = Object.values(initialEpisodes).flat();
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    const loadData = async () => {
+      const allEpisodes = await getAllEpisodes();
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
-    // 검수 대기 중인 에피소드
-    const reviewingEpisodes = allEpisodes.filter(ep => ep.status === 'review');
+      const reviewingEpisodes = allEpisodes.filter(ep => ep.status === 'review');
+      const todayDeadlines = allEpisodes.filter(ep => {
+        if (!ep.dueDate || ep.status === 'completed') return false;
+        const dueDate = new Date(ep.dueDate);
+        return dueDate >= todayStart && dueDate <= todayEnd;
+      });
+      const overdueEpisodes = allEpisodes.filter(ep => {
+        if (!ep.dueDate || ep.status === 'completed') return false;
+        const dueDate = new Date(ep.dueDate);
+        return dueDate < todayStart;
+      });
 
-    // 오늘 마감인 에피소드
-    const todayDeadlines = allEpisodes.filter(ep => {
-      if (!ep.dueDate || ep.status === 'completed') return false;
-      const dueDate = new Date(ep.dueDate);
-      return dueDate >= todayStart && dueDate <= todayEnd;
-    });
+      const savedChecklist = localStorage.getItem(CHECKLIST_STORAGE_KEY);
+      const checkedItems = savedChecklist ? JSON.parse(savedChecklist) : {};
 
-    // 마감일 지난 에피소드
-    const overdueEpisodes = allEpisodes.filter(ep => {
-      if (!ep.dueDate || ep.status === 'completed') return false;
-      const dueDate = new Date(ep.dueDate);
-      return dueDate < todayStart;
-    });
-
-    // localStorage에서 체크 상태 불러오기
-    const savedChecklist = localStorage.getItem(CHECKLIST_STORAGE_KEY);
-    const checkedItems = savedChecklist ? JSON.parse(savedChecklist) : {};
-
-    const items: ChecklistItem[] = [
-      {
-        id: 'review',
-        type: 'review',
-        count: reviewingEpisodes.length,
-        label: '검수 완료 필요',
-        checked: checkedItems.review || false,
-        route: '/management',
-      },
-      {
-        id: 'deadline',
-        type: 'deadline',
-        count: todayDeadlines.length,
-        label: '오늘 마감 확인',
-        checked: checkedItems.deadline || false,
-        route: '/management',
-      },
-      {
-        id: 'overdue',
-        type: 'overdue',
-        count: overdueEpisodes.length,
-        label: '긴급 이슈 처리',
-        checked: checkedItems.overdue || false,
-        route: '/management',
-      },
-    ];
-
-    setChecklist(items);
+      setChecklist([
+        { id: 'review', type: 'review', count: reviewingEpisodes.length, label: '검수 완료 필요', checked: checkedItems.review || false, route: '/management' },
+        { id: 'deadline', type: 'deadline', count: todayDeadlines.length, label: '오늘 마감 확인', checked: checkedItems.deadline || false, route: '/management' },
+        { id: 'overdue', type: 'overdue', count: overdueEpisodes.length, label: '긴급 이슈 처리', checked: checkedItems.overdue || false, route: '/management' },
+      ]);
+    };
+    loadData();
   }, []);
 
   // 외부 클릭 시 닫기

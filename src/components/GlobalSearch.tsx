@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, X, FileText, Users, Briefcase, FolderOpen } from 'lucide-react';
+import { getPartners, getClients as fetchClients, getProjects } from '@/lib/supabase/db';
+import { Partner, Client, Project } from '@/types';
 
 interface SearchResult {
   id: string;
@@ -19,9 +21,21 @@ export default function GlobalSearch() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [allPartners, setAllPartners] = useState<Partner[]>([]);
+  const [allClients, setAllClients] = useState<Client[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // 데이터 로드 (최초 1회)
+  useEffect(() => {
+    Promise.all([getPartners(), fetchClients(), getProjects()]).then(([p, c, pr]) => {
+      setAllPartners(p);
+      setAllClients(c);
+      setAllProjects(pr);
+    });
+  }, []);
 
   // 검색 로직
   useEffect(() => {
@@ -33,77 +47,59 @@ export default function GlobalSearch() {
     const searchQuery = query.toLowerCase();
     const allResults: SearchResult[] = [];
 
-    // 파트너 검색 (실제로는 API 호출)
-    const mockPartners = [
-      { id: '1', name: '김영상', company: '스튜디오A', email: 'kim@studioa.com' },
-      { id: '2', name: '이편집', company: '에디트하우스', email: 'lee@edithouse.com' },
-      { id: '3', name: '박촬영', company: '비주얼스튜디오', email: 'park@visual.com' },
-    ];
-
-    mockPartners.forEach(partner => {
+    // 파트너 검색
+    allPartners.forEach(partner => {
       if (
         partner.name.toLowerCase().includes(searchQuery) ||
-        partner.company.toLowerCase().includes(searchQuery) ||
-        partner.email.toLowerCase().includes(searchQuery)
+        (partner.company || '').toLowerCase().includes(searchQuery) ||
+        (partner.email || '').toLowerCase().includes(searchQuery)
       ) {
         allResults.push({
           id: partner.id,
           title: partner.name,
           type: 'partner',
           subtitle: partner.company,
-          path: '/partners'
+          path: '/partners',
         });
       }
     });
 
     // 클라이언트 검색
-    const mockClients = [
-      { id: '1', name: '삼성전자', contact: '김담당', email: 'contact@samsung.com' },
-      { id: '2', name: 'LG전자', contact: '이매니저', email: 'contact@lg.com' },
-      { id: '3', name: '현대자동차', contact: '박대리', email: 'contact@hyundai.com' },
-    ];
-
-    mockClients.forEach(client => {
+    allClients.forEach(client => {
       if (
         client.name.toLowerCase().includes(searchQuery) ||
-        client.contact.toLowerCase().includes(searchQuery) ||
-        client.email.toLowerCase().includes(searchQuery)
+        (client.contactPerson || '').toLowerCase().includes(searchQuery) ||
+        (client.email || '').toLowerCase().includes(searchQuery)
       ) {
         allResults.push({
           id: client.id,
           title: client.name,
           type: 'client',
-          subtitle: client.contact,
-          path: '/clients'
+          subtitle: client.contactPerson,
+          path: `/clients/${client.id}`,
         });
       }
     });
 
     // 프로젝트 검색
-    const mockProjects = [
-      { id: '1', name: '2024 신제품 런칭 영상', client: '삼성전자', status: '진행중' },
-      { id: '2', name: '브랜드 홍보 영상', client: 'LG전자', status: '완료' },
-      { id: '3', name: '기업 소개 영상', client: '현대자동차', status: '대기' },
-    ];
-
-    mockProjects.forEach(project => {
+    allProjects.forEach(project => {
       if (
-        project.name.toLowerCase().includes(searchQuery) ||
-        project.client.toLowerCase().includes(searchQuery)
+        project.title.toLowerCase().includes(searchQuery) ||
+        (project.client || '').toLowerCase().includes(searchQuery)
       ) {
         allResults.push({
           id: project.id,
-          title: project.name,
+          title: project.title,
           type: 'project',
           subtitle: project.client,
-          path: `/projects/${project.id}`
+          path: `/projects/${project.id}`,
         });
       }
     });
 
-    setResults(allResults.slice(0, 8)); // 최대 8개만 표시
+    setResults(allResults.slice(0, 8));
     setSelectedIndex(0);
-  }, [query]);
+  }, [query, allPartners, allClients, allProjects]);
 
   // 검색창 외부 클릭 감지
   useEffect(() => {
