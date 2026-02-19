@@ -1092,8 +1092,8 @@ export default function ProjectDetailPage() {
                           >
                             <option value="waiting">대기</option>
                             <option value="in_progress">진행 중</option>
+                            <option value="review">검수</option>
                             <option value="completed">완료</option>
-                            <option value="on_hold">보류</option>
                           </select>
                           {episode.workContent.length > 0 && (
                             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
