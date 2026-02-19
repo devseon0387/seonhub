@@ -125,11 +125,19 @@ export interface Client {
   notes?: string; // 메모
 }
 
-// 포트폴리오 타입 (포트폴리오 사이트에 노출될 프로젝트)
-export interface Portfolio extends Project {
+// 포트폴리오 항목 타입
+export interface PortfolioItem {
+  id: string;
+  title: string;
+  description: string;
+  client: string;
+  partnerId?: string;
+  completedAt: string;
+  tags: string[];
+  youtubeUrl: string;
   isPublished: boolean;
-  viewCount: number;
-  category: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // 휴지통 항목 타입

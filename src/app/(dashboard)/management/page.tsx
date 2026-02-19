@@ -5,10 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   getProjects, getPartners, getClients, getAllEpisodes,
   getMyChecklists, insertChecklist, updateChecklist, deleteChecklist, clearCompletedChecklists,
+  insertProject, insertClient, upsertEpisodes,
   ChecklistRow,
 } from '@/lib/supabase/db';
 import { Calendar, Clock, AlertCircle, CheckCircle, Users, Sparkles, Plus, Trash2, Bell, BellOff, X, Link2, Search, Repeat2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Project, Episode, Partner, Client } from '@/types';
+import { Project, Episode, Partner, Client, WorkContentType } from '@/types';
 import ProjectWizardModal from '@/components/ProjectWizardModal';
 import DateTimePicker, { RepeatType } from '@/components/DateTimePicker';
 
@@ -90,6 +91,66 @@ export default function ManagementPage() {
     setActiveTab(tab);
   };
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+
+  const handleProjectWizardComplete = async (data: {
+    startType: 'with-client' | 'project-only';
+    client?: { isNew: boolean; id?: string; name?: string; contact?: string; email?: string };
+    project: { title: string; category: string; description?: string; partnerIds: string[] };
+    episodes: { shouldCreate: boolean; count?: number; dates?: Array<{ startDate: string; endDate: string }> };
+  }) => {
+    if (!data.project.title) {
+      setIsWizardOpen(false);
+      return;
+    }
+
+    // 1. 신규 클라이언트 생성
+    let clientName = '';
+    if (data.client?.isNew && data.client.name) {
+      const saved = await insertClient({ name: data.client.name, contactPerson: data.client.contact, email: data.client.email, status: 'active' });
+      clientName = saved?.name || data.client.name;
+      if (saved) setClients(prev => [saved, ...prev]);
+    } else if (data.client?.id) {
+      clientName = clients.find(c => c.id === data.client!.id)?.name || '';
+    }
+
+    // 2. 프로젝트 생성
+    const savedProject = await insertProject({
+      title: data.project.title,
+      description: data.project.description || '',
+      client: clientName,
+      partnerId: data.project.partnerIds[0] || '',
+      status: 'planning',
+      budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0, marginRate: 0 },
+      workContent: [],
+      tags: data.project.category ? [data.project.category] : [],
+    });
+
+    if (!savedProject) { setIsWizardOpen(false); return; }
+    setProjects(prev => [savedProject, ...prev]);
+
+    // 3. 회차 생성
+    if (data.episodes.shouldCreate && data.episodes.count) {
+      const now = new Date().toISOString();
+      const episodes: (Episode & { projectId: string })[] = Array.from({ length: data.episodes.count }, (_, i) => ({
+        id: crypto.randomUUID(),
+        projectId: savedProject.id,
+        episodeNumber: i + 1,
+        title: `${i + 1}회차`,
+        workContent: [] as WorkContentType[],
+        status: 'waiting' as const,
+        assignee: '',
+        manager: '',
+        startDate: data.episodes.dates?.[i]?.startDate || '',
+        endDate: data.episodes.dates?.[i]?.endDate || '',
+        createdAt: now,
+        updatedAt: now,
+      }));
+      await upsertEpisodes(episodes);
+      setAllEpisodes(prev => [...prev, ...episodes]);
+    }
+
+    setIsWizardOpen(false);
+  };
 
   // 체크리스트 상태
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
@@ -1478,11 +1539,7 @@ export default function ManagementPage() {
       <ProjectWizardModal
         isOpen={isWizardOpen}
         onClose={() => setIsWizardOpen(false)}
-        onComplete={(data) => {
-          console.log('프로젝트 생성:', data);
-          // TODO: 실제 프로젝트 생성 로직 구현
-          setIsWizardOpen(false);
-        }}
+        onComplete={handleProjectWizardComplete}
         clients={clients}
         partners={partners}
       />

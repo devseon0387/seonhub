@@ -91,6 +91,21 @@ create table if not exists trash (
   deleted_at timestamptz default now()
 );
 
+-- 포트폴리오 항목
+create table if not exists portfolio_items (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  client text,
+  partner_id text,
+  completed_at text,
+  tags text[] default '{}',
+  youtube_url text,
+  is_published boolean default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 -- ─── RLS 활성화 ───────────────────────────────────────────
 
 alter table partners enable row level security;
@@ -98,6 +113,7 @@ alter table clients enable row level security;
 alter table projects enable row level security;
 alter table episodes enable row level security;
 alter table trash enable row level security;
+alter table portfolio_items enable row level security;
 
 -- ─── 정책: 로그인 사용자 전체 접근 허용 ────────────────────
 
@@ -114,4 +130,7 @@ create policy "auth_all_episodes" on episodes
   for all using (auth.role() = 'authenticated');
 
 create policy "auth_all_trash" on trash
+  for all using (auth.role() = 'authenticated');
+
+create policy "auth_all_portfolio" on portfolio_items
   for all using (auth.role() = 'authenticated');

@@ -1,13 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { mockPartners } from '@/lib/mock-data';
+import { useState, useEffect } from 'react';
 import {
   Grid3x3,
   List,
   Eye,
   EyeOff,
-  ExternalLink,
   Search,
   Calendar,
   User,
@@ -17,65 +15,45 @@ import {
   CheckCircle,
   Plus,
   X,
-  Upload,
-  Image as ImageIcon,
-  Video as VideoIcon,
   ChevronDown
 } from 'lucide-react';
-import { Project } from '@/types';
+import { PortfolioItem, Partner } from '@/types';
 import { FloatingLabelInput, FloatingLabelTextarea } from '@/components/FloatingLabelInput';
-
-const PORTFOLIO_STORAGE_KEY = 'video-moment-portfolio';
+import {
+  getPortfolioItems,
+  insertPortfolioItem,
+  deletePortfolioItem,
+  togglePortfolioPublished,
+  getPartners,
+} from '@/lib/supabase/db';
 
 type ViewMode = 'grid' | 'list';
 type FilterType = 'all' | 'published' | 'unpublished';
 
-interface PortfolioItem {
-  id: string;
-  title: string;
-  description: string;
-  client: string;
-  partnerId?: string;
-  completedAt: string;
-  tags: string[];
-  youtubeUrl: string;
-  isPublished: boolean;
-  createdAt: string;
-}
-
 // 유튜브 URL에서 비디오 ID 추출
 const extractYouTubeId = (url: string): string | null => {
   if (!url) return null;
-
-  // 다양한 유튜브 URL 형식 지원
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
-    /^([a-zA-Z0-9_-]{11})$/ // 직접 ID 입력
+    /^([a-zA-Z0-9_-]{11})$/,
   ];
-
   for (const pattern of patterns) {
     const match = url.match(pattern);
-    if (match && match[1]) {
-      return match[1];
-    }
+    if (match && match[1]) return match[1];
   }
-
   return null;
 };
 
-// 유튜브 썸네일 URL 생성
 const getYouTubeThumbnail = (url: string): string | null => {
   const videoId = extractYouTubeId(url);
   if (!videoId) return null;
-
-  // 고화질 썸네일 사용
   return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
 };
 
 export default function PortfolioPage() {
-  // localStorage에서 포트폴리오 데이터 로드
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
-  const isInitialMount = useRef(true);
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filter, setFilter] = useState<FilterType>('all');
@@ -95,39 +73,25 @@ export default function PortfolioPage() {
   const [isPartnerDropdownOpen, setIsPartnerDropdownOpen] = useState(false);
 
   useEffect(() => {
-    // localStorage에서 포트폴리오 로드
-    const stored = localStorage.getItem(PORTFOLIO_STORAGE_KEY);
-    if (stored) {
-      try {
-        setPortfolioItems(JSON.parse(stored));
-      } catch (e) {
-        console.error('Failed to parse stored portfolio:', e);
-      }
+    async function load() {
+      const [items, partnersList] = await Promise.all([
+        getPortfolioItems(),
+        getPartners(),
+      ]);
+      setPortfolioItems(items);
+      setPartners(partnersList);
+      setNewItem(prev => ({
+        ...prev,
+        completedAt: new Date().toISOString().split('T')[0],
+      }));
+      setLoading(false);
     }
-
-    // 현재 날짜 설정
-    setNewItem(prev => ({
-      ...prev,
-      completedAt: new Date().toISOString().split('T')[0],
-    }));
-
-    isInitialMount.current = false;
+    load();
   }, []);
 
-  // localStorage에 저장 (초기 로드 후에만)
-  useEffect(() => {
-    if (!isInitialMount.current) {
-      localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(portfolioItems));
-    }
-  }, [portfolioItems]);
-
-  // 필터링 및 검색
   const filteredItems = portfolioItems.filter(item => {
-    // 발행 상태 필터
     if (filter === 'published' && !item.isPublished) return false;
     if (filter === 'unpublished' && item.isPublished) return false;
-
-    // 검색 필터
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
@@ -136,53 +100,51 @@ export default function PortfolioPage() {
         item.tags.some(tag => tag.toLowerCase().includes(query))
       );
     }
-
     return true;
   });
 
-  // 발행 토글
-  const togglePublish = (itemId: string) => {
-    setPortfolioItems(items =>
-      items.map(item =>
-        item.id === itemId ? { ...item, isPublished: !item.isPublished } : item
-      )
-    );
+  const togglePublish = async (itemId: string) => {
+    const item = portfolioItems.find(i => i.id === itemId);
+    if (!item) return;
+    const newPublished = !item.isPublished;
+    const ok = await togglePortfolioPublished(itemId, newPublished);
+    if (ok) {
+      setPortfolioItems(items =>
+        items.map(i => i.id === itemId ? { ...i, isPublished: newPublished } : i)
+      );
+    }
   };
 
-  // 포트폴리오 항목 추가
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!newItem.title || !newItem.client) {
       alert('제목과 클라이언트는 필수 입력 항목입니다.');
       return;
     }
-
     if (!newItem.youtubeUrl) {
       alert('유튜브 URL을 입력해주세요.');
       return;
     }
-
-    // 유튜브 URL 유효성 검사
     const videoId = extractYouTubeId(newItem.youtubeUrl);
-
     if (!videoId) {
       alert('올바른 유튜브 URL을 입력해주세요.\n예: https://www.youtube.com/watch?v=VIDEO_ID');
       return;
     }
 
-    const item: PortfolioItem = {
-      id: `portfolio-${Date.now()}`,
+    const itemToInsert: Omit<PortfolioItem, 'id' | 'createdAt' | 'updatedAt'> = {
       title: newItem.title!,
       description: newItem.description || '',
       client: newItem.client!,
-      partnerId: newItem.partnerId,
+      partnerId: newItem.partnerId || undefined,
       completedAt: newItem.completedAt || new Date().toISOString().split('T')[0],
       tags: newItem.tags || [],
       youtubeUrl: newItem.youtubeUrl!,
       isPublished: newItem.isPublished || false,
-      createdAt: new Date().toISOString(),
     };
 
-    setPortfolioItems([...portfolioItems, item]);
+    const inserted = await insertPortfolioItem(itemToInsert);
+    if (inserted) {
+      setPortfolioItems(prev => [inserted, ...prev]);
+    }
 
     setIsAddModalOpen(false);
     setNewItem({
@@ -198,33 +160,26 @@ export default function PortfolioPage() {
     setTagInput('');
   };
 
-  // 태그 추가
   const handleAddTag = () => {
     if (tagInput.trim() && !newItem.tags?.includes(tagInput.trim())) {
-      setNewItem({
-        ...newItem,
-        tags: [...(newItem.tags || []), tagInput.trim()],
-      });
+      setNewItem({ ...newItem, tags: [...(newItem.tags || []), tagInput.trim()] });
       setTagInput('');
     }
   };
 
-  // 태그 제거
   const handleRemoveTag = (tagToRemove: string) => {
-    setNewItem({
-      ...newItem,
-      tags: newItem.tags?.filter(tag => tag !== tagToRemove) || [],
-    });
+    setNewItem({ ...newItem, tags: newItem.tags?.filter(tag => tag !== tagToRemove) || [] });
   };
 
-  // 포트폴리오 삭제
-  const handleDelete = (itemId: string) => {
+  const handleDelete = async (itemId: string) => {
     if (confirm('이 포트폴리오를 삭제하시겠습니까?')) {
-      setPortfolioItems(items => items.filter(item => item.id !== itemId));
+      const ok = await deletePortfolioItem(itemId);
+      if (ok) {
+        setPortfolioItems(items => items.filter(item => item.id !== itemId));
+      }
     }
   };
 
-  // 통계
   const stats = {
     total: portfolioItems.length,
     published: portfolioItems.filter(item => item.isPublished).length,
@@ -237,10 +192,7 @@ export default function PortfolioPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <a
-              href="/marketing"
-              className="text-gray-500 hover:text-gray-700 transition-colors"
-            >
+            <a href="/marketing" className="text-gray-500 hover:text-gray-700 transition-colors">
               마케팅
             </a>
             <span className="text-gray-400">/</span>
@@ -305,7 +257,6 @@ export default function PortfolioPage() {
       <div className="bg-white rounded-lg shadow p-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1">
-            {/* 검색 */}
             <div className="flex-1 max-w-md relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
@@ -316,66 +267,33 @@ export default function PortfolioPage() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-
-            {/* 필터 */}
             <div className="flex items-center gap-2 border border-gray-300 rounded-lg p-1">
-              <button
-                type="button"
-                onClick={() => setFilter('all')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  filter === 'all'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                전체
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilter('published')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  filter === 'published'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                공개됨
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilter('unpublished')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  filter === 'unpublished'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                비공개
-              </button>
+              {(['all', 'published', 'unpublished'] as FilterType[]).map(f => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFilter(f)}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    filter === f ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  {f === 'all' ? '전체' : f === 'published' ? '공개됨' : '비공개'}
+                </button>
+              ))}
             </div>
           </div>
-
-          {/* 뷰 모드 */}
           <div className="flex items-center gap-2 border border-gray-300 rounded-lg p-1">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-colors ${
-                viewMode === 'grid'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
             >
               <Grid3x3 size={18} />
             </button>
             <button
               type="button"
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded-md transition-colors ${
-                viewMode === 'list'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
             >
               <List size={18} />
             </button>
@@ -384,7 +302,11 @@ export default function PortfolioPage() {
       </div>
 
       {/* 포트폴리오 목록 */}
-      {filteredItems.length === 0 ? (
+      {loading ? (
+        <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
+          로딩 중...
+        </div>
+      ) : filteredItems.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
           <Grid3x3 className="mx-auto mb-4 text-gray-400" size={64} />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">포트폴리오가 없습니다</h3>
@@ -409,17 +331,14 @@ export default function PortfolioPage() {
           )}
         </div>
       ) : viewMode === 'grid' ? (
-        // 그리드 뷰
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredItems.map((item) => {
-            const partner = mockPartners.find(p => p.id === item.partnerId);
-
+            const partner = partners.find(p => p.id === item.partnerId);
             return (
               <div
                 key={item.id}
                 className="bg-white rounded-lg shadow hover:shadow-xl transition-all duration-200 overflow-hidden group"
               >
-                {/* 썸네일 */}
                 <div className="h-48 bg-gray-900 relative overflow-hidden">
                   {getYouTubeThumbnail(item.youtubeUrl) && (
                     <img
@@ -427,7 +346,6 @@ export default function PortfolioPage() {
                       alt={item.title}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        // 썸네일 로드 실패 시 대체 이미지
                         e.currentTarget.src = `https://img.youtube.com/vi/${extractYouTubeId(item.youtubeUrl)}/hqdefault.jpg`;
                       }}
                     />
@@ -454,7 +372,6 @@ export default function PortfolioPage() {
                       <X size={16} />
                     </button>
                   </div>
-                  {/* 유튜브 재생 버튼 오버레이 */}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <a
                       href={item.youtubeUrl}
@@ -469,22 +386,16 @@ export default function PortfolioPage() {
                     </a>
                   </div>
                 </div>
-
-                {/* 정보 */}
                 <div className="p-5">
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-lg font-semibold text-gray-900 line-clamp-1 flex-1">
-                      {item.title}
-                    </h3>
+                    <h3 className="text-lg font-semibold text-gray-900 line-clamp-1 flex-1">{item.title}</h3>
                     {item.isPublished && (
                       <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium flex-shrink-0">
                         공개
                       </span>
                     )}
                   </div>
-
                   <p className="text-sm text-gray-600 mb-4 line-clamp-2">{item.description}</p>
-
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center text-xs text-gray-500">
                       <User size={12} className="mr-1.5" />
@@ -500,25 +411,18 @@ export default function PortfolioPage() {
                     )}
                     <div className="flex items-center text-xs text-gray-500">
                       <Calendar size={12} className="mr-1.5" />
-                      <span>{new Date(item.completedAt).toLocaleDateString('ko-KR')}</span>
+                      <span>{item.completedAt ? new Date(item.completedAt).toLocaleDateString('ko-KR') : '-'}</span>
                     </div>
                   </div>
-
-                  {/* 태그 */}
                   {item.tags && item.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-4">
                       {item.tags.slice(0, 3).map((tag, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
-                        >
+                        <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
                           #{tag}
                         </span>
                       ))}
                     </div>
                   )}
-
-                  {/* 액션 버튼 */}
                   <div className="flex gap-2">
                     <button type="button" className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium">
                       수정
@@ -533,18 +437,12 @@ export default function PortfolioPage() {
           })}
         </div>
       ) : (
-        // 리스트 뷰
         <div className="bg-white rounded-lg shadow divide-y divide-gray-200">
           {filteredItems.map((item) => {
-            const partner = mockPartners.find(p => p.id === item.partnerId);
-
+            const partner = partners.find(p => p.id === item.partnerId);
             return (
-              <div
-                key={item.id}
-                className="p-6 hover:bg-gray-50 transition-colors"
-              >
+              <div key={item.id} className="p-6 hover:bg-gray-50 transition-colors">
                 <div className="flex items-start gap-6">
-                  {/* 썸네일 */}
                   <div className="w-48 h-32 flex-shrink-0 bg-gray-900 rounded-lg relative overflow-hidden group/thumb">
                     {getYouTubeThumbnail(item.youtubeUrl) && (
                       <img
@@ -556,7 +454,6 @@ export default function PortfolioPage() {
                         }}
                       />
                     )}
-                    {/* 유튜브 재생 버튼 오버레이 */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity bg-black/30">
                       <a
                         href={item.youtubeUrl}
@@ -571,8 +468,6 @@ export default function PortfolioPage() {
                       </a>
                     </div>
                   </div>
-
-                  {/* 정보 */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-3">
@@ -595,15 +490,9 @@ export default function PortfolioPage() {
                           }`}
                         >
                           {item.isPublished ? (
-                            <>
-                              <EyeOff size={16} />
-                              비공개로 전환
-                            </>
+                            <><EyeOff size={16} />비공개로 전환</>
                           ) : (
-                            <>
-                              <Eye size={16} />
-                              공개하기
-                            </>
+                            <><Eye size={16} />공개하기</>
                           )}
                         </button>
                         <button
@@ -615,9 +504,7 @@ export default function PortfolioPage() {
                         </button>
                       </div>
                     </div>
-
                     <p className="text-gray-600 mb-4 line-clamp-2">{item.description}</p>
-
                     <div className="flex items-center gap-6 mb-4 text-sm text-gray-500">
                       <div className="flex items-center gap-1.5">
                         <User size={14} />
@@ -633,18 +520,13 @@ export default function PortfolioPage() {
                       )}
                       <div className="flex items-center gap-1.5">
                         <Calendar size={14} />
-                        <span>{new Date(item.completedAt).toLocaleDateString('ko-KR')}</span>
+                        <span>{item.completedAt ? new Date(item.completedAt).toLocaleDateString('ko-KR') : '-'}</span>
                       </div>
                     </div>
-
-                    {/* 태그 */}
                     {item.tags && item.tags.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {item.tags.map((tag, index) => (
-                          <span
-                            key={index}
-                            className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
-                          >
+                          <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
                             #{tag}
                           </span>
                         ))}
@@ -665,13 +547,11 @@ export default function PortfolioPage() {
             className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm"
             onClick={() => setIsAddModalOpen(false)}
           />
-
           <div className="flex min-h-full items-center justify-center p-4">
             <div
               className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full animate-modal-content"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* 헤더 */}
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-900">새 포트폴리오 추가</h2>
                 <button
@@ -682,8 +562,6 @@ export default function PortfolioPage() {
                   <X size={20} className="text-gray-500" />
                 </button>
               </div>
-
-              {/* 폼 */}
               <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                 <FloatingLabelInput
                   label="제목"
@@ -692,14 +570,12 @@ export default function PortfolioPage() {
                   value={newItem.title}
                   onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
                 />
-
                 <FloatingLabelTextarea
                   label="설명"
                   value={newItem.description}
                   onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
                   rows={3}
                 />
-
                 <div className="grid grid-cols-2 gap-4">
                   <FloatingLabelInput
                     label="클라이언트"
@@ -708,11 +584,8 @@ export default function PortfolioPage() {
                     value={newItem.client}
                     onChange={(e) => setNewItem({ ...newItem, client: e.target.value })}
                   />
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      담당 파트너
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">담당 파트너</label>
                     <div className="relative">
                       <button
                         type="button"
@@ -723,10 +596,10 @@ export default function PortfolioPage() {
                           {newItem.partnerId ? (
                             <>
                               <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
-                                {mockPartners.find(p => p.id === newItem.partnerId)?.name.charAt(0)}
+                                {partners.find(p => p.id === newItem.partnerId)?.name.charAt(0)}
                               </div>
                               <span className="text-gray-900">
-                                {mockPartners.find(p => p.id === newItem.partnerId)?.name}
+                                {partners.find(p => p.id === newItem.partnerId)?.name}
                               </span>
                             </>
                           ) : (
@@ -739,27 +612,17 @@ export default function PortfolioPage() {
                         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                           <button
                             type="button"
-                            onClick={() => {
-                              setNewItem({ ...newItem, partnerId: '' });
-                              setIsPartnerDropdownOpen(false);
-                            }}
-                            className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors flex items-center gap-2 ${
-                              newItem.partnerId === '' ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
-                            }`}
+                            onClick={() => { setNewItem({ ...newItem, partnerId: '' }); setIsPartnerDropdownOpen(false); }}
+                            className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors ${newItem.partnerId === '' ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
                           >
                             선택 안 함
                           </button>
-                          {mockPartners.map((partner) => (
+                          {partners.map((partner) => (
                             <button
                               key={partner.id}
                               type="button"
-                              onClick={() => {
-                                setNewItem({ ...newItem, partnerId: partner.id });
-                                setIsPartnerDropdownOpen(false);
-                              }}
-                              className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors flex items-center gap-2 ${
-                                newItem.partnerId === partner.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
-                              }`}
+                              onClick={() => { setNewItem({ ...newItem, partnerId: partner.id }); setIsPartnerDropdownOpen(false); }}
+                              className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors flex items-center gap-2 ${newItem.partnerId === partner.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
                             >
                               <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
                                 {partner.name.charAt(0)}
@@ -772,11 +635,8 @@ export default function PortfolioPage() {
                     </div>
                   </div>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    완료일
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">완료일</label>
                   <input
                     type="date"
                     value={newItem.completedAt}
@@ -784,7 +644,6 @@ export default function PortfolioPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
-
                 <div>
                   <div className="flex gap-2 mb-2">
                     <FloatingLabelInput
@@ -806,16 +665,9 @@ export default function PortfolioPage() {
                   {newItem.tags && newItem.tags.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {newItem.tags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center gap-2"
-                        >
+                        <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center gap-2">
                           #{tag}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveTag(tag)}
-                            className="hover:text-blue-900"
-                          >
+                          <button type="button" onClick={() => handleRemoveTag(tag)} className="hover:text-blue-900">
                             <X size={14} />
                           </button>
                         </span>
@@ -823,7 +675,6 @@ export default function PortfolioPage() {
                     </div>
                   )}
                 </div>
-
                 <div>
                   <FloatingLabelInput
                     label="유튜브 URL"
@@ -837,8 +688,6 @@ export default function PortfolioPage() {
                   <p className="text-xs text-gray-500 mt-1">
                     유튜브 영상 URL을 입력하거나 붙여넣기 하세요 (Ctrl+V 또는 Cmd+V)
                   </p>
-
-                  {/* 썸네일 미리보기 */}
                   {newItem.youtubeUrl && getYouTubeThumbnail(newItem.youtubeUrl) && (
                     <div className="mt-3 p-2 border border-gray-200 rounded-lg">
                       <p className="text-xs text-gray-600 mb-2">썸네일 미리보기:</p>
@@ -848,15 +697,12 @@ export default function PortfolioPage() {
                         className="w-full rounded max-w-md"
                         onError={(e) => {
                           const videoId = extractYouTubeId(newItem.youtubeUrl!);
-                          if (videoId) {
-                            e.currentTarget.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                          }
+                          if (videoId) e.currentTarget.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
                         }}
                       />
                     </div>
                   )}
                 </div>
-
                 <div className="flex items-center">
                   <input
                     type="checkbox"
@@ -865,13 +711,9 @@ export default function PortfolioPage() {
                     onChange={(e) => setNewItem({ ...newItem, isPublished: e.target.checked })}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
-                  <label htmlFor="publish" className="ml-2 text-sm text-gray-700">
-                    바로 공개하기
-                  </label>
+                  <label htmlFor="publish" className="ml-2 text-sm text-gray-700">바로 공개하기</label>
                 </div>
               </div>
-
-              {/* 푸터 */}
               <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
                 <button
                   type="button"

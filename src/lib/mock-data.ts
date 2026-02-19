@@ -1,4 +1,4 @@
-import { Partner, Project, Portfolio, Episode, Client } from '@/types';
+import { Partner, Project, Episode, Client } from '@/types';
 
 // 목 파트너 데이터
 export const mockPartners: Partner[] = [];

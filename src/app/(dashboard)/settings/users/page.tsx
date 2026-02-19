@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { getMyProfile, getAllUserProfiles, updateUserRole } from '@/lib/supabase/db';
-import { Shield, Users, Crown, Copy, Check } from 'lucide-react';
+import { getMyProfile, getAllUserProfiles, updateUserRole, getCustomRoles, addCustomRole, deleteCustomRole } from '@/lib/supabase/db';
+import { Shield, Users, Crown, Copy, Check, Plus, X, Tag } from 'lucide-react';
 
 type UserProfile = {
   id: string;
@@ -13,15 +13,26 @@ type UserProfile = {
   email?: string;
 };
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: '대표',
-  manager: '총괄 매니저',
-};
+const DEFAULT_ROLES = [
+  { value: 'admin', label: '대표' },
+  { value: 'manager', label: '총괄 매니저' },
+];
 
 const ROLE_BADGE_CLASSES: Record<string, string> = {
   admin: 'bg-purple-100 text-purple-700 border border-purple-200',
   manager: 'bg-blue-100 text-blue-700 border border-blue-200',
 };
+
+function getRoleBadgeClass(role: string) {
+  return ROLE_BADGE_CLASSES[role] ?? 'bg-gray-100 text-gray-600 border border-gray-200';
+}
+
+function getRoleLabel(role: string, customRoles: string[]) {
+  if (role === 'admin') return '대표';
+  if (role === 'manager') return '총괄 매니저';
+  if (customRoles.includes(role)) return role;
+  return role;
+}
 
 export default function UsersSettingsPage() {
   const router = useRouter();
@@ -30,6 +41,9 @@ export default function UsersSettingsPage() {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [customRoles, setCustomRoles] = useState<string[]>([]);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [addingRole, setAddingRole] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -44,8 +58,9 @@ export default function UsersSettingsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setMyId(user.id);
 
-      const all = await getAllUserProfiles();
+      const [all, roles] = await Promise.all([getAllUserProfiles(), getCustomRoles()]);
       setProfiles(all);
+      setCustomRoles(roles);
       setLoading(false);
     };
     init();
@@ -62,6 +77,28 @@ export default function UsersSettingsPage() {
     setUpdatingId(null);
   };
 
+  const handleAddRole = async () => {
+    const trimmed = newRoleName.trim();
+    if (!trimmed) return;
+    if (trimmed === '대표' || trimmed === '총괄 매니저') return;
+    if (customRoles.includes(trimmed)) return;
+
+    setAddingRole(true);
+    const ok = await addCustomRole(trimmed);
+    if (ok) {
+      setCustomRoles(prev => [...prev, trimmed]);
+      setNewRoleName('');
+    }
+    setAddingRole(false);
+  };
+
+  const handleDeleteRole = async (name: string) => {
+    const ok = await deleteCustomRole(name);
+    if (ok) {
+      setCustomRoles(prev => prev.filter(r => r !== name));
+    }
+  };
+
   const handleCopyInviteLink = async () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const signupUrl = `${origin}/signup`;
@@ -73,6 +110,11 @@ export default function UsersSettingsPage() {
       // fallback
     }
   };
+
+  const allRoleOptions = [
+    ...DEFAULT_ROLES,
+    ...customRoles.map(r => ({ value: r, label: r })),
+  ];
 
   if (loading) {
     return (
@@ -95,6 +137,69 @@ export default function UsersSettingsPage() {
         </div>
       </div>
 
+      {/* 역할 관리 */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+          <Tag size={18} className="text-gray-500" />
+          <h2 className="text-base font-semibold text-gray-800">역할 관리</h2>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          {/* 기본 역할 */}
+          <div>
+            <p className="text-xs text-gray-400 font-medium mb-2">기본 역할 (변경 불가)</p>
+            <div className="flex flex-wrap gap-2">
+              {DEFAULT_ROLES.map(r => (
+                <span key={r.value} className={`text-xs font-medium px-3 py-1.5 rounded-full ${getRoleBadgeClass(r.value)}`}>
+                  {r.label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* 커스텀 역할 */}
+          <div>
+            <p className="text-xs text-gray-400 font-medium mb-2">커스텀 역할</p>
+            {customRoles.length === 0 ? (
+              <p className="text-sm text-gray-400">아직 추가된 역할이 없습니다.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {customRoles.map(role => (
+                  <div key={role} className="flex items-center gap-1 bg-gray-100 text-gray-700 border border-gray-200 text-xs font-medium px-3 py-1.5 rounded-full">
+                    <span>{role}</span>
+                    <button
+                      onClick={() => handleDeleteRole(role)}
+                      className="ml-1 hover:text-red-500 transition-colors"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 역할 추가 */}
+          <div className="flex gap-2 pt-1">
+            <input
+              type="text"
+              value={newRoleName}
+              onChange={e => setNewRoleName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleAddRole(); }}
+              placeholder="새 역할 이름 (예: PD, 에디터)"
+              className="flex-1 text-sm px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+            />
+            <button
+              onClick={handleAddRole}
+              disabled={addingRole || !newRoleName.trim()}
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus size={15} />
+              추가
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* 유저 목록 */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
@@ -113,8 +218,8 @@ export default function UsersSettingsPage() {
           ) : (
             profiles.map(profile => {
               const isMe = profile.id === myId;
-              const roleBadge = ROLE_BADGE_CLASSES[profile.role] ?? 'bg-gray-100 text-gray-600 border border-gray-200';
-              const roleLabel = ROLE_LABELS[profile.role] ?? profile.role;
+              const roleBadge = getRoleBadgeClass(profile.role);
+              const roleLabel = getRoleLabel(profile.role, customRoles);
 
               return (
                 <div key={profile.id} className="px-6 py-4 flex items-center gap-4">
@@ -161,8 +266,9 @@ export default function UsersSettingsPage() {
                             ${updatingId === profile.id ? 'opacity-50 cursor-not-allowed' : ''}
                           `}
                         >
-                          <option value="admin">대표</option>
-                          <option value="manager">총괄 매니저</option>
+                          {allRoleOptions.map(r => (
+                            <option key={r.value} value={r.value}>{r.label}</option>
+                          ))}
                         </select>
                       </div>
                     )}

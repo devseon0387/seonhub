@@ -11,6 +11,7 @@ import type {
   TrashItem,
   TrashItemType,
   WorkContentType,
+  PortfolioItem,
 } from '@/types';
 
 // ─── Row Types (Supabase snake_case) ─────────────────────────
@@ -691,6 +692,136 @@ export async function deleteUserProfile(userId: string): Promise<boolean> {
   return !error;
 }
 
+// ─── Custom Roles ─────────────────────────────────────────────
+
+export async function getCustomRoles(): Promise<string[]> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from('custom_roles')
+    .select('name')
+    .order('created_at', { ascending: true });
+  return (data ?? []).map((r: { name: string }) => r.name);
+}
+
+export async function addCustomRole(name: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase.from('custom_roles').insert({ name });
+  return !error;
+}
+
+export async function deleteCustomRole(name: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase.from('custom_roles').delete().eq('name', name);
+  return !error;
+}
+
+// ─── Portfolio CRUD ───────────────────────────────────────
+
+interface PortfolioItemRow {
+  id: string;
+  title: string;
+  description: string | null;
+  client: string | null;
+  partner_id: string | null;
+  completed_at: string | null;
+  tags: string[] | null;
+  youtube_url: string | null;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+function portfolioItemFromRow(row: PortfolioItemRow): PortfolioItem {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description ?? '',
+    client: row.client ?? '',
+    partnerId: row.partner_id ?? undefined,
+    completedAt: row.completed_at ?? '',
+    tags: row.tags ?? [],
+    youtubeUrl: row.youtube_url ?? '',
+    isPublished: row.is_published,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function portfolioItemToInsert(item: Omit<PortfolioItem, 'id' | 'createdAt' | 'updatedAt'>) {
+  return {
+    title: item.title,
+    description: item.description,
+    client: item.client,
+    partner_id: item.partnerId ?? null,
+    completed_at: item.completedAt || null,
+    tags: item.tags ?? [],
+    youtube_url: item.youtubeUrl,
+    is_published: item.isPublished,
+  };
+}
+
+function portfolioItemToUpdate(item: Partial<PortfolioItem>) {
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (item.title !== undefined) row.title = item.title;
+  if (item.description !== undefined) row.description = item.description;
+  if (item.client !== undefined) row.client = item.client;
+  if (item.partnerId !== undefined) row.partner_id = item.partnerId;
+  if (item.completedAt !== undefined) row.completed_at = item.completedAt;
+  if (item.tags !== undefined) row.tags = item.tags;
+  if (item.youtubeUrl !== undefined) row.youtube_url = item.youtubeUrl;
+  if (item.isPublished !== undefined) row.is_published = item.isPublished;
+  return row;
+}
+
+export async function getPortfolioItems(publishedOnly?: boolean): Promise<PortfolioItem[]> {
+  const supabase = createClient();
+  let query = supabase.from('portfolio_items').select('*').order('created_at', { ascending: false });
+  if (publishedOnly) query = query.eq('is_published', true);
+  const { data, error } = await query;
+  if (error || !data) return [];
+  return (data as PortfolioItemRow[]).map(portfolioItemFromRow);
+}
+
+export async function insertPortfolioItem(
+  item: Omit<PortfolioItem, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<PortfolioItem | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('portfolio_items')
+    .insert([portfolioItemToInsert(item)])
+    .select()
+    .single();
+  if (error || !data) { console.error('insertPortfolioItem error:', error); return null; }
+  return portfolioItemFromRow(data as PortfolioItemRow);
+}
+
+export async function updatePortfolioItem(id: string, updates: Partial<PortfolioItem>): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('portfolio_items')
+    .update(portfolioItemToUpdate(updates))
+    .eq('id', id);
+  if (error) console.error('updatePortfolioItem error:', error);
+  return !error;
+}
+
+export async function deletePortfolioItem(id: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase.from('portfolio_items').delete().eq('id', id);
+  if (error) console.error('deletePortfolioItem error:', error);
+  return !error;
+}
+
+export async function togglePortfolioPublished(id: string, isPublished: boolean): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('portfolio_items')
+    .update({ is_published: isPublished, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) console.error('togglePortfolioPublished error:', error);
+  return !error;
+}
+
 // ─── Checklists ───────────────────────────────────────────────
 
 export interface ChecklistRow {
@@ -725,11 +856,9 @@ export async function getMyChecklists(): Promise<ChecklistRow[]> {
 
 export async function insertChecklist(item: Omit<ChecklistRow, 'id' | 'user_id' | 'created_at'>): Promise<ChecklistRow | null> {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
   const { data, error } = await supabase
     .from('checklists')
-    .insert({ ...item, user_id: user.id })
+    .insert({ ...item, user_id: 'local' })
     .select()
     .single();
   if (error) return null;
