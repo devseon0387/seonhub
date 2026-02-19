@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Episode, Partner, EpisodeWorkItem, WorkContentType, Project, WorkStep, WorkTypeBudget } from '@/types';
 import { Plus, Calendar, DollarSign, ChevronDown, ChevronRight, ArrowLeft, X } from 'lucide-react';
+import { getProjects, getProjectEpisodes, getPartners, upsertEpisode } from '@/lib/supabase/db';
 
 // 모든 작업 타입 정의
 const ALL_WORK_TYPES: WorkContentType[] = ['롱폼', '기획 숏폼', '본편 숏폼', '썸네일'];
@@ -15,10 +16,6 @@ const WORK_STEP_TEMPLATES: Record<WorkContentType, string[]> = {
   '본편 숏폼': ['편집', '검토', '수정', '최종 납품'],
   '썸네일': ['초안', '수정', '최종본'],
 };
-
-const PROJECTS_STORAGE_KEY = 'video-moment-projects';
-const PARTNERS_STORAGE_KEY = 'video-moment-partners';
-const EPISODES_STORAGE_KEY = 'video-moment-episodes';
 
 interface EpisodeWithProjectId extends Episode {
   projectId: string;
@@ -192,64 +189,45 @@ export default function EpisodeDetailPage() {
 
   // 데이터 로드
   useEffect(() => {
-    // localStorage에서 프로젝트, 회차, 파트너 데이터 로드
-    const storedProjects = localStorage.getItem(PROJECTS_STORAGE_KEY);
-    const storedEpisodes = localStorage.getItem(EPISODES_STORAGE_KEY);
-    const storedPartners = localStorage.getItem(PARTNERS_STORAGE_KEY);
+    const loadData = async () => {
+      const [projects, episodes, partnersData] = await Promise.all([
+        getProjects(),
+        getProjectEpisodes(projectId),
+        getPartners(),
+      ]);
 
-    // 프로젝트 로드
-    if (storedProjects) {
-      const projects: Project[] = JSON.parse(storedProjects);
       const foundProject = projects.find(p => p.id === projectId);
-      if (foundProject) {
-        setProject(foundProject);
-      }
-    }
+      if (foundProject) setProject(foundProject);
 
-    // 회차 로드 (별도 저장소에서)
-    if (storedEpisodes) {
-      const allEpisodes: EpisodeWithProjectId[] = JSON.parse(storedEpisodes);
-      const foundEpisode = allEpisodes.find(e => e.id === episodeId && e.projectId === projectId);
-
+      const foundEpisode = episodes.find(e => e.id === episodeId);
       if (foundEpisode) {
         setEpisode(foundEpisode);
         setEditedEpisode(foundEpisode);
 
-        // 저장된 작업 단계 로드
         if (foundEpisode.workSteps) {
           setWorkSteps(foundEpisode.workSteps);
         }
 
-        // 저장된 작업 비용 로드 또는 프로젝트 설정에서 자동 설정
         if (foundEpisode.workBudgets) {
           setWorkBudgets(foundEpisode.workBudgets);
-        } else if (storedProjects) {
-          const projects: Project[] = JSON.parse(storedProjects);
-          const foundProject = projects.find(p => p.id === projectId);
-
-          if (foundProject?.workTypeCosts && foundEpisode.workContent) {
-            const newBudgets = { ...workBudgets };
-            foundEpisode.workContent.forEach(workType => {
-              if (foundProject.workTypeCosts![workType]) {
-                newBudgets[workType] = {
-                  partnerPayment: foundProject.workTypeCosts![workType].partnerCost,
-                  managementFee: foundProject.workTypeCosts![workType].managementCost,
-                };
-              }
-            });
-            setWorkBudgets(newBudgets);
-          }
+        } else if (foundProject?.workTypeCosts && foundEpisode.workContent) {
+          const newBudgets = { ...workBudgets };
+          foundEpisode.workContent.forEach(workType => {
+            if (foundProject.workTypeCosts![workType]) {
+              newBudgets[workType] = {
+                partnerPayment: foundProject.workTypeCosts![workType].partnerCost,
+                managementFee: foundProject.workTypeCosts![workType].managementCost,
+              };
+            }
+          });
+          setWorkBudgets(newBudgets);
         }
       }
-    }
 
-    // 파트너 로드
-    if (storedPartners) {
-      setPartners(JSON.parse(storedPartners));
-    }
-
-    // 초기 로드 완료
-    isInitialMount.current = false;
+      setPartners(partnersData);
+      isInitialMount.current = false;
+    };
+    loadData();
   }, [projectId, episodeId]);
 
   // 실시간 자동 저장
@@ -257,43 +235,22 @@ export default function EpisodeDetailPage() {
     // 초기 마운트 시에는 저장하지 않음
     if (isInitialMount.current || !editedEpisode) return;
 
-    // 저장 중 표시
     setSaveStatus('saving');
 
-    // workSteps와 workBudgets를 포함한 전체 데이터 저장
-    // 작업 단계 상태에 따라 전체 회차 상태도 자동 업데이트
-    const updatedEpisodeData: Episode = {
+    const updatedEpisodeData: Episode & { projectId: string } = {
       ...editedEpisode,
+      projectId,
       status: getOverallEpisodeStatus(),
       workSteps,
       workBudgets,
       updatedAt: new Date().toISOString(),
     };
 
-    const storedEpisodes = localStorage.getItem(EPISODES_STORAGE_KEY);
-    if (storedEpisodes) {
-      const allEpisodes: EpisodeWithProjectId[] = JSON.parse(storedEpisodes);
-      const updatedEpisodes = allEpisodes.map(ep =>
-        ep.id === episodeId && ep.projectId === projectId
-          ? { ...updatedEpisodeData, projectId } as EpisodeWithProjectId
-          : ep
-      );
-      localStorage.setItem(EPISODES_STORAGE_KEY, JSON.stringify(updatedEpisodes));
-      console.log('✅ 자동 저장 완료');
-
-      // 저장 완료 표시
+    upsertEpisode(updatedEpisodeData).then(() => {
       setSaveStatus('saved');
-
-      // 이전 타이머 취소
-      if (saveStatusTimeoutRef.current) {
-        clearTimeout(saveStatusTimeoutRef.current);
-      }
-
-      // 2초 후 저장 완료 표시 숨김
-      saveStatusTimeoutRef.current = setTimeout(() => {
-        setSaveStatus('idle');
-      }, 2000);
-    }
+      if (saveStatusTimeoutRef.current) clearTimeout(saveStatusTimeoutRef.current);
+      saveStatusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
+    });
   }, [editedEpisode, workSteps, workBudgets, episodeId, projectId]);
 
   if (!episode || !editedEpisode || !project) {

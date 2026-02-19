@@ -3,21 +3,23 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Phone, Building2, MapPin, X, Trash2, ChevronDown, Search, Folder, Plus, Users, CheckCircle } from 'lucide-react';
-import { Client } from '@/types';
+import { Client, Project } from '@/types';
 import { addToTrash } from '@/lib/trash';
 import { FloatingLabelInput, FloatingLabelTextarea } from '@/components/FloatingLabelInput';
 import { EmptyClients, EmptySearch } from '@/components/EmptyState';
-import { getClients, insertClient, updateClient, deleteClient } from '@/lib/supabase/db';
-
-function getClientProjectCount(_id: string) { return 0; }
+import { getClients, insertClient, updateClient, deleteClient, getProjects } from '@/lib/supabase/db';
 
 export default function ClientsPage() {
   const router = useRouter();
 
   const [clients, setClients] = useState<Client[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    getClients().then(setClients);
+    Promise.all([getClients(), getProjects()]).then(([c, p]) => {
+      setClients(c);
+      setAllProjects(p);
+    });
   }, []);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -344,7 +346,7 @@ export default function ClientsPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {getClientProjectCount(client.id)}개
+                    {allProjects.filter(p => p.client === client.name).length}개
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
@@ -460,7 +462,7 @@ export default function ClientsPage() {
                 <div className="flex items-center text-sm">
                   <Folder size={14} className="mr-1 text-gray-400" />
                   <span className="font-medium text-gray-900">
-                    {getClientProjectCount(client.id)}개 프로젝트
+                    {allProjects.filter(p => p.client === client.name).length}개 프로젝트
                   </span>
                 </div>
                 <div className="flex items-center gap-2">

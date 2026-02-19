@@ -2,14 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Client, Project } from '@/types';
+import { Client, Project, Partner } from '@/types';
 import { ArrowLeft, Mail, Phone, Building2, MapPin, Calendar, DollarSign, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { calculateReserve } from '@/lib/utils';
-import { mockPartners } from '@/lib/mock-data';
-
-const CLIENTS_STORAGE_KEY = 'video-moment-clients';
-const PROJECTS_STORAGE_KEY = 'video-moment-projects';
+import { getClients, getProjects, getPartners } from '@/lib/supabase/db';
 
 export default function ClientDetailPage() {
   const params = useParams();
@@ -18,27 +15,24 @@ export default function ClientDetailPage() {
 
   const [client, setClient] = useState<Client | null>(null);
   const [clientProjects, setClientProjects] = useState<Project[]>([]);
+  const [allPartners, setAllPartners] = useState<Partner[]>([]);
   const [activeFilter, setActiveFilter] = useState<'all' | 'in_progress' | 'completed' | 'planning'>('all');
 
   useEffect(() => {
-    // 클라이언트 데이터 로드
-    const storedClients = localStorage.getItem(CLIENTS_STORAGE_KEY);
-    if (storedClients) {
-      const clients: Client[] = JSON.parse(storedClients);
+    const loadData = async () => {
+      const [clients, projects, partners] = await Promise.all([
+        getClients(),
+        getProjects(),
+        getPartners(),
+      ]);
       const foundClient = clients.find(c => c.id === clientId);
       if (foundClient) {
         setClient(foundClient);
-
-        // 프로젝트 데이터 로드
-        const storedProjects = localStorage.getItem(PROJECTS_STORAGE_KEY);
-        if (storedProjects) {
-          const projects: Project[] = JSON.parse(storedProjects);
-          // 해당 클라이언트의 프로젝트만 필터링 (클라이언트 이름으로 비교)
-          const filtered = projects.filter(p => p.client === foundClient.name);
-          setClientProjects(filtered);
-        }
+        setClientProjects(projects.filter(p => p.client === foundClient.name));
       }
-    }
+      setAllPartners(partners);
+    };
+    loadData();
   }, [clientId]);
 
   if (!client) {
@@ -201,7 +195,7 @@ export default function ClientDetailPage() {
             {filteredProjects.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredProjects.map((project) => {
-                  const partner = mockPartners.find(p => p.id === project.partnerId);
+                  const partner = allPartners.find(p => p.id === project.partnerId);
                   const isInProgress = project.status === 'in_progress';
                   const bgColor = isInProgress ? 'bg-gradient-to-br from-green-400 to-green-600' : 'bg-gradient-to-br from-red-400 to-red-600';
 

@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { mockPartners } from '@/lib/mock-data';
-import { getProjects, insertProject, getClients as fetchClients, getAllEpisodes } from '@/lib/supabase/db';
+import { getProjects, insertProject, getClients as fetchClients, getAllEpisodes, getPartners } from '@/lib/supabase/db';
 import { Calendar, User, X, ChevronDown, Search, ArrowRight, Plus } from 'lucide-react';
 import { calculateReserve } from '@/lib/utils';
 import Link from 'next/link';
-import { Project, Client, Episode, WorkContentType } from '@/types';
+import { Project, Client, Episode, WorkContentType, Partner } from '@/types';
 import { updateEpisodeInStorage } from '@/lib/storage';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,19 +25,24 @@ export default function ProjectsPage() {
   // Supabase에서 에피소드 데이터 로드
   const [episodes, setEpisodes] = useState<EpisodeWithProjectId[]>([]);
 
+  // Supabase에서 파트너 데이터 로드
+  const [allPartners, setAllPartners] = useState<Partner[]>([]);
+
   // 초기 로드 완료 여부 추적
   const isInitialMount = useRef(true);
 
   useEffect(() => {
     const loadData = async () => {
-      const [projectsData, clientsData, episodesData] = await Promise.all([
+      const [projectsData, clientsData, episodesData, partnersData] = await Promise.all([
         getProjects(),
         fetchClients(),
         getAllEpisodes(),
+        getPartners(),
       ]);
       setProjects(projectsData);
       setClients(clientsData);
       setEpisodes(episodesData);
+      setAllPartners(partnersData);
       isInitialMount.current = false;
     };
     loadData();
@@ -366,7 +370,7 @@ export default function ProjectsPage() {
               프로젝트가 없습니다
             </div>
           ) : filteredAndSortedProjects.map((project, cardIndex) => {
-            const partner = mockPartners.find(p => p.id === project.partnerId);
+            const partner = allPartners.find(p => p.id === project.partnerId);
             const projectEpisodes = episodes.filter(e => e.projectId === project.id);
             const completedEpisodes = projectEpisodes.filter(ep => {
               const allTypes = ep.workContent || [];
@@ -563,10 +567,10 @@ export default function ProjectsPage() {
                             {newProject.partnerId ? (
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                                  {mockPartners.find(p => p.id === newProject.partnerId)?.name.charAt(0)}
+                                  {allPartners.find(p => p.id === newProject.partnerId)?.name.charAt(0)}
                                 </div>
                                 <span className="text-gray-900 font-medium">
-                                  {mockPartners.find(p => p.id === newProject.partnerId)?.name}
+                                  {allPartners.find(p => p.id === newProject.partnerId)?.name}
                                 </span>
                               </div>
                             ) : (
@@ -576,12 +580,12 @@ export default function ProjectsPage() {
                           </button>
                           {isPartnerDropdownOpen && (
                             <div className="absolute z-20 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-2xl max-h-60 overflow-auto">
-                              {mockPartners.length === 0 ? (
+                              {allPartners.length === 0 ? (
                                 <div className="p-6 text-center text-gray-500">
                                   <p>등록된 파트너가 없습니다</p>
                                 </div>
                               ) : (
-                                mockPartners.map((partner) => (
+                                allPartners.map((partner) => (
                                   <button
                                     key={partner.id}
                                     type="button"
@@ -734,7 +738,7 @@ export default function ProjectsPage() {
                   ) : (
                     <div className="space-y-3">
                       {steps.map((step, index) => {
-                        const partner = mockPartners.find(p => p.id === step.assigneeId);
+                        const partner = allPartners.find(p => p.id === step.assigneeId);
 
                         return (
                           <div

@@ -3,31 +3,72 @@
 import { useState, useEffect, useRef } from 'react';
 import { Mail, Phone, Building2, UserCircle, X, Trash2, Edit, TrendingUp, Folder, Film, DollarSign, Calendar, Activity, ChevronDown, Search, Clock, ArrowRight, Plus, Users, UserCheck, CreditCard } from 'lucide-react';
 import Link from 'next/link';
-import { Partner } from '@/types';
+import { Partner, Project, Episode } from '@/types';
 import { addToTrash } from '@/lib/trash';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
 import { useToast } from '@/contexts/ToastContext';
 import { EmptyPartners, EmptySearch } from '@/components/EmptyState';
-import { getPartners, insertPartner, updatePartner, deletePartner } from '@/lib/supabase/db';
+import { getPartners, insertPartner, updatePartner, deletePartner, getProjects, getAllEpisodes } from '@/lib/supabase/db';
 
-function getPartnerProjectCount(_id: string) { return 0; }
-function getPartnerStats(_id: string) {
+function computePartnerStats(
+  partnerId: string,
+  projects: Project[],
+  allEpisodes: (Episode & { projectId: string })[]
+) {
+  const partnerProjects = projects.filter(p => p.partnerId === partnerId);
+  const now = new Date();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const partnerEpisodes = allEpisodes.filter(e => e.assignee === partnerId);
+  const completedEpisodes = partnerEpisodes.filter(e => e.status === 'completed');
+  const inProgressEpisodes = partnerEpisodes.filter(e => e.status === 'in_progress');
+  const thisMonthEpisodes = completedEpisodes.filter(e =>
+    e.updatedAt && new Date(e.updatedAt) >= thisMonthStart
+  );
+
+  const totalRevenue = partnerEpisodes.reduce((sum, e) => sum + (e.budget?.partnerPayment || 0), 0);
+  const thisMonthRevenue = thisMonthEpisodes.reduce((sum, e) => sum + (e.budget?.partnerPayment || 0), 0);
+
+  const lastActivityDate = partnerEpisodes.length > 0
+    ? partnerEpisodes.reduce((latest, e) => {
+        const d = new Date(e.updatedAt || e.createdAt);
+        return d > latest ? d : latest;
+      }, new Date(0))
+    : null;
+
   return {
-    projectCount: 0, episodeCount: 0, totalAmount: 0,
-    totalProjects: 0, inProgressProjects: 0, completedProjects: 0,
-    totalEpisodes: 0, completedEpisodes: 0, inProgressEpisodes: 0,
-    thisMonthEpisodes: 0, lastActivity: null as string | null,
-    totalRevenue: 0, thisMonthRevenue: 0, avgRevenuePerEpisode: 0,
-    projects: [] as any[],
+    totalProjects: partnerProjects.length,
+    inProgressProjects: partnerProjects.filter(p => p.status === 'in_progress').length,
+    completedProjects: partnerProjects.filter(p => p.status === 'completed').length,
+    totalEpisodes: partnerEpisodes.length,
+    completedEpisodes: completedEpisodes.length,
+    inProgressEpisodes: inProgressEpisodes.length,
+    thisMonthEpisodes: thisMonthEpisodes.length,
+    totalRevenue,
+    thisMonthRevenue,
+    avgRevenuePerEpisode: partnerEpisodes.length > 0 ? totalRevenue / partnerEpisodes.length : 0,
+    lastActivity: lastActivityDate && lastActivityDate.getTime() > 0 ? lastActivityDate.toISOString() : null,
+    projects: partnerProjects,
+    projectCount: partnerProjects.length,
+    episodeCount: partnerEpisodes.length,
+    totalAmount: totalRevenue,
   };
 }
 
 export default function PartnersPage() {
   const toast = useToast();
   const [partners, setPartners] = useState<Partner[]>([]);
+  const [allProjectsData, setAllProjectsData] = useState<Project[]>([]);
+  const [allEpisodesData, setAllEpisodesData] = useState<(Episode & { projectId: string })[]>([]);
 
   useEffect(() => {
-    getPartners().then(setPartners);
+    Promise.all([getPartners(), getProjects(), getAllEpisodes()]).then(
+      ([p, proj, eps]) => {
+        setPartners(p);
+        setAllProjectsData(proj);
+        setAllEpisodesData(eps);
+      }
+    );
   }, []);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -471,7 +512,7 @@ export default function PartnersPage() {
                 </tr>
               ) : (
                 filteredPartners.map((partner) => {
-                const stats = getPartnerStats(partner.id);
+                const stats = computePartnerStats(partner.id, allProjectsData, allEpisodesData);
                 return (
                   <tr
                     key={partner.id}
@@ -584,7 +625,7 @@ export default function PartnersPage() {
           </div>
         ) : (
           filteredPartners.map((partner) => {
-            const stats = getPartnerStats(partner.id);
+            const stats = computePartnerStats(partner.id, allProjectsData, allEpisodesData);
             return (
               <div
                 key={partner.id}
@@ -749,7 +790,7 @@ export default function PartnersPage() {
 
       {/* 상세 정보 모달 */}
       {isDetailModalOpen && selectedPartner && (() => {
-        const stats = getPartnerStats(selectedPartner.id);
+        const stats = computePartnerStats(selectedPartner.id, allProjectsData, allEpisodesData);
         return (
           <div className="fixed inset-0 z-50 overflow-y-auto">
             {/* 배경 오버레이 */}
@@ -953,12 +994,10 @@ export default function PartnersPage() {
                   {/* 진행 중인 회차 탭 */}
                   {activeTab === 'episodes' && (() => {
                     // 파트너가 담당하는 진행 중인 에피소드 찾기
-                    const partnerProjects = ([] as any[]).filter(p => p.partnerId === selectedPartner.id);
-                    const inProgressEpisodes = partnerProjects.flatMap(project =>
-                      (project.episodes || [])
-                        .filter((ep: any) => ep.status === 'in_progress')
-                        .map((ep: any) => ({ ...ep, project }))
-                    );
+                    const inProgressEpisodes = allEpisodesData
+                      .filter(e => e.assignee === selectedPartner.id && e.status === 'in_progress')
+                      .map(e => ({ ...e, project: allProjectsData.find(p => p.id === e.projectId) }))
+                      .filter((e): e is typeof e & { project: Project } => !!e.project);
 
                     return (
                       <>
@@ -992,10 +1031,10 @@ export default function PartnersPage() {
                                     진행중
                                   </span>
                                 </div>
-                                {episode.deliveryDate && (
+                                {episode.endDate && (
                                   <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
                                     <Clock size={14} />
-                                    <span>마감: {new Date(episode.deliveryDate).toLocaleDateString('ko-KR')}</span>
+                                    <span>마감: {new Date(episode.endDate).toLocaleDateString('ko-KR')}</span>
                                   </div>
                                 )}
                                 {episode.workContent && episode.workContent.length > 0 && (
@@ -1032,7 +1071,7 @@ export default function PartnersPage() {
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {stats.projects.map((project, index) => {
-                            const projectDetail = ([] as any[]).find(p => p.id === project.id);
+                            const projectEpisodes = allEpisodesData.filter(e => e.projectId === project.id);
                             return (
                               <Link
                                 key={project.id}
@@ -1068,28 +1107,28 @@ export default function PartnersPage() {
                                 </div>
 
                                 {/* 프로젝트 통계 */}
-                                {projectDetail && projectDetail.episodes && (
+                                {projectEpisodes.length > 0 && (
                                   <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
                                     <div className="bg-gray-50 rounded p-2">
                                       <p className="text-xs text-gray-500">총 회차</p>
-                                      <p className="text-lg font-semibold text-gray-900">{projectDetail.episodes.length}</p>
+                                      <p className="text-lg font-semibold text-gray-900">{projectEpisodes.length}</p>
                                     </div>
                                     <div className="bg-gray-50 rounded p-2">
                                       <p className="text-xs text-gray-500">진행중</p>
                                       <p className="text-lg font-semibold text-blue-600">
-                                        {projectDetail.episodes.filter((ep: any) => ep.status === 'in_progress').length}
+                                        {projectEpisodes.filter(e => e.status === 'in_progress').length}
                                       </p>
                                     </div>
                                   </div>
                                 )}
 
                                 {/* 예산 정보 */}
-                                {projectDetail && (
+                                {project.budget && project.budget.totalAmount > 0 && (
                                   <div className="mt-3 pt-3 border-t border-gray-100">
                                     <div className="flex items-center justify-between text-sm">
                                       <span className="text-gray-500">예산</span>
                                       <span className="font-semibold text-gray-900">
-                                        {(projectDetail.budget.totalAmount / 10000).toFixed(0)}만원
+                                        {(project.budget.totalAmount / 10000).toFixed(0)}만원
                                       </span>
                                     </div>
                                   </div>

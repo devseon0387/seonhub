@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Project, Client, Episode } from '@/types';
-import { mockPartners } from '@/lib/mock-data';
+import { Project, Client, Episode, Partner } from '@/types';
 import { ArrowLeft, Calendar, User, DollarSign, Tag, Edit, Trash2, TrendingUp, ChevronRight, X, UserCircle, FileText, Users, Video, Palette, Image, CheckCircle2, Clock, Pause, Target, ChevronDown, ClipboardCheck } from 'lucide-react';
 import { calculateReserve } from '@/lib/utils';
 import { addToTrash } from '@/lib/trash';
 import { updateEpisodesInStorage, deleteEpisodeFromStorage, deleteProjectEpisodesFromStorage, getProjectEpisodesFromStorage } from '@/lib/storage';
-import { getProjects, updateProject, deleteProject, getClients as fetchClients, getProjectEpisodes } from '@/lib/supabase/db';
+import { getProjects, updateProject, deleteProject, getClients as fetchClients, getProjectEpisodes, getPartners, upsertEpisode } from '@/lib/supabase/db';
 import Link from 'next/link';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
 import ProjectChecklistModal from '@/components/ProjectChecklistModal';
@@ -36,6 +35,7 @@ export default function ProjectDetailPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
+  const [allPartners, setAllPartners] = useState<Partner[]>([]);
   const [workTypeCosts, setWorkTypeCosts] = useState({
     '롱폼': { partnerCost: 0, managementCost: 0 },
     '기획 숏폼': { partnerCost: 0, managementCost: 0 },
@@ -109,9 +109,10 @@ export default function ProjectDetailPage() {
         setTempWorkContent(foundProject.workContent || []);
       }
 
-      // Load clients
-      const clientsData = await fetchClients();
+      // Load clients and partners in parallel
+      const [clientsData, partnersData] = await Promise.all([fetchClients(), getPartners()]);
       setClients(clientsData);
+      setAllPartners(partnersData);
 
       // Load episodes
       const eps = await getProjectEpisodes(projectId);
@@ -149,6 +150,14 @@ export default function ProjectDetailPage() {
   // ⚠️ 에피소드 자동 저장 제거 - 개별 액션에서만 저장
   // 이전에는 episodes 상태가 바뀔 때마다 저장했지만,
   // 이로 인해 다른 프로젝트의 에피소드가 삭제되는 문제가 있었습니다.
+
+  const handleEpisodeStatusChange = async (episodeId: string, newStatus: Episode['status']) => {
+    const episode = episodes.find(e => e.id === episodeId);
+    if (!episode) return;
+    const updated = { ...episode, status: newStatus };
+    setEpisodes(prev => prev.map(e => e.id === episodeId ? updated : e));
+    await upsertEpisode(updated);
+  };
 
   const handleDelete = async () => {
     if (!project) return;
@@ -343,10 +352,10 @@ export default function ProjectDetailPage() {
     );
   }
 
-  const partners = partnerIds.map(id => mockPartners.find(p => p.id === id)).filter(Boolean);
-  const managers = managerIds.map(id => mockPartners.find(p => p.id === id)).filter(Boolean);
-  const availablePartners = mockPartners.filter(p => !partnerIds.includes(p.id));
-  const availableManagers = mockPartners.filter(p => !managerIds.includes(p.id));
+  const partners = partnerIds.map(id => allPartners.find(p => p.id === id)).filter(Boolean);
+  const managers = managerIds.map(id => allPartners.find(p => p.id === id)).filter(Boolean);
+  const availablePartners = allPartners.filter(p => !partnerIds.includes(p.id));
+  const availableManagers = allPartners.filter(p => !managerIds.includes(p.id));
 
   // Calculate budget values
   const calculatedPartnerPayment = getTotalPartnerPayment();
@@ -1045,8 +1054,8 @@ export default function ProjectDetailPage() {
               .filter(ep => ep.status === 'in_progress')
               .sort((a, b) => a.episodeNumber - b.episodeNumber)
               .map((episode) => {
-                const assignee = mockPartners.find(p => p.id === episode.assignee);
-                const manager = mockPartners.find(p => p.id === episode.manager);
+                const assignee = allPartners.find(p => p.id === episode.assignee);
+                const manager = allPartners.find(p => p.id === episode.manager);
 
                 // 진행률 계산 (workItems 기반)
                 const totalWorkItems = episode.workItems?.length || 0;
@@ -1075,7 +1084,17 @@ export default function ProjectDetailPage() {
                           <h3 className="text-base font-semibold text-gray-900">
                             {episode.title}
                           </h3>
-                          <EpisodeStatusBadge status={episode.status} />
+                          <select
+                            value={episode.status}
+                            onClick={e => e.stopPropagation()}
+                            onChange={e => handleEpisodeStatusChange(episode.id, e.target.value as Episode['status'])}
+                            className="text-xs font-medium px-2 py-1 rounded-full border border-gray-200 bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          >
+                            <option value="waiting">대기</option>
+                            <option value="in_progress">진행 중</option>
+                            <option value="completed">완료</option>
+                            <option value="on_hold">보류</option>
+                          </select>
                           {episode.workContent.length > 0 && (
                             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                               {episode.workContent.join(', ')}
@@ -1171,11 +1190,11 @@ export default function ProjectDetailPage() {
                 : 1;
 
               // 프로젝트의 담당 파트너와 매니저를 자동 배치
-              const defaultAssignee = partnerIds.length > 0 ? partnerIds[0] : (mockPartners[0]?.id || '');
-              const defaultManager = managerIds.length > 0 ? managerIds[0] : (mockPartners[0]?.id || '');
+              const defaultAssignee = partnerIds.length > 0 ? partnerIds[0] : (allPartners[0]?.id || '');
+              const defaultManager = managerIds.length > 0 ? managerIds[0] : (allPartners[0]?.id || '');
 
               const newEpisode: EpisodeWithProjectId = {
-                id: `e${Date.now()}`,
+                id: crypto.randomUUID(),
                 projectId: projectId,
                 episodeNumber: nextEpisodeNumber,
                 title: `${nextEpisodeNumber}화`,
@@ -1212,8 +1231,8 @@ export default function ProjectDetailPage() {
         ) : (
           <div className="p-4 space-y-2">
             {episodes.sort((a, b) => a.episodeNumber - b.episodeNumber).map((episode) => {
-              const assignee = mockPartners.find(p => p.id === episode.assignee);
-              const manager = mockPartners.find(p => p.id === episode.manager);
+              const assignee = allPartners.find(p => p.id === episode.assignee);
+              const manager = allPartners.find(p => p.id === episode.manager);
 
               // 진행률 계산 (workItems 기반)
               const totalWorkItems = episode.workItems?.length || 0;
@@ -1761,7 +1780,7 @@ export default function ProjectDetailPage() {
                         ) : (
                           <div className="grid grid-cols-2 gap-3">
                             {tempManagerIds.map((managerId) => {
-                              const manager = mockPartners.find(p => p.id === managerId);
+                              const manager = allPartners.find(p => p.id === managerId);
                               return manager ? (
                                 <div key={managerId} className="flex items-center gap-3 p-3 bg-gradient-to-r from-purple-50 to-purple-25 border border-purple-100 rounded-lg group hover:shadow-md transition-all">
                                   <div className="flex-shrink-0 w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-semibold shadow-sm">
@@ -1796,9 +1815,9 @@ export default function ProjectDetailPage() {
                           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                             <ChevronRight size={16} className={`text-purple-600 transition-transform ${isManagerDropdownOpen ? 'rotate-90' : 'rotate-0'}`} />
                           </div>
-                          {isManagerDropdownOpen && mockPartners.filter(p => !tempManagerIds.includes(p.id)).length > 0 && (
+                          {isManagerDropdownOpen && allPartners.filter(p => !tempManagerIds.includes(p.id)).length > 0 && (
                             <div className="absolute z-50 w-full mt-2 bg-white border-2 border-purple-200 rounded-xl shadow-xl max-h-64 overflow-y-auto animate-modal-content">
-                              {mockPartners.filter(p => !tempManagerIds.includes(p.id)).map((manager) => (
+                              {allPartners.filter(p => !tempManagerIds.includes(p.id)).map((manager) => (
                                 <button
                                   key={manager.id}
                                   type="button"
@@ -1837,7 +1856,7 @@ export default function ProjectDetailPage() {
                         ) : (
                           <div className="grid grid-cols-2 gap-3">
                             {tempPartnerIds.map((partnerId) => {
-                              const partner = mockPartners.find(p => p.id === partnerId);
+                              const partner = allPartners.find(p => p.id === partnerId);
                               return partner ? (
                                 <div key={partnerId} className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-green-25 border border-green-100 rounded-lg group hover:shadow-md transition-all">
                                   <div className="flex-shrink-0 w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white font-semibold shadow-sm">
@@ -1872,9 +1891,9 @@ export default function ProjectDetailPage() {
                           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                             <ChevronRight size={16} className={`text-green-600 transition-transform ${isPartnerDropdownOpen ? 'rotate-90' : 'rotate-0'}`} />
                           </div>
-                          {isPartnerDropdownOpen && mockPartners.filter(p => !tempPartnerIds.includes(p.id)).length > 0 && (
+                          {isPartnerDropdownOpen && allPartners.filter(p => !tempPartnerIds.includes(p.id)).length > 0 && (
                             <div className="absolute z-50 w-full mt-2 bg-white border-2 border-green-200 rounded-xl shadow-xl max-h-64 overflow-y-auto animate-modal-content">
-                              {mockPartners.filter(p => !tempPartnerIds.includes(p.id)).map((partner) => (
+                              {allPartners.filter(p => !tempPartnerIds.includes(p.id)).map((partner) => (
                                 <button
                                   key={partner.id}
                                   type="button"
@@ -2202,11 +2221,17 @@ export default function ProjectDetailPage() {
       {selectedEpisodeForDetail && (
         <EpisodeDetailModal
           episode={selectedEpisodeForDetail}
-          partner={mockPartners.find(p => p.id === selectedEpisodeForDetail.assignee)}
-          partners={mockPartners}
+          partner={allPartners.find(p => p.id === selectedEpisodeForDetail.assignee)}
+          partners={allPartners}
           projectWorkTypeCosts={workTypeCosts}
           isOpen={!!selectedEpisodeForDetail}
           onClose={() => setSelectedEpisodeForDetail(null)}
+          onSave={async (updatedEpisode) => {
+            setEpisodes(prev =>
+              prev.map(e => e.id === updatedEpisode.id ? { ...updatedEpisode, projectId } : e)
+            );
+            await upsertEpisode({ ...updatedEpisode, projectId });
+          }}
         />
       )}
 
