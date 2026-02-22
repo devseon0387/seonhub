@@ -59,10 +59,10 @@ export default function DebugPage() {
 
         <div className="mt-8">
           <a
-            href="/dashboard"
-            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors inline-block"
+            href="/management"
+            className="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors inline-block"
           >
-            ← 대시보드로 돌아가기
+            ← 매니지먼트로 돌아가기
           </a>
         </div>
       </div>

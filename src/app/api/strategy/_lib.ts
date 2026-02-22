@@ -77,6 +77,20 @@ export async function dbCreateGroup(group: { id: string; name: string; emoji: st
   return toGroup(data!);
 }
 
+export async function dbUpdateGroup(id: string, updates: { name?: string; emoji?: string }): Promise<StrategyGroup> {
+  const supabase = await createClient();
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (updates.name  !== undefined) patch.name  = updates.name;
+  if (updates.emoji !== undefined) patch.emoji = updates.emoji;
+  const { data } = await supabase
+    .from('strategy_groups')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+  return toGroup(data!);
+}
+
 export async function dbDeleteGroup(id: string): Promise<void> {
   const supabase = await createClient();
   await supabase.from('strategy_groups').delete().eq('id', id);

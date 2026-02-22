@@ -256,6 +256,13 @@ export default function PortfolioPage() {
 
   return (
     <div className="space-y-6">
+      <style jsx global>{`
+        @keyframes portfolio-modal-in {
+          from { opacity: 0; transform: scale(0.95) translateY(8px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-portfolio-modal { animation: portfolio-modal-in 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+      `}</style>
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
@@ -275,7 +282,7 @@ export default function PortfolioPage() {
               const url = typeof window !== 'undefined' ? window.location.href : '';
               navigator.clipboard.writeText(url).then(() => toast.success('페이지 링크가 복사되었습니다.')).catch(() => toast.error('복사에 실패했습니다.'));
             }}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium flex items-center gap-2"
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors active:scale-[0.97] font-medium flex items-center gap-2"
           >
             <Share2 size={18} />
             공유하기
@@ -283,7 +290,7 @@ export default function PortfolioPage() {
           <button
             type="button"
             onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium flex items-center gap-2"
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors active:scale-[0.97] font-medium flex items-center gap-2"
           >
             <Plus size={18} />
             포트폴리오 추가
@@ -299,8 +306,8 @@ export default function PortfolioPage() {
               <p className="text-sm font-medium text-gray-600">전체 포트폴리오</p>
               <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</p>
             </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <Grid3x3 className="text-blue-500" size={24} />
+            <div className="p-3 bg-orange-100 rounded-full">
+              <Grid3x3 className="text-orange-500" size={24} />
             </div>
           </div>
         </div>
@@ -339,7 +346,7 @@ export default function PortfolioPage() {
                 placeholder="제목, 클라이언트, 태그 검색..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
             </div>
             <div className="flex items-center gap-2 border border-gray-300 rounded-lg p-1">
@@ -349,7 +356,7 @@ export default function PortfolioPage() {
                   type="button"
                   onClick={() => setFilter(f)}
                   className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    filter === f ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100'
+                    filter === f ? 'bg-orange-500 text-white' : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
                   {f === 'all' ? '전체' : f === 'published' ? '공개됨' : '비공개'}
@@ -361,14 +368,14 @@ export default function PortfolioPage() {
             <button
               type="button"
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-orange-500 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
             >
               <Grid3x3 size={18} />
             </button>
             <button
               type="button"
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-orange-500 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
             >
               <List size={18} />
             </button>
@@ -398,7 +405,7 @@ export default function PortfolioPage() {
             <button
               type="button"
               onClick={() => setIsAddModalOpen(true)}
-              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium inline-flex items-center gap-2"
+              className="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium inline-flex items-center gap-2"
             >
               <Plus size={20} />
               첫 포트폴리오 추가하기
@@ -478,8 +485,8 @@ export default function PortfolioPage() {
                     </div>
                     {partner && (
                       <div className="flex items-center text-xs text-gray-700">
-                        <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center text-white text-[9px] font-semibold mr-1.5">
-                          {partner.name.charAt(0)}
+                        <div className="w-4 h-4 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mr-1.5">
+                          <User size={8} className="text-orange-500" />
                         </div>
                         <span>{partner.name}</span>
                       </div>
@@ -499,7 +506,7 @@ export default function PortfolioPage() {
                     </div>
                   )}
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => handleEdit(item)} className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium">
+                    <button type="button" onClick={() => handleEdit(item)} className="flex-1 px-3 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors text-sm font-medium">
                       수정
                     </button>
                     <button type="button" onClick={() => handleShareItem(item)} className="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors" title="링크 복사">
@@ -564,7 +571,7 @@ export default function PortfolioPage() {
                           className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
                             item.isPublished
                               ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              : 'bg-blue-500 text-white hover:bg-blue-600'
+                              : 'bg-orange-500 text-white hover:bg-orange-600'
                           }`}
                         >
                           {item.isPublished ? (
@@ -590,8 +597,8 @@ export default function PortfolioPage() {
                       </div>
                       {partner && (
                         <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-[10px] font-semibold">
-                            {partner.name.charAt(0)}
+                          <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <User size={10} className="text-orange-500" />
                           </div>
                           <span>{partner.name}</span>
                         </div>
@@ -623,7 +630,7 @@ export default function PortfolioPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" onClick={() => setIsEditModalOpen(false)} />
           <div className="flex min-h-full items-center justify-center p-4">
-            <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full animate-portfolio-modal" onClick={(e) => e.stopPropagation()}>
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-900">포트폴리오 수정</h2>
                 <button type="button" onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -633,30 +640,30 @@ export default function PortfolioPage() {
               <div className="px-6 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">제목 *</label>
-                  <input type="text" value={editingItem.title} onChange={e => setEditingItem({ ...editingItem, title: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="text" value={editingItem.title} onChange={e => setEditingItem({ ...editingItem, title: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">클라이언트 *</label>
-                  <input type="text" value={editingItem.client} onChange={e => setEditingItem({ ...editingItem, client: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="text" value={editingItem.client} onChange={e => setEditingItem({ ...editingItem, client: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">유튜브 URL *</label>
-                  <input type="url" value={editingItem.youtubeUrl} onChange={e => setEditingItem({ ...editingItem, youtubeUrl: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="url" value={editingItem.youtubeUrl} onChange={e => setEditingItem({ ...editingItem, youtubeUrl: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">설명</label>
-                  <textarea value={editingItem.description} onChange={e => setEditingItem({ ...editingItem, description: e.target.value })} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" />
+                  <textarea value={editingItem.description} onChange={e => setEditingItem({ ...editingItem, description: e.target.value })} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">완료일</label>
-                  <input type="date" value={editingItem.completedAt || ''} onChange={e => setEditingItem({ ...editingItem, completedAt: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="date" value={editingItem.completedAt || ''} onChange={e => setEditingItem({ ...editingItem, completedAt: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">태그</label>
                   {editingItem.tags && editingItem.tags.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-2">
                       {editingItem.tags.map((tag, i) => (
-                        <span key={i} className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-sm">
+                        <span key={i} className="flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-700 rounded text-sm">
                           #{tag}
                           <button type="button" onClick={() => setEditingItem({ ...editingItem, tags: editingItem.tags!.filter((_, j) => j !== i) })} className="hover:text-red-500"><X size={12} /></button>
                         </span>
@@ -664,17 +671,17 @@ export default function PortfolioPage() {
                     </div>
                   )}
                   <div className="flex gap-2">
-                    <input type="text" value={editTagInput} onChange={e => setEditTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && editTagInput.trim()) { setEditingItem({ ...editingItem, tags: [...(editingItem.tags || []), editTagInput.trim()] }); setEditTagInput(''); } }} placeholder="태그 입력 후 Enter" className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                    <input type="text" value={editTagInput} onChange={e => setEditTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && editTagInput.trim()) { setEditingItem({ ...editingItem, tags: [...(editingItem.tags || []), editTagInput.trim()] }); setEditTagInput(''); } }} placeholder="태그 입력 후 Enter" className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input type="checkbox" id="edit-publish" checked={editingItem.isPublished} onChange={e => setEditingItem({ ...editingItem, isPublished: e.target.checked })} className="w-4 h-4 text-blue-600 border-gray-300 rounded" />
+                  <input type="checkbox" id="edit-publish" checked={editingItem.isPublished} onChange={e => setEditingItem({ ...editingItem, isPublished: e.target.checked })} className="w-4 h-4 text-orange-600 border-gray-300 rounded" />
                   <label htmlFor="edit-publish" className="text-sm text-gray-700">공개 상태</label>
                 </div>
               </div>
               <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
                 <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">취소</button>
-                <button type="button" onClick={handleSaveEdit} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">저장</button>
+                <button type="button" onClick={handleSaveEdit} className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">저장</button>
               </div>
             </div>
           </div>
@@ -690,7 +697,7 @@ export default function PortfolioPage() {
           />
           <div className="flex min-h-full items-center justify-center p-4">
             <div
-              className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full animate-modal-content"
+              className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full animate-portfolio-modal"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -731,13 +738,13 @@ export default function PortfolioPage() {
                       <button
                         type="button"
                         onClick={() => setIsPartnerDropdownOpen(!isPartnerDropdownOpen)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white flex items-center justify-between"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2">
                           {newItem.partnerId ? (
                             <>
-                              <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
-                                {partners.find(p => p.id === newItem.partnerId)?.name.charAt(0)}
+                              <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <User size={12} className="text-orange-500" />
                               </div>
                               <span className="text-gray-900">
                                 {partners.find(p => p.id === newItem.partnerId)?.name}
@@ -754,7 +761,7 @@ export default function PortfolioPage() {
                           <button
                             type="button"
                             onClick={() => { setNewItem({ ...newItem, partnerId: '' }); setIsPartnerDropdownOpen(false); }}
-                            className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors ${newItem.partnerId === '' ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                            className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors ${newItem.partnerId === '' ? 'bg-orange-50 text-orange-700 font-medium' : 'text-gray-700'}`}
                           >
                             선택 안 함
                           </button>
@@ -763,10 +770,10 @@ export default function PortfolioPage() {
                               key={partner.id}
                               type="button"
                               onClick={() => { setNewItem({ ...newItem, partnerId: partner.id }); setIsPartnerDropdownOpen(false); }}
-                              className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors flex items-center gap-2 ${newItem.partnerId === partner.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                              className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors flex items-center gap-2 ${newItem.partnerId === partner.id ? 'bg-orange-50 text-orange-700 font-medium' : 'text-gray-700'}`}
                             >
-                              <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
-                                {partner.name.charAt(0)}
+                              <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <User size={12} className="text-orange-500" />
                               </div>
                               <span>{partner.name}</span>
                             </button>
@@ -782,7 +789,7 @@ export default function PortfolioPage() {
                     type="date"
                     value={newItem.completedAt}
                     onChange={(e) => setNewItem({ ...newItem, completedAt: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -806,9 +813,9 @@ export default function PortfolioPage() {
                   {newItem.tags && newItem.tags.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {newItem.tags.map((tag, index) => (
-                        <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center gap-2">
+                        <span key={index} className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm flex items-center gap-2">
                           #{tag}
-                          <button type="button" onClick={() => handleRemoveTag(tag)} className="hover:text-blue-900">
+                          <button type="button" onClick={() => handleRemoveTag(tag)} className="hover:text-orange-900">
                             <X size={14} />
                           </button>
                         </span>
@@ -850,7 +857,7 @@ export default function PortfolioPage() {
                     id="publish"
                     checked={newItem.isPublished}
                     onChange={(e) => setNewItem({ ...newItem, isPublished: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                   />
                   <label htmlFor="publish" className="ml-2 text-sm text-gray-700">바로 공개하기</label>
                 </div>
@@ -866,7 +873,7 @@ export default function PortfolioPage() {
                 <button
                   type="button"
                   onClick={handleAddItem}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
                 >
                   추가
                 </button>

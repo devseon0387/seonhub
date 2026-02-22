@@ -30,7 +30,6 @@ export default function TrashPage() {
     const init = async () => {
       const deletedCount = await cleanupExpiredTrashItems(30);
       if (deletedCount > 0) {
-        console.log(`자동 삭제됨: ${deletedCount}개 항목`);
       }
       await loadTrashItems();
     };
@@ -87,9 +86,9 @@ export default function TrashPage() {
   const getItemIcon = (type: string) => {
     switch (type) {
       case 'project':
-        return <Folder size={20} className="text-blue-500" />;
+        return <Folder size={20} className="text-orange-500" />;
       case 'episode':
-        return <Film size={20} className="text-purple-500" />;
+        return <Film size={20} className="text-orange-500" />;
       case 'client':
         return <Briefcase size={20} className="text-green-500" />;
       case 'partner':
@@ -104,7 +103,7 @@ export default function TrashPage() {
       return (item.data as Project).title;
     } else if (item.type === 'episode') {
       const episode = item.data as Episode;
-      return `${episode.episodeNumber}화 - ${episode.title}`;
+      return `${episode.episodeNumber}편${episode.title ? ` - ${episode.title}` : ''}`;
     } else if (item.type === 'client') {
       return (item.data as Client).name;
     } else if (item.type === 'partner') {
@@ -126,7 +125,7 @@ export default function TrashPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
       </div>
     );
   }
@@ -205,7 +204,7 @@ export default function TrashPage() {
                     <div className="flex items-center space-x-2 ml-4">
                       <button
                         onClick={() => handleRestore(item)}
-                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors flex items-center"
+                        className="px-4 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors flex items-center"
                       >
                         <RotateCcw size={16} className="mr-2" />
                         복구

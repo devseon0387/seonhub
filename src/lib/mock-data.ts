@@ -55,7 +55,6 @@ export const getPartnerStats = (partnerId: string) => {
       try {
         projects = JSON.parse(storedProjects);
       } catch (e) {
-        console.error('Failed to parse projects:', e);
       }
     }
 
@@ -64,7 +63,6 @@ export const getPartnerStats = (partnerId: string) => {
       try {
         allEpisodes = JSON.parse(storedEpisodes);
       } catch (e) {
-        console.error('Failed to parse episodes:', e);
       }
     } else {
       // localStorage에 없으면 mock 데이터에서 가져오기

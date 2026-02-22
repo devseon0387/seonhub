@@ -17,7 +17,7 @@ interface ChangelogItem {
 }
 
 const TYPE_CONFIG: Record<UpdateType, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
-  feature: { label: '새 기능', color: 'text-blue-700', bg: 'bg-blue-100', icon: <Sparkles size={14} /> },
+  feature: { label: '새 기능', color: 'text-orange-700', bg: 'bg-orange-100', icon: <Sparkles size={14} /> },
   fix: { label: '버그 수정', color: 'text-red-700', bg: 'bg-red-100', icon: <Wrench size={14} /> },
   improvement: { label: '개선', color: 'text-green-700', bg: 'bg-green-100', icon: <Zap size={14} /> },
   breaking: { label: '주요 변경', color: 'text-orange-700', bg: 'bg-orange-100', icon: <AlertCircle size={14} /> },

@@ -1,0 +1,315 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, Phone, User, Mail, Plus, X, Trash2 } from 'lucide-react';
+import { Partner } from '@/types';
+import { getPartners, insertPartner, deletePartner } from '@/lib/supabase/db';
+import { addToTrash } from '@/lib/trash';
+import { FloatingLabelInput } from '@/components/FloatingLabelInput';
+import { useToast } from '@/contexts/ToastContext';
+
+export default function ExecutivesPage() {
+  const router = useRouter();
+  const toast = useToast();
+  const [executives, setExecutives] = useState<Partner[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Partner | null>(null);
+  const [newMember, setNewMember] = useState<Partial<Partner>>({
+    name: '', email: '', phone: '', jobTitle: '', jobRank: '',
+    role: 'admin', position: 'executive', status: 'active',
+  });
+
+  useEffect(() => {
+    getPartners().then((all) => {
+      setExecutives(all.filter((p) => p.position === 'executive'));
+      setLoading(false);
+    });
+  }, []);
+
+  const handleAdd = async () => {
+    if (!newMember.name) {
+      toast.error('이름을 입력해주세요.');
+      return;
+    }
+    if (saving) return;
+    setSaving(true);
+    const saved = await insertPartner({
+      name: newMember.name,
+      email: newMember.email,
+      phone: newMember.phone,
+      jobTitle: newMember.jobTitle,
+      jobRank: newMember.jobRank,
+      role: newMember.role || 'admin',
+      position: 'executive',
+      status: 'active',
+    });
+    if (saved) {
+      setExecutives(prev => [saved, ...prev]);
+      setIsAddModalOpen(false);
+      setNewMember({ name: '', email: '', phone: '', jobTitle: '', jobRank: '', role: 'admin', position: 'executive', status: 'active' });
+      toast.success(`${saved.name} 임원이 추가되었습니다!`);
+    } else {
+      toast.error('추가에 실패했습니다. 다시 시도해주세요.');
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    await addToTrash('partner', deleteTarget);
+    const deleted = await deletePartner(deleteTarget.id);
+    if (deleted) {
+      setExecutives(prev => prev.filter(p => p.id !== deleteTarget.id));
+      toast.success(`${deleteTarget.name} 임원이 삭제되었습니다.`);
+    } else {
+      toast.error('삭제에 실패했습니다. 다시 시도해주세요.');
+    }
+    setDeleteTarget(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* 헤더 */}
+      <div className="flex items-start justify-between">
+        <div>
+          <button
+            onClick={() => router.push('/operations')}
+            className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-4 transition-colors text-sm font-medium"
+          >
+            <ArrowLeft size={18} />
+            운영으로 돌아가기
+          </button>
+          <h1 className="text-3xl font-bold text-gray-900">임원</h1>
+          <p className="text-gray-500 mt-2">임원진 정보를 확인하고 관리해요</p>
+        </div>
+        <button
+          onClick={() => setIsAddModalOpen(true)}
+          className="px-5 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-colors shadow-lg shadow-orange-500/30 font-semibold flex items-center gap-2 text-sm"
+        >
+          <Plus size={18} />
+          임원 추가
+        </button>
+      </div>
+
+      {/* 통계 */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl border border-gray-200 p-5">
+          <p className="text-2xl font-bold text-gray-900">{executives.length}</p>
+          <p className="text-sm text-gray-500 mt-1">전체</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-200 p-5">
+          <p className="text-2xl font-bold text-green-600">{executives.filter((p) => p.status === 'active').length}</p>
+          <p className="text-sm text-gray-500 mt-1">활성</p>
+        </div>
+      </div>
+
+      {/* 목록 */}
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="p-6">
+          {executives.length === 0 ? (
+            <div className="text-center py-16">
+              <User size={48} className="text-gray-200 mx-auto mb-3" />
+              <p className="text-gray-400 text-sm">등록된 임원이 없습니다</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {executives.map((partner) => (
+                <MemberCard key={partner.id} partner={partner} onDelete={setDeleteTarget} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 추가 모달 */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setIsAddModalOpen(false)}
+          />
+          <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
+            <div
+              className="relative bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl max-w-lg w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-6 sm:px-8 pt-8 pb-6">
+                <button
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="absolute right-6 top-6 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X size={24} className="text-gray-400" />
+                </button>
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">새 임원을<br />추가할게요</h2>
+                <p className="text-sm text-gray-500">임원 정보를 입력해주세요</p>
+              </div>
+
+              <div className="px-6 sm:px-8 pb-8 space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-900">기본 정보</h3>
+                  <FloatingLabelInput
+                    label="이름"
+                    required
+                    type="text"
+                    value={newMember.name}
+                    onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
+                  />
+                  <FloatingLabelInput
+                    label="직책 (예: 대표이사, CTO)"
+                    type="text"
+                    value={newMember.jobTitle}
+                    onChange={(e) => setNewMember({ ...newMember, jobTitle: e.target.value })}
+                  />
+                  <FloatingLabelInput
+                    label="직급 (예: 이사, 상무)"
+                    type="text"
+                    value={newMember.jobRank}
+                    onChange={(e) => setNewMember({ ...newMember, jobRank: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-900">연락처 정보</h3>
+                  <FloatingLabelInput
+                    label="이메일"
+                    type="email"
+                    value={newMember.email}
+                    onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
+                  />
+                  <FloatingLabelInput
+                    label="전화번호"
+                    type="tel"
+                    value={newMember.phone}
+                    onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="sticky bottom-0 bg-white px-6 sm:px-8 py-6 border-t border-gray-100 rounded-b-[28px]">
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setIsAddModalOpen(false)}
+                    className="flex-1 h-14 text-gray-700 font-semibold bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleAdd}
+                    disabled={!newMember.name || saving}
+                    className="flex-1 h-14 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none shadow-lg shadow-orange-500/30"
+                  >
+                    {saving ? '추가 중...' : '임원 추가하기'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 삭제 확인 모달 */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div
+            className="fixed inset-0 bg-gray-900/60"
+            onClick={() => setDeleteTarget(null)}
+          />
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div
+              className="relative bg-white rounded-lg shadow-xl max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-gray-900">임원 삭제</h2>
+              </div>
+              <div className="p-6">
+                <p className="text-gray-700 text-center mb-2">
+                  <span className="font-semibold text-gray-900">&quot;{deleteTarget.name}&quot;</span> 임원을<br />
+                  정말 삭제하시겠습니까?
+                </p>
+                <p className="text-sm text-orange-600 text-center">
+                  휴지통으로 이동되며, 30일 이내에 복구할 수 있습니다.
+                </p>
+              </div>
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm font-medium"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
+                >
+                  삭제
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MemberCard({ partner, onDelete }: { partner: Partner; onDelete: (p: Partner) => void }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group relative">
+      <button
+        onClick={() => onDelete(partner)}
+        className="absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-50 transition-all"
+        title="삭제"
+      >
+        <Trash2 size={14} className="text-gray-400 hover:text-red-500" />
+      </button>
+
+      <div className="flex items-start justify-between mb-3">
+        <div className="w-11 h-11 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+          <User size={22} className="text-amber-600" />
+        </div>
+        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+          partner.status === 'active'
+            ? 'bg-green-100 text-green-700'
+            : 'bg-gray-100 text-gray-500'
+        }`}>
+          {partner.status === 'active' ? '활성' : '비활성'}
+        </span>
+      </div>
+
+      <p className="text-sm font-semibold text-gray-900 truncate">{partner.name}</p>
+
+      {(partner.jobTitle || partner.jobRank) && (
+        <p className="text-xs text-gray-500 mt-0.5 truncate">
+          {[partner.jobTitle, partner.jobRank].filter(Boolean).join(' · ')}
+        </p>
+      )}
+
+      <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
+        {partner.phone && (
+          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+            <Phone size={11} className="flex-shrink-0" />
+            <span className="truncate">{partner.phone}</span>
+          </div>
+        )}
+        {partner.email && (
+          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+            <Mail size={11} className="flex-shrink-0" />
+            <span className="truncate">{partner.email}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

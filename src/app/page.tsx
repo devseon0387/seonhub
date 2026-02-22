@@ -12,7 +12,7 @@ export default function HomePage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        router.push('/dashboard');
+        router.push('/management');
       } else {
         router.push('/login');
       }
@@ -23,7 +23,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
         <p className="text-gray-600 mt-4">로딩 중...</p>
       </div>
     </div>

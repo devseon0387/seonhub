@@ -61,7 +61,7 @@ export default function MarketingPage() {
         </div>
         <Link
           href="/marketing/portfolio"
-          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium flex items-center gap-2"
+          className="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium flex items-center gap-2"
         >
           <Plus size={20} />
           포트폴리오 추가
@@ -86,8 +86,8 @@ export default function MarketingPage() {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-gray-600">포트폴리오</p>
-            <div className="p-2 bg-blue-100 rounded-full">
-              <Video className="text-blue-500" size={20} />
+            <div className="p-2 bg-orange-100 rounded-full">
+              <Video className="text-orange-500" size={20} />
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-900">
@@ -104,8 +104,8 @@ export default function MarketingPage() {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-gray-600">클라이언트</p>
-            <div className="p-2 bg-purple-100 rounded-full">
-              <Users className="text-purple-500" size={20} />
+            <div className="p-2 bg-orange-100 rounded-full">
+              <Users className="text-orange-500" size={20} />
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-900">
@@ -123,12 +123,12 @@ export default function MarketingPage() {
             <p className="text-sm text-gray-500 mt-1">등록된 포트폴리오 항목</p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+            <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium">
               {portfolioItems.length}개
             </span>
             <Link
               href="/marketing/portfolio"
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium flex items-center gap-2"
+              className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm font-medium flex items-center gap-2"
             >
               포트폴리오 관리
               <ExternalLink size={14} />
@@ -203,7 +203,7 @@ export default function MarketingPage() {
           )}
           {!loading && portfolioItems.length > 5 && (
             <div className="p-4 text-center">
-              <Link href="/marketing/portfolio" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+              <Link href="/marketing/portfolio" className="text-sm text-orange-600 hover:text-orange-700 font-medium">
                 전체 {portfolioItems.length}개 보기 →
               </Link>
             </div>
@@ -216,7 +216,7 @@ export default function MarketingPage() {
         <div className="bg-white rounded-lg shadow">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center gap-2">
-              <Users className="text-purple-500" size={20} />
+              <Users className="text-orange-500" size={20} />
               <h2 className="text-lg font-semibold text-gray-900">클라이언트별 현황</h2>
             </div>
           </div>

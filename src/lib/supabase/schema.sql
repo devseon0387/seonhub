@@ -57,7 +57,7 @@ create table if not exists projects (
   updated_at timestamptz default now()
 );
 
--- 에피소드
+-- 회차
 create table if not exists episodes (
   id uuid primary key default gen_random_uuid(),
   project_id text not null,            -- 프로젝트 ID
@@ -87,7 +87,7 @@ create table if not exists trash (
   id uuid primary key default gen_random_uuid(),
   type text not null,                  -- 'project' | 'episode' | 'client' | 'partner'
   data jsonb not null,                 -- 원본 데이터 전체
-  original_project_id text,            -- 에피소드의 경우 원래 프로젝트 ID
+  original_project_id text,            -- 회차의 경우 원래 프로젝트 ID
   deleted_at timestamptz default now()
 );
 

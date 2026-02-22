@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, AlignLeft, Hash, List, ListOrdered, CheckSquare, Minus, Lightbulb } from 'lucide-react';
+import { ArrowLeft, AlignLeft, Hash, List, ListOrdered, CheckSquare, Minus, Lightbulb, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { strategyApi } from '@/lib/strategy-api';
 
@@ -49,8 +49,6 @@ const BLOCK_MENU = [
   { type: 'divider'    as BlockType, label: '구분선',    desc: '수평선 삽입',    icon: Minus       },
   { type: 'callout'    as BlockType, label: '콜아웃',    desc: '강조 블록',      icon: Lightbulb   },
 ];
-
-const DOC_EMOJIS = ['📝','🎯','💡','🚀','📊','🔥','⭐','💎','🎨','🌟','📌','📋','🗓️','💼','🧠','⚡','🎪','🏆','🔑','🌈'];
 
 const MD_SHORTCUTS: Record<string, BlockType> = {
   '#': 'heading1', '##': 'heading2', '###': 'heading3',
@@ -138,6 +136,8 @@ function BlockEl({
     ? (block.type === 'paragraph' ? "내용을 입력하거나 '/'로 명령어를 사용하세요" : '내용 입력...')
     : '';
 
+  const BASE = 'st-page-edit outline-none w-full break-words min-h-[1.5em]';
+
   const shared = {
     ref,
     contentEditable: true as const,
@@ -148,62 +148,71 @@ function BlockEl({
     onCompositionStart: () => { composing.current = true; },
     onCompositionEnd: () => { composing.current = false; },
     'data-placeholder': placeholder,
-    className: 'st-page-edit outline-none w-full break-words min-h-[1.5em]',
+    className: BASE,
   };
 
   if (block.type === 'divider') return (
-    <div className="py-2 cursor-default select-none" onClick={() => onFocus(block.id)}>
-      <hr className="border-gray-200" />
+    <div style={{ padding: '10px 0', cursor: 'default' }} onClick={() => onFocus(block.id)}>
+      <div style={{ height: '1px', background: '#f0ece9' }} />
     </div>
   );
   if (block.type === 'heading1') return (
-    <div {...shared} className={`${shared.className} text-[1.9rem] font-bold text-gray-900 leading-tight pt-6 pb-1`} />
+    <div {...shared} style={{ fontSize: '26px', fontWeight: 700, color: '#1c1917', lineHeight: 1.3, paddingTop: '28px', paddingBottom: '4px', letterSpacing: '-0.02em' }} />
   );
   if (block.type === 'heading2') return (
-    <div {...shared} className={`${shared.className} text-2xl font-semibold text-gray-900 pt-4 pb-0.5`} />
+    <div {...shared} style={{ fontSize: '20px', fontWeight: 700, color: '#1c1917', lineHeight: 1.4, paddingTop: '20px', paddingBottom: '2px', letterSpacing: '-0.015em' }} />
   );
   if (block.type === 'heading3') return (
-    <div {...shared} className={`${shared.className} text-lg font-semibold text-gray-800 pt-3`} />
+    <div {...shared} style={{ fontSize: '16px', fontWeight: 600, color: '#1c1917', lineHeight: 1.5, paddingTop: '14px' }} />
   );
   if (block.type === 'bullet') return (
-    <div className="flex items-start gap-2.5">
-      <span className="mt-[9px] w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0 select-none" />
-      <div {...shared} className={`${shared.className} text-gray-700 leading-relaxed flex-1`} />
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+      <span style={{ marginTop: '10px', width: '5px', height: '5px', borderRadius: '50%', background: '#c4b5a5', flexShrink: 0 }} />
+      <div {...shared} style={{ fontSize: '15px', color: '#374151', lineHeight: 1.75, flex: 1 }} />
     </div>
   );
   if (block.type === 'numbered') return (
-    <div className="flex items-start gap-2">
-      <span className="text-gray-400 text-sm mt-0.5 flex-shrink-0 w-5 text-right select-none">{numberedIdx}.</span>
-      <div {...shared} className={`${shared.className} text-gray-700 leading-relaxed flex-1`} />
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+      <span style={{ fontSize: '14px', color: '#a8a29e', marginTop: '2px', flexShrink: 0, width: '20px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{numberedIdx}.</span>
+      <div {...shared} style={{ fontSize: '15px', color: '#374151', lineHeight: 1.75, flex: 1 }} />
     </div>
   );
   if (block.type === 'todo') return (
-    <div className="flex items-start gap-2.5">
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
       <button
         onClick={() => onUpdate(block.id, { checked: !block.checked })}
-        className={`mt-[3px] w-[18px] h-[18px] rounded-[4px] border-2 flex-shrink-0 flex items-center justify-center transition-all active:scale-90 ${
-          block.checked ? 'bg-blue-500 border-blue-500' : 'border-gray-300 hover:border-blue-400'
-        }`}
+        style={{
+          marginTop: '3px',
+          width: '17px', height: '17px', borderRadius: '4px', flexShrink: 0,
+          border: block.checked ? '2px solid #ea580c' : '2px solid #d6cec8',
+          background: block.checked ? '#ea580c' : 'transparent',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', transition: 'all 0.15s',
+        }}
       >
         {block.checked && (
-          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+          <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
             <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         )}
       </button>
       <div
         {...shared}
-        className={`${shared.className} leading-relaxed flex-1 ${block.checked ? 'line-through text-gray-400' : 'text-gray-700'}`}
+        style={{
+          fontSize: '15px', lineHeight: 1.75, flex: 1,
+          color: block.checked ? '#a8a29e' : '#374151',
+          textDecoration: block.checked ? 'line-through' : 'none',
+        }}
       />
     </div>
   );
   if (block.type === 'callout') return (
-    <div className="flex items-start gap-3 bg-blue-50 rounded-xl px-4 py-3 border border-blue-100 my-1">
-      <span className="text-base flex-shrink-0 select-none">💡</span>
-      <div {...shared} className={`${shared.className} text-gray-700 leading-relaxed flex-1`} />
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', background: '#fff7f3', borderRadius: '10px', padding: '12px 16px', border: '1px solid #fde8d8', margin: '2px 0' }}>
+      <span style={{ fontSize: '16px', flexShrink: 0, lineHeight: 1.75 }}>💡</span>
+      <div {...shared} style={{ fontSize: '15px', color: '#374151', lineHeight: 1.75, flex: 1 }} />
     </div>
   );
-  return <div {...shared} className={`${shared.className} text-gray-700 leading-relaxed`} />;
+  return <div {...shared} style={{ fontSize: '15px', color: '#374151', lineHeight: 1.75 }} />;
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -217,7 +226,6 @@ export default function PageEditor() {
   const [group, setGroup] = useState<StrategyGroup | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [slash, setSlash] = useState<{ blockId: string; top: number; left: number } | null>(null);
-  const [emojiOpen, setEmojiOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const titleRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -339,7 +347,7 @@ export default function PageEditor() {
     return (
       <div className="text-center py-24">
         <p className="text-gray-400">페이지를 찾을 수 없어요</p>
-        <button onClick={() => router.push(`/strategy/${groupId}`)} className="mt-4 text-sm text-blue-500 hover:text-blue-700 transition-colors">
+        <button onClick={() => router.push(`/strategy/${groupId}`)} className="mt-4 text-sm text-orange-500 hover:text-orange-700 transition-colors">
           그룹으로 돌아가기
         </button>
       </div>
@@ -347,59 +355,59 @@ export default function PageEditor() {
   }
 
   return (
-    <div className="relative">
-      <style jsx global>{`
-        .st-page-edit { caret-color: #1f2937; }
+    <div style={{ position: 'relative' }}>
+      <style>{`
+        .st-page-edit { caret-color: #1c1917; }
         .st-page-edit:empty::before {
           content: attr(data-placeholder);
-          color: #d1d5db;
+          color: #d6cec8;
           pointer-events: none;
         }
       `}</style>
 
-      {/* 뒤로가기 */}
-      <button
-        onClick={() => router.push(`/strategy/${groupId}`)}
-        className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-8 transition-colors text-sm font-medium active:scale-[0.97]"
-      >
-        <ArrowLeft size={18} />
-        {group ? `${group.emoji} ${group.name}` : '그룹으로 돌아가기'}
-      </button>
+      {/* ── 브레드크럼 ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '20px' }}>
+        <button
+          onClick={() => router.push('/strategy')}
+          style={{ fontSize: '12px', color: '#a8a29e', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'color 0.12s' }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#44403c'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = '#a8a29e'; }}
+        >전략</button>
+        <ArrowLeft size={11} style={{ color: '#d6cec8', transform: 'rotate(180deg)', flexShrink: 0 }} />
+        <button
+          onClick={() => router.push(`/strategy/${groupId}`)}
+          style={{ fontSize: '12px', color: '#a8a29e', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'color 0.12s' }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#44403c'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = '#a8a29e'; }}
+        >
+          {group ? `${group.emoji} ${group.name}` : '그룹'}
+        </button>
+        <ArrowLeft size={11} style={{ color: '#d6cec8', transform: 'rotate(180deg)', flexShrink: 0 }} />
+        <span style={{ fontSize: '12px', color: '#44403c', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
+          {doc.title || '제목 없음'}
+        </span>
+      </div>
 
-      {/* 에디터 */}
-      <div className="max-w-2xl">
-        {/* 이모지 */}
-        <div className="relative mb-4">
-          <button
-            onClick={() => setEmojiOpen(p => !p)}
-            className="text-5xl hover:bg-gray-100 rounded-xl p-1 -ml-1 transition-colors active:scale-[0.95]"
-          >
-            {doc.emoji}
-          </button>
-          <AnimatePresence>
-            {emojiOpen && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setEmojiOpen(false)} />
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.92, y: -6 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.92, y: -6 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute top-14 left-0 z-30 bg-white rounded-2xl shadow-xl border border-gray-200 p-3 grid grid-cols-10 gap-1"
-                >
-                  {DOC_EMOJIS.map(em => (
-                    <button
-                      key={em}
-                      onClick={() => { patchDoc({ emoji: em }); setEmojiOpen(false); }}
-                      className="text-xl w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-lg transition-colors active:scale-90"
-                    >
-                      {em}
-                    </button>
-                  ))}
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
+      {/* ── 제목 카드 ── */}
+      <div style={{
+        maxWidth: 'var(--doc-max-w, 960px)',
+        background: '#ffffff',
+        border: '1px solid #ede9e6',
+        borderRadius: '16px',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+        padding: '36px 56px 32px',
+        marginBottom: '12px',
+        transition: 'max-width 0.2s cubic-bezier(0.4,0,0.2,1)',
+      }}>
+        {/* 문서 아이콘 */}
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '12px',
+            background: '#fff7f3', border: '1px solid #fde8d8',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <FileText size={22} style={{ color: '#ea580c' }} />
+          </div>
         </div>
 
         {/* 제목 */}
@@ -415,15 +423,35 @@ export default function PageEditor() {
               if (doc.blocks.length) setFocusId(doc.blocks[0].id);
             }
           }}
-          className="st-page-edit text-[2.5rem] font-bold text-gray-900 outline-none w-full break-words leading-tight mb-6"
+          className="st-page-edit"
+          style={{
+            fontSize: '34px', fontWeight: 700, color: '#1c1917',
+            outline: 'none', width: '100%',
+            lineHeight: 1.3, marginBottom: '10px',
+            letterSpacing: '-0.025em',
+          } as React.CSSProperties}
         />
 
-        <hr className="border-gray-100 mb-6" />
+        {/* 메타 정보 */}
+        <p style={{ fontSize: '11px', color: '#c4b5a5' }}>
+          {new Date(doc.updatedAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 수정
+        </p>
+      </div>
 
+      {/* ── 본문 카드 ── */}
+      <div style={{
+        maxWidth: 'var(--doc-max-w, 960px)',
+        background: '#ffffff',
+        border: '1px solid #ede9e6',
+        borderRadius: '16px',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+        padding: '40px 56px 80px',
+        transition: 'max-width 0.2s cubic-bezier(0.4,0,0.2,1)',
+      }}>
         {/* 블록들 */}
-        <div className="space-y-px">
+        <div>
           {doc.blocks.map((block, idx) => (
-            <div key={block.id} className="py-[3px]">
+            <div key={block.id} style={{ padding: '2px 0' }}>
               <BlockEl
                 block={block}
                 focused={focusId === block.id}
@@ -439,7 +467,7 @@ export default function PageEditor() {
             </div>
           ))}
           <div
-            className="h-32 cursor-text"
+            style={{ height: '120px', cursor: 'text' }}
             onClick={() => {
               const last = doc.blocks[doc.blocks.length - 1];
               if (!last) return;
@@ -450,35 +478,55 @@ export default function PageEditor() {
         </div>
       </div>
 
-      {/* / 명령어 메뉴 (fixed 포지션) */}
+      {/* ── / 명령어 메뉴 ── */}
       <AnimatePresence>
         {slash && (
           <>
-            <div className="fixed inset-0 z-20" onClick={() => setSlash(null)} />
+            <div style={{ position: 'fixed', inset: 0, zIndex: 20 }} onClick={() => setSlash(null)} />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: -6 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -6 }}
-              transition={{ duration: 0.15 }}
-              style={{ position: 'fixed', top: slash.top, left: slash.left }}
-              className="z-30 w-60 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.14 }}
+              style={{
+                position: 'fixed', top: slash.top, left: slash.left,
+                zIndex: 30, width: '240px',
+                background: '#fff', border: '1px solid #ede9e6',
+                borderRadius: '14px',
+                boxShadow: '0 8px 28px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06)',
+                overflow: 'hidden',
+              }}
             >
-              <div className="p-2">
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-2 py-1.5">블록 유형</p>
+              <div style={{ padding: '6px' }}>
+                <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#c4b5a5', padding: '6px 8px 4px' }}>
+                  블록 유형
+                </p>
                 {BLOCK_MENU.map(item => {
                   const Icon = item.icon;
                   return (
                     <button
                       key={item.type}
                       onClick={() => applySlash(item.type)}
-                      className="w-full flex items-center gap-2.5 px-2 py-2 hover:bg-gray-50 rounded-xl transition-colors text-left active:scale-[0.98]"
+                      style={{
+                        width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '7px 8px', borderRadius: '9px',
+                        background: 'transparent', border: 'none',
+                        cursor: 'pointer', textAlign: 'left',
+                        transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#faf9f8'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                     >
-                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Icon size={14} className="text-gray-600" />
+                      <div style={{
+                        width: '30px', height: '30px', borderRadius: '8px',
+                        background: '#f5f3f1', border: '1px solid #ede9e6',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                      }}>
+                        <Icon size={13} style={{ color: '#78716c' }} />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-900 leading-tight">{item.label}</p>
-                        <p className="text-[11px] text-gray-400">{item.desc}</p>
+                        <p style={{ fontSize: '13px', fontWeight: 500, color: '#1c1917', lineHeight: 1.3 }}>{item.label}</p>
+                        <p style={{ fontSize: '11px', color: '#a8a29e' }}>{item.desc}</p>
                       </div>
                     </button>
                   );

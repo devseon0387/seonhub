@@ -35,7 +35,7 @@ export function getStatusText(status: string): string {
 // 프로젝트 상태별 색상
 export function getStatusColor(status: string): string {
   const colorMap: Record<string, string> = {
-    planning: 'bg-blue-100 text-blue-800',
+    planning: 'bg-orange-100 text-orange-800',
     in_progress: 'bg-yellow-100 text-yellow-800',
     completed: 'bg-green-100 text-green-800',
     on_hold: 'bg-gray-100 text-gray-800',

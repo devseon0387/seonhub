@@ -27,6 +27,16 @@ export default function ClientsPage() {
   }, []);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail === 'new-client') setIsAddModalOpen(true);
+    };
+    window.addEventListener('fab:action', handler);
+    return () => window.removeEventListener('fab:action', handler);
+  }, []);
+
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<{ id: string; name: string } | null>(null);
@@ -152,7 +162,7 @@ export default function ClientsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
       </div>
     );
   }
@@ -160,36 +170,17 @@ export default function ClientsPage() {
   return (
     <div className="space-y-8">
       {/* 애니메이션 스타일 */}
-      <style jsx>{`
-        @keyframes checkmark {
-          0% {
-            stroke-dashoffset: 100;
-          }
-          100% {
-            stroke-dashoffset: 0;
-          }
+      <style jsx global>{`
+        @keyframes clients-modal-content-in {
+          from { opacity: 0; transform: scale(0.95) translateY(8px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
         }
-        @keyframes circle-scale {
-          0% {
-            transform: scale(0);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.1);
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
+        @keyframes clients-modal-sheet-in {
+          from { opacity: 0; transform: translateY(24px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .checkmark-circle {
-          animation: circle-scale 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .checkmark-check {
-          stroke-dasharray: 100;
-          stroke-dashoffset: 100;
-          animation: checkmark 0.5s 0.3s cubic-bezier(0.65, 0, 0.45, 1) forwards;
-        }
+        .animate-clients-modal { animation: clients-modal-content-in 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        .animate-clients-sheet { animation: clients-modal-sheet-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
       `}</style>
 
       {/* 헤더 */}
@@ -199,8 +190,9 @@ export default function ClientsPage() {
           <p className="text-gray-500 mt-2">클라이언트 목록 및 관리</p>
         </div>
         <button
+          data-tour="tour-client-new"
           onClick={() => setIsAddModalOpen(true)}
-          className="px-5 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg shadow-blue-500/30 font-semibold flex items-center gap-2 whitespace-nowrap"
+          className="px-5 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all active:scale-[0.97] shadow-lg shadow-orange-500/30 font-semibold flex items-center gap-2 whitespace-nowrap"
         >
           <Plus size={18} />
           새 클라이언트 추가
@@ -208,12 +200,12 @@ export default function ClientsPage() {
       </div>
 
       {/* 통계 */}
-      <div className="grid grid-cols-3 gap-4">
+      <div data-tour="tour-client-stats" className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-medium text-gray-500">전체 클라이언트</p>
-            <div className="w-9 h-9 bg-purple-50 rounded-xl flex items-center justify-center">
-              <Building2 size={18} className="text-purple-500" />
+            <div className="w-9 h-9 bg-orange-50 rounded-xl flex items-center justify-center">
+              <Building2 size={18} className="text-orange-500" />
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-900">{clients.length}</p>
@@ -246,7 +238,7 @@ export default function ClientsPage() {
       </div>
 
       {/* 검색 바 */}
-      <div className="flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3">
+      <div data-tour="tour-client-search" className="flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3">
         <Search size={18} className="text-gray-400 flex-shrink-0" />
         <input
           type="text"
@@ -266,7 +258,7 @@ export default function ClientsPage() {
       </div>
 
       {/* 클라이언트 목록 - 데스크톱 테이블 뷰 */}
-      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div data-tour="tour-client-table" className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50/80 border-b border-gray-100">
@@ -317,8 +309,8 @@ export default function ClientsPage() {
                   >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-                        {client.name.charAt(0)}
+                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Building2 size={18} className="text-orange-500" />
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{client.name}</div>
@@ -423,8 +415,8 @@ export default function ClientsPage() {
               {/* 헤더 - 클라이언트 정보 */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center flex-1 min-w-0">
-                  <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
-                    {client.name.charAt(0)}
+                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Building2 size={22} className="text-orange-500" />
                   </div>
                   <div className="ml-3 flex-1 min-w-0">
                     <h3 className="text-base font-semibold text-gray-900 truncate">
@@ -510,20 +502,20 @@ export default function ClientsPage() {
 
       {/* 클라이언트 추가 모달 - Toss Style */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
           <div
             className="fixed inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => !isClientSuccess && handleCloseModal()}
           />
           <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
             <div
-              className="relative bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl max-w-2xl w-full animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 duration-300"
+              className="relative bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl max-w-2xl w-full animate-clients-sheet"
               onClick={(e) => e.stopPropagation()}
             >
               {isClientSuccess ? (
                 /* 성공 화면 */
                 <div className="px-6 sm:px-8 py-16 flex flex-col items-center justify-center">
-                  <div className="checkmark-circle w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center mb-6">
+                  <div className="checkmark-circle w-24 h-24 bg-orange-500 rounded-full flex items-center justify-center mb-6">
                     <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
                       <path
                         className="checkmark-check"
@@ -635,7 +627,7 @@ export default function ClientsPage() {
                       <button
                         onClick={handleAddClient}
                         disabled={!newClient.name}
-                        className="flex-1 h-14 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-600 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98] shadow-lg shadow-blue-500/30"
+                        className="flex-1 h-14 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98] shadow-lg shadow-orange-500/30"
                       >
                         클라이언트 추가하기
                       </button>
@@ -660,7 +652,7 @@ export default function ClientsPage() {
           {/* 모달 */}
           <div className="flex min-h-full items-center justify-center p-4">
             <div
-              className="relative bg-white rounded-lg shadow-xl max-w-md w-full"
+              className="relative bg-white rounded-lg shadow-xl max-w-md w-full animate-clients-modal"
               onClick={(e) => e.stopPropagation()}
             >
               {/* 헤더 */}
@@ -674,7 +666,7 @@ export default function ClientsPage() {
                   <span className="font-semibold text-gray-900">&quot;{clientToDelete.name}&quot;</span> 클라이언트를<br />
                   정말 삭제하시겠습니까?
                 </p>
-                <p className="text-sm text-blue-600 text-center">
+                <p className="text-sm text-orange-600 text-center">
                   휴지통으로 이동되며, 30일 이내에 복구할 수 있습니다.
                 </p>
               </div>
@@ -683,19 +675,19 @@ export default function ClientsPage() {
               <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
                 <button
                   onClick={handleCancelDelete}
-                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors active:scale-[0.97]"
                 >
                   취소
                 </button>
                 <button
                   onClick={handleDeactivateClient}
-                  className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+                  className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors active:scale-[0.97]"
                 >
                   비활성 등록
                 </button>
                 <button
                   onClick={handleConfirmDelete}
-                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors active:scale-[0.97]"
                 >
                   삭제
                 </button>

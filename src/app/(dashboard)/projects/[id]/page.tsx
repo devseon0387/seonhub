@@ -2,15 +2,17 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Project, Client, Episode, Partner } from '@/types';
-import { ArrowLeft, Calendar, User, DollarSign, Tag, Edit, Trash2, TrendingUp, ChevronRight, X, UserCircle, FileText, Users, Video, Palette, Image, CheckCircle2, Clock, Pause, Target, ChevronDown, ClipboardCheck } from 'lucide-react';
-import { calculateReserve } from '@/lib/utils';
+import { Project, Client, Episode, Partner, WorkContentType } from '@/types';
+import { ArrowLeft, Calendar, User, DollarSign, Tag, Edit, Trash2, TrendingUp, ChevronRight, X, UserCircle, FileText, Users, Video, Palette, Image, CheckCircle2, Clock, Pause, Target, ChevronDown, ClipboardCheck, Building2, Tv, Youtube, Monitor, Camera } from 'lucide-react';
 import { addToTrash } from '@/lib/trash';
 import { getProjectById, updateProject, deleteProject, getClients as fetchClients, getProjectEpisodes, getPartners, upsertEpisode, deleteEpisode, deleteProjectEpisodes } from '@/lib/supabase/db';
 import Link from 'next/link';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
 import ProjectChecklistModal from '@/components/ProjectChecklistModal';
 import EpisodeDetailModal from '@/components/EpisodeDetailModal';
+import DateRangePicker from '@/components/DateRangePicker';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useTutorial } from '@/components/tutorial/useTutorial';
 
 interface EpisodeWithProjectId extends Episode {
   projectId: string;
@@ -54,6 +56,7 @@ export default function ProjectDetailPage() {
   const [tempManagerIds, setTempManagerIds] = useState<string[]>([]);
   const [tempPartnerIds, setTempPartnerIds] = useState<string[]>([]);
   const [tempSelectedCategory, setTempSelectedCategory] = useState<string>('');
+  const [tempChannels, setTempChannels] = useState<string[]>([]);
   const [tempWorkContent, setTempWorkContent] = useState<('롱폼' | '기획 숏폼' | '본편 숏폼' | '썸네일')[]>([]);
 
   // 비용 정보 임시 상태
@@ -69,6 +72,12 @@ export default function ProjectDetailPage() {
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [isLoadingProject, setIsLoadingProject] = useState(true);
   const [activeTab, setActiveTab] = useState<'in-progress' | 'episodes' | 'overview'>('in-progress');
+  const [tabDirection, setTabDirection] = useState(1);
+  const TAB_ORDER = ['in-progress', 'episodes', 'overview'] as const;
+  const switchTab = (tab: 'in-progress' | 'episodes' | 'overview') => {
+    setTabDirection(TAB_ORDER.indexOf(tab) > TAB_ORDER.indexOf(activeTab) ? 1 : -1);
+    setActiveTab(tab);
+  };
 
   // 토스트 알림
   const [showToast, setShowToast] = useState(false);
@@ -77,12 +86,20 @@ export default function ProjectDetailPage() {
   // 체크리스트 모달
   const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false);
   const [selectedEpisodeForDetail, setSelectedEpisodeForDetail] = useState<Episode | null>(null);
+  const [isEpisodeEditMode, setIsEpisodeEditMode] = useState(false);
+  const [editingEpisodes, setEditingEpisodes] = useState<{ id: string; episodeNumber: number; title: string; assignee: string; manager: string; startDate: string; dueDate: string }[]>([]);
+  const [editDropdown, setEditDropdown] = useState<{ episodeId: string; field: 'assignee' | 'manager' } | null>(null);
 
   // 드롭다운 외부 클릭 감지를 위한 ref
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const clientDropdownRef = useRef<HTMLDivElement>(null);
   const managerDropdownRef = useRef<HTMLDivElement>(null);
   const partnerDropdownRef = useRef<HTMLDivElement>(null);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+  const channelDropdownRef = useRef<HTMLDivElement>(null);
+  const workContentDropdownRef = useRef<HTMLDivElement>(null);
+  const [isChannelDropdownOpen, setIsChannelDropdownOpen] = useState(false);
+  const [isWorkContentDropdownOpen, setIsWorkContentDropdownOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -132,20 +149,39 @@ export default function ProjectDetailPage() {
       if (partnerDropdownRef.current && !partnerDropdownRef.current.contains(event.target as Node)) {
         setIsPartnerDropdownOpen(false);
       }
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
+      if (channelDropdownRef.current && !channelDropdownRef.current.contains(event.target as Node)) {
+        setIsChannelDropdownOpen(false);
+      }
+      if (workContentDropdownRef.current && !workContentDropdownRef.current.contains(event.target as Node)) {
+        setIsWorkContentDropdownOpen(false);
+      }
     };
 
-    if (isStatusDropdownOpen || isClientDropdownOpen || isManagerDropdownOpen || isPartnerDropdownOpen) {
+    if (isStatusDropdownOpen || isClientDropdownOpen || isManagerDropdownOpen || isPartnerDropdownOpen || isCategoryDropdownOpen || isChannelDropdownOpen || isWorkContentDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isStatusDropdownOpen, isClientDropdownOpen, isManagerDropdownOpen, isPartnerDropdownOpen]);
+  }, [isStatusDropdownOpen, isClientDropdownOpen, isManagerDropdownOpen, isPartnerDropdownOpen, isCategoryDropdownOpen, isChannelDropdownOpen, isWorkContentDropdownOpen]);
 
-  // ⚠️ 에피소드 자동 저장 제거 - 개별 액션에서만 저장
+  // 튜토리얼 탭 자동 전환
+  const { isActive: tutorialActive, steps: tutorialSteps, currentStepIndex: tutorialStepIdx } = useTutorial();
+  useEffect(() => {
+    if (!tutorialActive) return;
+    const target = tutorialSteps[tutorialStepIdx]?.target;
+    if (target === 'tour-detail-add-episode') {
+      if (activeTab !== 'episodes') switchTab('episodes');
+    }
+  }, [tutorialActive, tutorialStepIdx, tutorialSteps, activeTab]);
+
+  // ⚠️ 회차 자동 저장 제거 - 개별 액션에서만 저장
   // 이전에는 episodes 상태가 바뀔 때마다 저장했지만,
-  // 이로 인해 다른 프로젝트의 에피소드가 삭제되는 문제가 있었습니다.
+  // 이로 인해 다른 프로젝트의 회차가 삭제되는 문제가 있었습니다.
 
   const handleEpisodeStatusChange = async (episodeId: string, newStatus: Episode['status']) => {
     const episode = episodes.find(e => e.id === episodeId);
@@ -166,7 +202,7 @@ export default function ProjectDetailPage() {
   const handleDelete = async () => {
     if (!project) return;
 
-    // 에피소드를 먼저 휴지통으로 이전 (프로젝트 삭제 전에 해야 조회 가능)
+    // 회차를 먼저 휴지통으로 이전 (프로젝트 삭제 전에 해야 조회 가능)
     const eps = await getProjectEpisodes(projectId);
     for (const ep of eps) {
       await addToTrash('episode', ep, projectId);
@@ -294,6 +330,7 @@ export default function ProjectDetailPage() {
     setTempManagerIds(managerIds);
     setTempPartnerIds(partnerIds);
     setTempSelectedCategory(selectedCategory);
+    setTempChannels(project?.channels || []);
     setTempWorkContent(project?.workContent || []);
 
     // 비용 정보 초기화
@@ -310,7 +347,7 @@ export default function ProjectDetailPage() {
     if (episodeToDelete) {
       const deleted = await deleteEpisode(deleteEpisodeId);
       if (!deleted) {
-        showToastMessage('에피소드 삭제에 실패했습니다. 다시 시도해주세요.');
+        showToastMessage('회차 삭제에 실패했습니다. 다시 시도해주세요.');
         setDeleteEpisodeId(null);
         return;
       }
@@ -358,7 +395,7 @@ export default function ProjectDetailPage() {
   if (isLoadingProject) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
       </div>
     );
   }
@@ -371,7 +408,7 @@ export default function ProjectDetailPage() {
           <p className="text-gray-500 mb-6">요청하신 프로젝트가 존재하지 않습니다.</p>
           <Link
             href="/projects"
-            className="inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
           >
             <ArrowLeft size={16} className="mr-2" />
             프로젝트 목록으로 돌아가기
@@ -383,6 +420,7 @@ export default function ProjectDetailPage() {
 
   const partners = partnerIds.map(id => allPartners.find(p => p.id === id)).filter(Boolean);
   const managers = managerIds.map(id => allPartners.find(p => p.id === id)).filter(Boolean);
+  const activeEpisodes = episodes.filter(ep => ep.status === 'in_progress' || ep.status === 'waiting');
   const availablePartners = allPartners.filter(p => !partnerIds.includes(p.id));
   const availableManagers = allPartners.filter(p => !managerIds.includes(p.id));
 
@@ -497,6 +535,7 @@ export default function ProjectDetailPage() {
       partnerIds: tempPartnerIds,
       managerIds: tempManagerIds,
       category: tempSelectedCategory,
+      channels: tempChannels,
       workContent: tempWorkContent,
       workTypeCosts: tempWorkTypeCosts,
       budget: {
@@ -566,99 +605,107 @@ export default function ProjectDetailPage() {
         }
       `}</style>
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Link
-            href="/projects"
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft size={24} className="text-gray-600" />
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{project.title}</h1>
-            <p className="text-gray-500 mt-1">프로젝트 상세 정보</p>
+      <div data-tour="tour-detail-header" className="bg-white rounded-xl border border-gray-100 p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Link
+              href="/projects"
+              className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+            >
+              <ArrowLeft size={20} className="text-gray-400" />
+            </Link>
+            <div>
+              <span className="text-xs text-gray-400">
+                {selectedClient || '클라이언트 미설정'}
+              </span>
+              <h1 className="text-2xl font-bold text-gray-900 mt-0.5">{project.title}</h1>
+              <div className="mt-1">
+                <StatusBadge status={project.status} />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsChecklistModalOpen(true)}
+              className="p-2 text-orange-500 hover:bg-orange-50 rounded-xl transition-colors"
+              title="체크리스트"
+            >
+              <ClipboardCheck size={18} />
+            </button>
+            <button
+              onClick={() => openProjectEditModal('basic')}
+              className="p-2 text-gray-400 hover:bg-gray-100 rounded-xl transition-colors"
+              title="수정"
+            >
+              <Edit size={18} />
+            </button>
+            <button
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors"
+              title="삭제"
+            >
+              <Trash2 size={18} />
+            </button>
           </div>
         </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setIsChecklistModalOpen(true)}
-            className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors flex items-center"
-          >
-            <ClipboardCheck size={16} className="mr-2" />
-            체크리스트
-          </button>
-          <button
-            onClick={() => openProjectEditModal('basic')}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center"
-          >
-            <Edit size={16} className="mr-2" />
-            수정
-          </button>
-          <button
-            onClick={() => setIsDeleteModalOpen(true)}
-            className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors flex items-center"
-          >
-            <Trash2 size={16} className="mr-2" />
-            삭제
-          </button>
-        </div>
-      </div>
-
-      {/* 상태 배지 */}
-      <div>
-        <StatusBadge status={project.status} />
       </div>
 
       {/* 탭 네비게이션 */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      <div data-tour="tour-detail-tabs" className="bg-white rounded-xl border border-gray-100 p-1.5 inline-flex gap-1">
+        {([
+          { key: 'in-progress' as const, label: '진행 중인 회차', count: activeEpisodes.length },
+          { key: 'episodes' as const, label: '회차 관리', count: episodes.length },
+          { key: 'overview' as const, label: '프로젝트 개요', count: undefined },
+        ]).map((tab) => (
           <button
-            onClick={() => setActiveTab('in-progress')}
-            className={`${
-              activeTab === 'in-progress'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2`}
+            key={tab.key}
+            onClick={() => switchTab(tab.key)}
+            className="relative px-5 py-2.5 rounded-xl font-medium text-sm flex items-center gap-2"
           >
-            진행 중인 회차
-            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
-              {episodes.filter(ep => ep.status === 'in_progress').length}
+            {activeTab === tab.key && (
+              <motion.div
+                layoutId="project-tab-pill"
+                className="absolute inset-0 bg-orange-500 rounded-xl shadow-lg shadow-orange-500/30"
+                transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+              />
+            )}
+            <span className={`relative z-10 transition-colors duration-200 ${activeTab === tab.key ? 'text-white' : 'text-gray-500'}`}>
+              {tab.label}
             </span>
+            {tab.count !== undefined && (
+              <span className={`relative z-10 px-2 py-0.5 rounded-full text-xs font-semibold transition-colors duration-200 ${
+                activeTab === tab.key ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {tab.count}
+              </span>
+            )}
           </button>
-          <button
-            onClick={() => setActiveTab('episodes')}
-            className={`${
-              activeTab === 'episodes'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2`}
-          >
-            회차 관리
-            <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold">
-              {episodes.length}
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`${
-              activeTab === 'overview'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
-          >
-            프로젝트 개요
-          </button>
-        </nav>
+        ))}
       </div>
 
       {/* 탭 컨텐츠 */}
+      <div style={{ overflowX: 'clip' }}>
+      <AnimatePresence mode="wait" custom={tabDirection}>
+      <motion.div
+        key={activeTab}
+        custom={tabDirection}
+        variants={{
+          initial: (dir: number) => ({ opacity: 0, x: dir > 0 ? 48 : -48 }),
+          animate: { opacity: 1, x: 0 },
+          exit: (dir: number) => ({ opacity: 0, x: dir > 0 ? -48 : 48 }),
+        }}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={{ duration: 0.26, ease: [0.25, 0.46, 0.45, 0.94] }}
+      >
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* 기본 정보 */}
-        <div className="lg:col-span-3 bg-gray-50 rounded-lg shadow p-6 space-y-6">
+        <div className="lg:col-span-3 bg-white rounded-xl border border-gray-100 p-6 space-y-6">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">기본 정보</h2>
+              <h2 className="text-base font-semibold text-gray-900">기본 정보</h2>
               <button
                 onClick={() => openProjectEditModal('basic')}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -676,7 +723,7 @@ export default function ProjectDetailPage() {
                   <p className="text-sm font-medium text-gray-500 mb-2">클라이언트</p>
                   {selectedClient ? (
                     <div className="flex items-center p-2">
-                      <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
+                      <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
                         {selectedClient.charAt(0)}
                       </div>
                       <span className="text-sm font-medium text-gray-900 truncate">{selectedClient}</span>
@@ -693,7 +740,7 @@ export default function ProjectDetailPage() {
                     <div className="space-y-2">
                       {managers.map((manager) => manager && (
                         <div key={manager.id} className="flex items-center p-2">
-                          <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
+                          <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
                             {manager.name.charAt(0)}
                           </div>
                           <p className="text-sm font-medium text-gray-900 truncate">{manager.name}</p>
@@ -712,8 +759,8 @@ export default function ProjectDetailPage() {
                     <div className="space-y-2">
                       {partners.map((partner) => partner && (
                         <div key={partner.id} className="flex items-center p-2">
-                          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
-                            {partner.name.charAt(0)}
+                          <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mr-2">
+                            <User size={16} className="text-orange-500" />
                           </div>
                           <p className="text-sm font-medium text-gray-900 truncate">{partner.name}</p>
                         </div>
@@ -731,7 +778,7 @@ export default function ProjectDetailPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-500 mb-2">분류</p>
                   {selectedCategory ? (
-                    <div className="p-2 bg-blue-50 rounded-lg inline-block">
+                    <div className="p-2 bg-orange-50 rounded-lg inline-block">
                       <span className="text-sm font-medium text-gray-600">{selectedCategory}</span>
                     </div>
                   ) : (
@@ -747,7 +794,7 @@ export default function ProjectDetailPage() {
                       {project.workContent.map((work, idx) => (
                         <span
                           key={idx}
-                          className="px-3 py-1 bg-purple-50 text-purple-600 rounded text-xs font-medium"
+                          className="px-3 py-1 bg-orange-50 text-orange-600 rounded text-xs font-medium"
                         >
                           {work}
                         </span>
@@ -914,7 +961,7 @@ export default function ProjectDetailPage() {
                     {project.tags.map((tag, index) => (
                       <span
                         key={index}
-                        className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-sm"
+                        className="px-3 py-1 bg-orange-50 text-orange-600 rounded-full text-sm"
                       >
                         #{tag}
                       </span>
@@ -928,10 +975,10 @@ export default function ProjectDetailPage() {
 
         {/* 비용 정보 */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-gray-50 rounded-lg shadow p-6">
+          <div className="bg-white rounded-xl border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center">
-                <DollarSign size={20} className="mr-2" />
+              <h2 className="text-base font-semibold text-gray-900 flex items-center">
+                <DollarSign size={18} className="mr-2" />
                 비용 정보
               </h2>
               <button
@@ -956,14 +1003,14 @@ export default function ProjectDetailPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-xs font-medium text-gray-500 mb-1">파트너 지급 (합산)</p>
-                    <p className={`text-lg font-semibold ${calculatedPartnerPayment === 0 ? 'text-gray-400' : 'text-blue-600'}`}>
+                    <p className={`text-lg font-semibold ${calculatedPartnerPayment === 0 ? 'text-gray-400' : 'text-orange-600'}`}>
                       {formatCurrency(calculatedPartnerPayment)}원
                     </p>
                   </div>
 
                   <div>
                     <p className="text-xs font-medium text-gray-500 mb-1">매니징 비용 (합산)</p>
-                    <p className={`text-lg font-semibold ${calculatedManagementFee === 0 ? 'text-gray-400' : 'text-purple-600'}`}>
+                    <p className={`text-lg font-semibold ${calculatedManagementFee === 0 ? 'text-gray-400' : 'text-orange-600'}`}>
                       {formatCurrency(calculatedManagementFee)}원
                     </p>
                   </div>
@@ -997,7 +1044,7 @@ export default function ProjectDetailPage() {
                 <p className="text-sm font-medium text-gray-700 mb-3">작업별 비용</p>
                 <div className="grid grid-cols-4 gap-3">
                   {/* 롱폼 */}
-                  <div className={`rounded-lg p-3 ${workTypeCosts['롱폼'].partnerCost === 0 && workTypeCosts['롱폼'].managementCost === 0 ? 'bg-gray-50' : 'bg-purple-50'}`}>
+                  <div className={`rounded-lg p-3 ${workTypeCosts['롱폼'].partnerCost === 0 && workTypeCosts['롱폼'].managementCost === 0 ? 'bg-gray-50' : 'bg-orange-50'}`}>
                     <p className={`text-xs font-semibold mb-2 ${workTypeCosts['롱폼'].partnerCost === 0 && workTypeCosts['롱폼'].managementCost === 0 ? 'text-gray-400' : 'text-gray-600'}`}>롱폼</p>
                     <div className="space-y-2">
                       <div>
@@ -1035,7 +1082,7 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* 본편 숏폼 */}
-                  <div className={`rounded-lg p-3 ${workTypeCosts['본편 숏폼'].partnerCost === 0 && workTypeCosts['본편 숏폼'].managementCost === 0 ? 'bg-gray-50' : 'bg-blue-50'}`}>
+                  <div className={`rounded-lg p-3 ${workTypeCosts['본편 숏폼'].partnerCost === 0 && workTypeCosts['본편 숏폼'].managementCost === 0 ? 'bg-gray-50' : 'bg-orange-50'}`}>
                     <p className={`text-xs font-semibold mb-2 ${workTypeCosts['본편 숏폼'].partnerCost === 0 && workTypeCosts['본편 숏폼'].managementCost === 0 ? 'text-gray-400' : 'text-gray-600'}`}>본편 숏폼</p>
                     <div className="space-y-2">
                       <div>
@@ -1081,82 +1128,170 @@ export default function ProjectDetailPage() {
 
       {/* 진행 중인 회차 탭 */}
       {activeTab === 'in-progress' && (
-      <div className="bg-gray-50 rounded-lg shadow">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+      <div data-tour="tour-detail-inprogress" className="bg-white rounded-xl border border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
             진행 중인 회차
-            <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-semibold">
-              {episodes.filter(ep => ep.status === 'in_progress').length}개
+            <span className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full text-xs font-semibold">
+              {activeEpisodes.length}개
             </span>
           </h2>
-          <p className="text-sm text-gray-500 mt-1">현재 작업 중인 회차만 표시됩니다</p>
+          <p className="text-sm text-gray-500 mt-1">대기 및 진행 중인 회차가 표시됩니다</p>
         </div>
 
-        {episodes.filter(ep => ep.status === 'in_progress').length === 0 ? (
+        {activeEpisodes.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
             <p className="text-lg font-medium">진행 중인 회차가 없습니다</p>
-            <p className="text-sm mt-2">회차 관리 탭에서 회차를 추가하고 상태를 변경해주세요</p>
+            <p className="text-sm mt-2">회차 관리 탭에서 회차를 추가해주세요</p>
           </div>
         ) : (
           <div className="p-4 space-y-2">
             {episodes
-              .filter(ep => ep.status === 'in_progress')
+              .filter(ep => ep.status === 'in_progress' || ep.status === 'waiting')
               .sort((a, b) => a.episodeNumber - b.episodeNumber)
               .map((episode) => {
                 const assignee = allPartners.find(p => p.id === episode.assignee);
                 const manager = allPartners.find(p => p.id === episode.manager);
 
-                // 진행률 계산 (workItems 기반)
-                const totalWorkItems = episode.workItems?.length || 0;
-                const completedWorkItems = episode.workItems?.filter(item => item.status === 'completed').length || 0;
-                const progressRate = totalWorkItems > 0 ? Math.round((completedWorkItems / totalWorkItems) * 100) : 0;
-
-                // 총 비용 계산
-                const totalBudget = episode.budget
-                  ? episode.budget.totalAmount
-                  : 0;
-
                 return (
                   <div key={episode.id} className="relative group">
                     <button
                       onClick={() => router.push(`/projects/${projectId}/episodes/${episode.id}`)}
-                      className="w-full text-left border-2 border-yellow-300 rounded-lg p-4 hover:border-yellow-400 hover:bg-yellow-50 transition-all bg-yellow-50/30"
+                      className="w-full text-left bg-white rounded-xl border border-gray-100 p-4 hover:border-gray-200 hover:shadow-sm transition-all"
                       type="button"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1 space-y-3">
-                        {/* 첫 번째 줄: 회차 번호, 제목, 상태, 작업 개수 */}
+                        {/* 첫 번째 줄: 편 수, 회차 이름, 상태, 작업 개수 */}
                         <div className="flex items-center space-x-3">
                           <span className="text-lg font-bold text-gray-900">
-                            {episode.episodeNumber}화
+                            {episode.episodeNumber === 0 ? '회차 미정' : `${episode.episodeNumber}편`}
                           </span>
-                          <h3 className="text-base font-semibold text-gray-900">
-                            {episode.title}
-                          </h3>
+                          {episode.title && (
+                            <h3 className="text-base font-semibold text-gray-900">
+                              {episode.title}
+                            </h3>
+                          )}
                           <select
                             value={episode.status}
                             onClick={e => e.stopPropagation()}
                             onChange={e => handleEpisodeStatusChange(episode.id, e.target.value as Episode['status'])}
-                            className="text-xs font-medium px-2 py-1 rounded-full border border-gray-200 bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="text-xs font-medium px-2 py-1 rounded-full border border-gray-200 bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400"
                           >
                             <option value="waiting">대기</option>
                             <option value="in_progress">진행 중</option>
                             <option value="review">검수</option>
                             <option value="completed">완료</option>
                           </select>
-                          {episode.workContent.length > 0 && (
-                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                              {episode.workContent.join(', ')}
-                            </span>
-                          )}
                         </div>
 
-                        {/* 두 번째 줄: 담당자, 매니저, 예산 */}
+                        {/* 작업 타임라인 */}
+                        {episode.workContent.length > 0 ? (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {episode.workContent.map((workType, wIdx) => {
+                              const steps = episode.workSteps?.[workType as WorkContentType] || [];
+                              const stepsTotal = steps.length;
+                              const stepsCompleted = steps.filter(s => s.status === 'completed').length;
+                              const hasInProgress = steps.some(s => s.status === 'in_progress') || (stepsCompleted > 0 && stepsCompleted < stepsTotal);
+                              const allDone = stepsTotal > 0 && stepsCompleted === stepsTotal;
+
+                              return (
+                                <div key={workType} className="flex items-center gap-1.5">
+                                  {wIdx > 0 && (
+                                    <div className="flex items-center gap-0.5 px-0.5">
+                                      {[0, 1, 2].map(d => (
+                                        <div key={d} className={`w-1 h-1 rounded-full ${
+                                          allDone ? 'bg-green-400' : 'bg-gray-300'
+                                        }`} />
+                                      ))}
+                                    </div>
+                                  )}
+                                  <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg border transition-all ${
+                                    allDone
+                                      ? 'bg-green-50 border-green-200 text-green-700'
+                                      : hasInProgress
+                                      ? 'bg-orange-50 border-orange-200 text-orange-700'
+                                      : 'bg-gray-50 border-gray-200 text-gray-500'
+                                  }`}>
+                                    {workType}
+                                    {stepsTotal > 0 && (
+                                      <span className={`text-[10px] px-1 py-0.5 rounded ${
+                                        allDone
+                                          ? 'bg-green-100 text-green-600'
+                                          : hasInProgress
+                                          ? 'bg-orange-100 text-orange-600'
+                                          : 'bg-gray-100 text-gray-400'
+                                      }`}>
+                                        {stepsCompleted}/{stepsTotal}
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                              );
+                            })}
+
+                            {/* 마감 */}
+                            {(() => {
+                              const allWorkDone = episode.workContent.every(wt => {
+                                const s = episode.workSteps?.[wt as WorkContentType] || [];
+                                return s.length > 0 && s.every(st => st.status === 'completed');
+                              });
+                              return (
+                                <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center gap-0.5 px-0.5">
+                                    {[0, 1, 2].map(d => (
+                                      <div key={d} className={`w-1 h-1 rounded-full ${allWorkDone ? 'bg-green-400' : 'bg-gray-300'}`} />
+                                    ))}
+                                  </div>
+                                  <div className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg border ${
+                                    allWorkDone
+                                      ? 'bg-green-50 border-green-200 text-green-700'
+                                      : 'bg-gray-50 border-gray-200 text-gray-500'
+                                  }`}>
+                                    <Target size={11} />
+                                    <span>마감</span>
+                                    {episode.dueDate ? (
+                                      <span className="font-semibold">
+                                        {new Date(episode.dueDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-400">미정</span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg border bg-gray-50 border-gray-200 text-gray-500">
+                              대기
+                            </span>
+                            <div className="flex items-center gap-0.5 px-0.5">
+                              {[0, 1, 2].map(d => (
+                                <div key={d} className="w-1 h-1 rounded-full bg-gray-300" />
+                              ))}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg border bg-gray-50 border-gray-200 text-gray-500">
+                              <Target size={11} />
+                              <span>마감</span>
+                              {episode.dueDate ? (
+                                <span className="font-semibold">
+                                  {new Date(episode.dueDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">미정</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 두 번째 줄: 담당자, 매니저 */}
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           {assignee && (
                             <div className="flex items-center gap-1.5">
                               <User size={14} className="text-gray-400" />
-                              <span>{assignee.name}</span>
+                              <span>파트너: {assignee.name}</span>
                             </div>
                           )}
                           {manager && (
@@ -1165,44 +1300,12 @@ export default function ProjectDetailPage() {
                               <span>매니저: {manager.name}</span>
                             </div>
                           )}
-                          {totalBudget > 0 && (
-                            <div className="flex items-center gap-1.5">
-                              <DollarSign size={14} className="text-gray-400" />
-                              <span>{(totalBudget / 10000).toFixed(0)}만원</span>
-                            </div>
-                          )}
                         </div>
 
-                        {/* 세 번째 줄: 진행률 바 */}
-                        {totalWorkItems > 0 && (
-                          <div>
-                            <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                              <span>작업 진행률</span>
-                              <span className="font-semibold">{progressRate}%</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-blue-500 h-2 rounded-full transition-all"
-                                style={{ width: `${progressRate}%` }}
-                              />
-                            </div>
-                            <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
-                              <span>완료: {completedWorkItems}/{totalWorkItems}</span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 마감일 */}
-                        {episode.dueDate && (
-                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                            <Calendar size={12} className="text-gray-400" />
-                            <span>마감: {new Date(episode.dueDate).toLocaleDateString('ko-KR')}</span>
-                          </div>
-                        )}
                         </div>
 
                         <div className="ml-4 flex items-center">
-                          <ChevronRight size={20} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
+                          <ChevronRight size={20} className="text-gray-400 group-hover:text-orange-500 transition-colors" />
                         </div>
                       </div>
                     </button>
@@ -1229,9 +1332,41 @@ export default function ProjectDetailPage() {
 
       {/* 회차 탭 */}
       {activeTab === 'episodes' && (
-      <div className="bg-gray-50 rounded-lg shadow">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900">회차 관리</h2>
+      <div className="bg-white rounded-xl border border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-900">회차 관리</h2>
+          <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              if (isEpisodeEditMode) {
+                // 저장
+                Promise.all(editingEpisodes.map(async (edit) => {
+                  const ep = episodes.find(e => e.id === edit.id);
+                  if (!ep) return;
+                  const changed = ep.episodeNumber !== edit.episodeNumber || ep.title !== edit.title
+                    || ep.assignee !== edit.assignee || ep.manager !== edit.manager
+                    || ep.startDate !== edit.startDate || (ep.dueDate || '') !== edit.dueDate;
+                  if (!changed) return;
+                  const updated = { ...ep, episodeNumber: edit.episodeNumber, title: edit.title, assignee: edit.assignee, manager: edit.manager, startDate: edit.startDate, dueDate: edit.dueDate || undefined, updatedAt: new Date().toISOString() };
+                  setEpisodes(prev => prev.map(e => e.id === edit.id ? updated : e));
+                  await upsertEpisode(updated);
+                }));
+                setIsEpisodeEditMode(false);
+                showToastMessage('회차 정보가 저장되었습니다.');
+              } else {
+                // 편집 모드 진입
+                setEditingEpisodes(episodes.map(ep => ({ id: ep.id, episodeNumber: ep.episodeNumber, title: ep.title, assignee: ep.assignee, manager: ep.manager, startDate: ep.startDate, dueDate: ep.dueDate || '' })));
+                setIsEpisodeEditMode(true);
+              }
+            }}
+            className={`px-4 py-2 rounded-xl transition-colors text-sm font-medium ${
+              isEpisodeEditMode
+                ? 'bg-green-500 text-white hover:bg-green-600'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {isEpisodeEditMode ? '저장' : '회차 수정'}
+          </button>
           <button
             onClick={async () => {
               const nextEpisodeNumber = episodes.length > 0
@@ -1246,7 +1381,7 @@ export default function ProjectDetailPage() {
                 id: crypto.randomUUID(),
                 projectId: projectId,
                 episodeNumber: nextEpisodeNumber,
-                title: `${nextEpisodeNumber}화`,
+                title: '',
                 client: project?.client,
                 workContent: [],
                 status: 'waiting',
@@ -1266,10 +1401,12 @@ export default function ProjectDetailPage() {
               setEpisodes(prev => [...prev, newEpisode]);
               router.push(`/projects/${projectId}/episodes/${newEpisode.id}`);
             }}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+            data-tour="tour-detail-add-episode"
+            className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm"
           >
             + 회차 추가
           </button>
+          </div>
         </div>
 
         {episodes.length === 0 ? (
@@ -1283,11 +1420,6 @@ export default function ProjectDetailPage() {
               const assignee = allPartners.find(p => p.id === episode.assignee);
               const manager = allPartners.find(p => p.id === episode.manager);
 
-              // 진행률 계산 (workItems 기반)
-              const totalWorkItems = episode.workItems?.length || 0;
-              const completedWorkItems = episode.workItems?.filter(item => item.status === 'completed').length || 0;
-              const progressRate = totalWorkItems > 0 ? Math.round((completedWorkItems / totalWorkItems) * 100) : 0;
-
               // 총 비용 계산
               const totalBudget = episode.budget
                 ? episode.budget.totalAmount
@@ -1295,21 +1427,57 @@ export default function ProjectDetailPage() {
 
               return (
                 <div key={episode.id} className="relative group">
-                  <button
-                    onClick={() => router.push(`/projects/${projectId}/episodes/${episode.id}`)}
-                    className="w-full text-left border border-gray-200 rounded-lg p-4 hover:border-blue-400 hover:bg-blue-50 transition-all"
-                    type="button"
+                  <div
+                    onClick={() => { if (!isEpisodeEditMode) router.push(`/projects/${projectId}/episodes/${episode.id}`); }}
+                    className={`w-full text-left bg-white rounded-xl border border-gray-100 p-4 transition-all ${
+                      isEpisodeEditMode ? 'cursor-default' : 'cursor-pointer hover:border-gray-200 hover:shadow-sm'
+                    }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 space-y-3">
-                      {/* 첫 번째 줄: 회차 번호, 제목, 상태, 작업 개수 */}
+                      {/* 첫 번째 줄: 편 수, 회차 이름, 상태, 작업 개수 */}
                       <div className="flex items-center space-x-3">
-                        <span className="text-lg font-bold text-gray-900">
-                          {episode.episodeNumber}화
-                        </span>
-                        <h3 className="text-base font-semibold text-gray-900">
-                          {episode.title}
-                        </h3>
+                        {isEpisodeEditMode ? (
+                          <>
+                            <div className="flex items-center flex-shrink-0">
+                              <input
+                                type="number"
+                                min={0}
+                                value={editingEpisodes.find(e => e.id === episode.id)?.episodeNumber ?? episode.episodeNumber}
+                                onChange={(e) => {
+                                  const num = e.target.value === '' ? 0 : parseInt(e.target.value);
+                                  if (!isNaN(num)) {
+                                    setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, episodeNumber: num } : ed));
+                                  }
+                                }}
+                                className="w-12 text-lg font-bold text-gray-900 bg-white border border-gray-300 rounded-lg px-2 py-1 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                              <span className="text-lg font-bold text-gray-900 ml-0.5">편</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <input
+                                type="text"
+                                value={editingEpisodes.find(e => e.id === episode.id)?.title ?? episode.title}
+                                placeholder="회차 이름 입력"
+                                onChange={(e) => {
+                                  setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, title: e.target.value } : ed));
+                                }}
+                                className="w-full text-base font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-1 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 placeholder-gray-300"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-lg font-bold text-gray-900">
+                              {episode.episodeNumber === 0 ? '회차 미정' : `${episode.episodeNumber}편`}
+                            </span>
+                            {episode.title && (
+                              <h3 className="text-base font-semibold text-gray-900">
+                                {episode.title}
+                              </h3>
+                            )}
+                          </>
+                        )}
                         <EpisodeStatusBadge status={episode.status} />
                         {episode.workContent.length > 0 && (
                           <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
@@ -1319,70 +1487,152 @@ export default function ProjectDetailPage() {
                       </div>
 
                       {/* 두 번째 줄: 담당자 정보, 날짜, 비용 */}
-                      <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
-                        {/* 담당 파트너 */}
-                        <div className="flex items-center">
-                          <User size={14} className="mr-1.5 text-blue-500" />
-                          <span className="font-medium">{assignee?.name || '미정'}</span>
+                      {isEpisodeEditMode ? (
+                        <div className="flex items-center flex-wrap gap-2 text-sm">
+                          {/* 담당 파트너 */}
+                          {(() => {
+                            const editEp = editingEpisodes.find(e => e.id === episode.id);
+                            const selectedPartner = allPartners.find(p => p.id === editEp?.assignee);
+                            const isOpen = editDropdown?.episodeId === episode.id && editDropdown?.field === 'assignee';
+                            return (
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditDropdown(isOpen ? null : { episodeId: episode.id, field: 'assignee' })}
+                                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:border-orange-400 transition-colors"
+                                >
+                                  <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                                    <User size={10} className="text-orange-500" />
+                                  </div>
+                                  <span className="text-sm font-medium text-gray-900">{selectedPartner?.name || '파트너 선택'}</span>
+                                  <ChevronDown size={14} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                                </button>
+                                {isOpen && (
+                                  <div className="absolute z-50 left-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto">
+                                    {allPartners.map(p => (
+                                      <button
+                                        key={p.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, assignee: p.id } : ed));
+                                          setEditDropdown(null);
+                                        }}
+                                        className={`w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-orange-50 transition-colors text-left ${editEp?.assignee === p.id ? 'bg-orange-50' : ''}`}
+                                      >
+                                        <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                                          <User size={11} className="text-orange-500" />
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-900">{p.name}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                          {/* 담당 매니저 */}
+                          {(() => {
+                            const editEp = editingEpisodes.find(e => e.id === episode.id);
+                            const selectedManager = allPartners.find(p => p.id === editEp?.manager);
+                            const isOpen = editDropdown?.episodeId === episode.id && editDropdown?.field === 'manager';
+                            return (
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditDropdown(isOpen ? null : { episodeId: episode.id, field: 'manager' })}
+                                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:border-orange-400 transition-colors"
+                                >
+                                  <UserCircle size={14} className="text-gray-400 flex-shrink-0" />
+                                  <span className="text-sm font-medium text-gray-900">{selectedManager?.name || '매니저 선택'}</span>
+                                  <ChevronDown size={14} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                                </button>
+                                {isOpen && (
+                                  <div className="absolute z-50 left-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto">
+                                    {allPartners.map(p => (
+                                      <button
+                                        key={p.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, manager: p.id } : ed));
+                                          setEditDropdown(null);
+                                        }}
+                                        className={`w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-orange-50 transition-colors text-left ${editEp?.manager === p.id ? 'bg-orange-50' : ''}`}
+                                      >
+                                        <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                          <UserCircle size={12} className="text-gray-500" />
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-900">{p.name}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                          {/* 시작일 · 마감일 */}
+                          {(() => {
+                            const editEp = editingEpisodes.find(e => e.id === episode.id);
+                            return (
+                              <DateRangePicker
+                                startDate={editEp?.startDate?.split('T')[0] ?? ''}
+                                endDate={editEp?.dueDate?.split('T')[0] ?? ''}
+                                onStartChange={(v) => setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, startDate: v ? new Date(v).toISOString() : '' } : ed))}
+                                onEndChange={(v) => setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, dueDate: v && v !== 'tbd' ? new Date(v).toISOString() : '' } : ed))}
+                              />
+                            );
+                          })()}
                         </div>
-
-                        {/* 담당 매니저 */}
-                        <div className="flex items-center">
-                          <User size={14} className="mr-1.5 text-purple-500" />
-                          <span className="font-medium">{manager?.name || '미정'}</span>
-                        </div>
-
-                        {/* 시작일 */}
-                        <div className="flex items-center">
-                          <Calendar size={14} className="mr-1.5" />
-                          <span>{new Date(episode.startDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}</span>
-                        </div>
-
-                        {/* 마감일 */}
-                        {episode.dueDate && (
+                      ) : (
+                        <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
+                          {/* 담당 파트너 */}
                           <div className="flex items-center">
-                            <span className="text-gray-400 mr-1">→</span>
-                            <span className="text-orange-600 font-medium">
-                              {new Date(episode.dueDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                            </span>
+                            <User size={14} className="mr-1.5 text-orange-500" />
+                            <span className="font-medium">{assignee?.name || '미정'}</span>
                           </div>
-                        )}
 
-                        {/* 완료일 (완료 상태인 경우) */}
-                        {episode.status === 'completed' && episode.endDate && (
+                          {/* 담당 매니저 */}
                           <div className="flex items-center">
-                            <span className="text-green-600 text-xs">
-                              ✓ {new Date(episode.endDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                            </span>
+                            <UserCircle size={14} className="mr-1.5 text-gray-400" />
+                            <span className="font-medium">{manager?.name || '미정'}</span>
                           </div>
-                        )}
 
-                        {/* 비용 */}
-                        {totalBudget > 0 && (
+                          {/* 시작일 */}
                           <div className="flex items-center">
-                            <DollarSign size={14} className="mr-1 text-green-600" />
-                            <span className="font-semibold text-gray-600">
-                              {totalBudget.toLocaleString('ko-KR')}원
-                            </span>
+                            <Calendar size={14} className="mr-1.5" />
+                            <span>{new Date(episode.startDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}</span>
                           </div>
-                        )}
-                      </div>
 
-                      {/* 진행률 바 */}
-                      {totalWorkItems > 0 && (
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-gray-500">진행률</span>
-                            <span className="font-semibold text-blue-600">{progressRate}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${progressRate}%` }}
-                            />
-                          </div>
+                          {/* 마감일 */}
+                          {episode.dueDate && (
+                            <div className="flex items-center">
+                              <span className="text-gray-400 mr-1">→</span>
+                              <span className="text-orange-600 font-medium">
+                                {new Date(episode.dueDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* 완료일 (완료 상태인 경우) */}
+                          {episode.status === 'completed' && episode.endDate && (
+                            <div className="flex items-center">
+                              <span className="text-green-600 text-xs">
+                                ✓ {new Date(episode.endDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* 비용 */}
+                          {totalBudget > 0 && (
+                            <div className="flex items-center">
+                              <DollarSign size={14} className="mr-1 text-green-600" />
+                              <span className="font-semibold text-gray-600">
+                                {totalBudget.toLocaleString('ko-KR')}원
+                              </span>
+                            </div>
+                          )}
                         </div>
                       )}
+
 
                       {/* 작업 내용 배지 */}
                       {episode.workContent.length > 0 && (
@@ -1390,7 +1640,7 @@ export default function ProjectDetailPage() {
                           {episode.workContent.map((work, idx) => (
                             <span
                               key={idx}
-                              className="px-2 py-1 bg-purple-50 text-purple-600 rounded text-xs font-medium"
+                              className="px-2 py-1 bg-orange-50 text-orange-600 rounded text-xs font-medium"
                             >
                               {work}
                             </span>
@@ -1399,9 +1649,11 @@ export default function ProjectDetailPage() {
                       )}
                     </div>
 
-                      <ChevronRight size={20} className="text-gray-400 group-hover:text-blue-500 transition-colors flex-shrink-0 ml-4" />
+                      {!isEpisodeEditMode && (
+                        <ChevronRight size={20} className="text-gray-400 group-hover:text-orange-500 transition-colors flex-shrink-0 ml-4" />
+                      )}
                     </div>
-                  </button>
+                  </div>
 
                   {/* 삭제 버튼 */}
                   <button
@@ -1421,7 +1673,9 @@ export default function ProjectDetailPage() {
         )}
       </div>
       )}
-
+      </motion.div>
+      </AnimatePresence>
+      </div>
 
       {/* 삭제 확인 모달 */}
       {isDeleteModalOpen && (
@@ -1439,7 +1693,7 @@ export default function ProjectDetailPage() {
               <p className="text-gray-600 mb-6">
                 <span className="font-semibold text-gray-900">"{project.title}"</span> 프로젝트를 삭제하시겠습니까?
                 <br />
-                <span className="text-sm text-blue-600">휴지통으로 이동되며, 30일 이내에 복구할 수 있습니다.</span>
+                <span className="text-sm text-orange-600">휴지통으로 이동되며, 30일 이내에 복구할 수 있습니다.</span>
               </p>
               <div className="flex justify-end space-x-3">
                 <button
@@ -1492,42 +1746,42 @@ export default function ProjectDetailPage() {
                     onClick={() => setActiveEditTab('basic')}
                     className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-all relative rounded-t-lg ${
                       activeEditTab === 'basic'
-                        ? 'text-blue-600 bg-gray-50 shadow-sm'
+                        ? 'text-orange-600 bg-gray-50 shadow-sm'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                   >
                     <FileText size={18} />
                     기본 정보
                     {activeEditTab === 'basic' && (
-                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-full" />
                     )}
                   </button>
                   <button
                     onClick={() => setActiveEditTab('workers')}
                     className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-all relative rounded-t-lg ${
                       activeEditTab === 'workers'
-                        ? 'text-blue-600 bg-gray-50 shadow-sm'
+                        ? 'text-orange-600 bg-gray-50 shadow-sm'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                   >
                     <Users size={18} />
                     작업자 정보
                     {activeEditTab === 'workers' && (
-                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-full" />
                     )}
                   </button>
                   <button
                     onClick={() => setActiveEditTab('budget')}
                     className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-all relative rounded-t-lg ${
                       activeEditTab === 'budget'
-                        ? 'text-blue-600 bg-gray-50 shadow-sm'
+                        ? 'text-orange-600 bg-gray-50 shadow-sm'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                   >
                     <DollarSign size={18} />
                     비용 정보
                     {activeEditTab === 'budget' && (
-                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-full" />
                     )}
                   </button>
                 </div>
@@ -1540,7 +1794,7 @@ export default function ProjectDetailPage() {
                     {/* 프로젝트 기본 정보 카드 */}
                     <div className="bg-gray-50 rounded-xl p-5 shadow-sm border border-gray-100">
                       <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <FileText size={18} className="text-blue-600" />
+                        <FileText size={18} className="text-orange-600" />
                         프로젝트 기본
                       </h3>
                       <div className="space-y-4">
@@ -1564,22 +1818,22 @@ export default function ProjectDetailPage() {
                               <button
                                 type="button"
                                 onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                                className={`w-full pl-10 pr-10 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer font-medium text-left ${
-                                  (tempEditedProject.status || project?.status) === 'planning' ? 'border-blue-300 bg-blue-50 text-blue-700' :
+                                className={`w-full pl-10 pr-10 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all cursor-pointer font-medium text-left ${
+                                  (tempEditedProject.status || project?.status) === 'planning' ? 'border-orange-300 bg-orange-50 text-orange-700' :
                                   (tempEditedProject.status || project?.status) === 'in_progress' ? 'border-green-300 bg-green-50 text-green-700' :
                                   (tempEditedProject.status || project?.status) === 'completed' ? 'border-gray-300 bg-gray-50 text-gray-700' :
                                   'border-yellow-300 bg-yellow-50 text-yellow-700'
                                 }`}
                               >
                                 <span className="flex items-center gap-2">
-                                  {(tempEditedProject.status || project?.status) === 'planning' && '기획 중'}
+                                  {(tempEditedProject.status || project?.status) === 'planning' && '시작 전'}
                                   {(tempEditedProject.status || project?.status) === 'in_progress' && '진행 중'}
                                   {(tempEditedProject.status || project?.status) === 'completed' && '완료'}
                                   {(tempEditedProject.status || project?.status) === 'on_hold' && '보류'}
                                 </span>
                               </button>
                               <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                {(tempEditedProject.status || project?.status) === 'planning' && <Clock size={16} className="text-blue-600" />}
+                                {(tempEditedProject.status || project?.status) === 'planning' && <Clock size={16} className="text-orange-600" />}
                                 {(tempEditedProject.status || project?.status) === 'in_progress' && <TrendingUp size={16} className="text-green-600" />}
                                 {(tempEditedProject.status || project?.status) === 'completed' && <CheckCircle2 size={16} className="text-gray-600" />}
                                 {(tempEditedProject.status || project?.status) === 'on_hold' && <Pause size={16} className="text-yellow-600" />}
@@ -1590,7 +1844,7 @@ export default function ProjectDetailPage() {
                               {isStatusDropdownOpen && (
                                 <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl overflow-hidden animate-modal-content">
                                   {[
-                                    { value: 'planning', label: '기획 중', icon: Clock, emoji: '🎯', color: 'blue', desc: '프로젝트 기획 단계' },
+                                    { value: 'planning', label: '시작 전', icon: Clock, emoji: '🎯', color: 'orange', desc: '프로젝트 기획 단계' },
                                     { value: 'in_progress', label: '진행 중', icon: TrendingUp, emoji: '⚡', color: 'green', desc: '현재 작업 진행 중' },
                                     { value: 'completed', label: '완료', icon: CheckCircle2, emoji: '✅', color: 'gray', desc: '프로젝트 완료됨' },
                                     { value: 'on_hold', label: '보류', icon: Pause, emoji: '⏸️', color: 'yellow', desc: '일시적으로 중단' }
@@ -1613,7 +1867,7 @@ export default function ProjectDetailPage() {
                                         <div className="flex-1 text-left">
                                           <div className="flex items-center gap-2">
                                             <span className="text-sm font-semibold text-gray-900">{status.label}</span>
-                                            {isSelected && <CheckCircle2 size={14} className="text-blue-600" />}
+                                            {isSelected && <CheckCircle2 size={14} className="text-orange-600" />}
                                           </div>
                                           <p className="text-xs text-gray-500 mt-0.5">{status.desc}</p>
                                         </div>
@@ -1635,7 +1889,7 @@ export default function ProjectDetailPage() {
                               <button
                                 type="button"
                                 onClick={() => setIsClientDropdownOpen(!isClientDropdownOpen)}
-                                className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-300 bg-gray-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all cursor-pointer font-medium text-gray-700 hover:border-gray-400 text-left"
+                                className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-300 bg-gray-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white transition-all cursor-pointer font-medium text-gray-700 hover:border-gray-400 text-left"
                               >
                                 {tempSelectedClient || '클라이언트를 선택하세요'}
                               </button>
@@ -1668,17 +1922,17 @@ export default function ProjectDetailPage() {
                                           setTempSelectedClient(client.name);
                                           setIsClientDropdownOpen(false);
                                         }}
-                                        className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-blue-50 transition-colors border-l-4 ${
-                                          isSelected ? 'bg-blue-50 border-blue-500' : 'border-transparent'
+                                        className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-orange-50 transition-colors border-l-4 ${
+                                          isSelected ? 'bg-orange-50 border-orange-500' : 'border-transparent'
                                         }`}
                                       >
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
-                                          {client.name.charAt(0)}
+                                        <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                                          <Building2 size={15} className="text-orange-500" />
                                         </div>
                                         <div className="flex-1 text-left">
                                           <div className="flex items-center gap-2">
                                             <span className="text-sm font-semibold text-gray-900">{client.name}</span>
-                                            {isSelected && <CheckCircle2 size={14} className="text-blue-600" />}
+                                            {isSelected && <CheckCircle2 size={14} className="text-orange-600" />}
                                           </div>
                                         </div>
                                       </button>
@@ -1698,7 +1952,7 @@ export default function ProjectDetailPage() {
                           <textarea
                             value={tempEditedProject.description || ''}
                             onChange={(e) => setTempEditedProject({ ...tempEditedProject, description: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[100px] transition-shadow resize-none"
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent min-h-[100px] transition-shadow resize-none"
                             placeholder="프로젝트에 대한 설명을 입력하세요"
                           />
                         </div>
@@ -1708,103 +1962,208 @@ export default function ProjectDetailPage() {
                     {/* 분류 및 작업 카드 */}
                     <div className="bg-gray-50 rounded-xl p-5 shadow-sm border border-gray-100">
                       <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <Tag size={18} className="text-blue-600" />
+                        <Tag size={18} className="text-orange-600" />
                         분류 및 작업
                       </h3>
                       <div className="space-y-4">
-                        {/* 분류 */}
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">
-                            분류 <span className="text-gray-400 text-xs">(선택)</span>
-                          </label>
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white flex items-center justify-between"
-                            >
-                              <span className={tempSelectedCategory ? 'text-gray-900' : 'text-gray-500'}>
-                                {tempSelectedCategory || '선택하세요'}
-                              </span>
-                              <ChevronDown size={16} className="text-gray-400" />
-                            </button>
-                            {isCategoryDropdownOpen && (
-                              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setTempSelectedCategory('');
-                                    setIsCategoryDropdownOpen(false);
-                                  }}
-                                  className={`w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors ${
-                                    tempSelectedCategory === '' ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
-                                  }`}
-                                >
-                                  선택하세요
-                                </button>
-                                {['예능', '교양', '쇼양', '스케치', '모션그래픽'].map((category) => (
+                        {/* 분류 + 상영 채널 */}
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* 분류 */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                              <Tag size={14} className="text-gray-500" />
+                              분류 <span className="text-gray-400 text-xs">(선택)</span>
+                            </label>
+                            <div className="relative" ref={categoryDropdownRef}>
+                              <button
+                                type="button"
+                                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                                className={`w-full pl-10 pr-10 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all cursor-pointer font-medium text-left ${
+                                  tempSelectedCategory ? 'border-orange-300 bg-orange-50 text-orange-700' : 'border-gray-300 bg-white text-gray-500'
+                                }`}
+                              >
+                                <span>{tempSelectedCategory || '선택하세요'}</span>
+                              </button>
+                              <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <Palette size={16} className={tempSelectedCategory ? 'text-orange-600' : 'text-gray-400'} />
+                              </div>
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <ChevronRight size={16} className={`text-gray-500 transition-transform ${isCategoryDropdownOpen ? 'rotate-90' : 'rotate-0'}`} />
+                              </div>
+                              {isCategoryDropdownOpen && (
+                                <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl overflow-hidden animate-modal-content">
                                   <button
-                                    key={category}
                                     type="button"
                                     onClick={() => {
-                                      setTempSelectedCategory(category);
+                                      setTempSelectedCategory('');
                                       setIsCategoryDropdownOpen(false);
                                     }}
-                                    className={`w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors ${
-                                      tempSelectedCategory === category ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                                    className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors border-l-4 ${
+                                      tempSelectedCategory === '' ? 'bg-gray-50 border-gray-400' : 'border-transparent'
                                     }`}
                                   >
-                                    {category}
+                                    <X size={16} className="text-gray-400 flex-shrink-0" />
+                                    <span className="text-sm font-medium text-gray-500">선택 안 함</span>
                                   </button>
-                                ))}
+                                  {[
+                                    { value: '예능', desc: '예능 프로그램 콘텐츠' },
+                                    { value: '교양', desc: '교양/다큐 콘텐츠' },
+                                    { value: '쇼양', desc: '쇼+교양 콘텐츠' },
+                                    { value: '스케치', desc: '스케치/현장 콘텐츠' },
+                                    { value: '모션그래픽', desc: '모션그래픽 콘텐츠' },
+                                  ].map((category) => {
+                                    const isSelected = tempSelectedCategory === category.value;
+                                    return (
+                                      <button
+                                        key={category.value}
+                                        type="button"
+                                        onClick={() => {
+                                          setTempSelectedCategory(category.value);
+                                          setIsCategoryDropdownOpen(false);
+                                        }}
+                                        className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-orange-50 transition-colors border-l-4 ${
+                                          isSelected ? 'bg-orange-50 border-orange-500' : 'border-transparent'
+                                        }`}
+                                      >
+                                        <Palette size={16} className={`flex-shrink-0 ${isSelected ? 'text-orange-600' : 'text-gray-400'}`} />
+                                        <div className="flex-1 text-left">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-sm font-semibold text-gray-900">{category.value}</span>
+                                            {isSelected && <CheckCircle2 size={14} className="text-orange-600" />}
+                                          </div>
+                                          <p className="text-xs text-gray-500 mt-0.5">{category.desc}</p>
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 상영 채널 */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                              <Tv size={14} className="text-gray-500" />
+                              상영 채널 <span className="text-gray-400 text-xs">(복수 선택)</span>
+                            </label>
+                            <div className="relative" ref={channelDropdownRef}>
+                              <button
+                                type="button"
+                                onClick={() => setIsChannelDropdownOpen(!isChannelDropdownOpen)}
+                                className={`w-full pl-10 pr-10 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all cursor-pointer font-medium text-left ${
+                                  tempChannels.length > 0 ? 'border-purple-300 bg-purple-50 text-purple-700' : 'border-gray-300 bg-white text-gray-500'
+                                }`}
+                              >
+                                <span className="truncate block">{tempChannels.length > 0 ? tempChannels.join(', ') : '선택하세요'}</span>
+                              </button>
+                              <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <Tv size={16} className={tempChannels.length > 0 ? 'text-purple-600' : 'text-gray-400'} />
                               </div>
-                            )}
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <ChevronRight size={16} className={`text-gray-500 transition-transform ${isChannelDropdownOpen ? 'rotate-90' : 'rotate-0'}`} />
+                              </div>
+                              {isChannelDropdownOpen && (
+                                <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl overflow-hidden animate-modal-content">
+                                  {[
+                                    { value: '유튜브', icon: Youtube, desc: 'YouTube 채널' },
+                                    { value: '레거시 미디어', icon: Monitor, desc: 'TV/방송 미디어' },
+                                    { value: '인스타', icon: Camera, desc: 'Instagram 릴스/피드' },
+                                  ].map((channel) => {
+                                    const Icon = channel.icon;
+                                    const isSelected = tempChannels.includes(channel.value);
+                                    return (
+                                      <button
+                                        key={channel.value}
+                                        type="button"
+                                        onClick={() => {
+                                          if (isSelected) {
+                                            setTempChannels(tempChannels.filter(c => c !== channel.value));
+                                          } else {
+                                            setTempChannels([...tempChannels, channel.value]);
+                                          }
+                                        }}
+                                        className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-purple-50 transition-colors border-l-4 ${
+                                          isSelected ? 'bg-purple-50 border-purple-500' : 'border-transparent'
+                                        }`}
+                                      >
+                                        <Icon size={16} className={`flex-shrink-0 ${isSelected ? 'text-purple-600' : 'text-gray-400'}`} />
+                                        <div className="flex-1 text-left">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-sm font-semibold text-gray-900">{channel.value}</span>
+                                            {isSelected && <CheckCircle2 size={14} className="text-purple-600" />}
+                                          </div>
+                                          <p className="text-xs text-gray-500 mt-0.5">{channel.desc}</p>
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
 
                         {/* 작업 내용 */}
                         <div>
-                          <label className="text-sm font-medium text-gray-700 mb-3 block">
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                            <Video size={14} className="text-gray-500" />
                             작업 내용 <span className="text-gray-400 text-xs">(복수 선택)</span>
                           </label>
-                          <div className="grid grid-cols-2 gap-3">
-                            {(['롱폼', '기획 숏폼', '본편 숏폼', '썸네일'] as const).map((workType) => {
-                              const icons = {
-                                '롱폼': <Video size={16} />,
-                                '기획 숏폼': <Video size={16} />,
-                                '본편 숏폼': <Video size={16} />,
-                                '썸네일': <Image size={16} />
-                              };
-                              return (
-                                <label
-                                  key={workType}
-                                  className={`flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                                    tempWorkContent.includes(workType)
-                                      ? 'border-blue-500 bg-blue-50'
-                                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={tempWorkContent.includes(workType)}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setTempWorkContent([...tempWorkContent, workType]);
-                                      } else {
-                                        setTempWorkContent(tempWorkContent.filter(w => w !== workType));
-                                      }
-                                    }}
-                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                  />
-                                  <span className={tempWorkContent.includes(workType) ? 'text-gray-600' : 'text-gray-700'}>
-                                    {icons[workType]}
-                                  </span>
-                                  <span className={`text-sm font-medium ${tempWorkContent.includes(workType) ? 'text-gray-600' : 'text-gray-700'}`}>
-                                    {workType}
-                                  </span>
-                                </label>
-                              );
-                            })}
+                          <div className="relative" ref={workContentDropdownRef}>
+                            <button
+                              type="button"
+                              onClick={() => setIsWorkContentDropdownOpen(!isWorkContentDropdownOpen)}
+                              className={`w-full pl-10 pr-10 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all cursor-pointer font-medium text-left ${
+                                tempWorkContent.length > 0 ? 'border-green-300 bg-green-50 text-green-700' : 'border-gray-300 bg-white text-gray-500'
+                              }`}
+                            >
+                              <span>{tempWorkContent.length > 0 ? tempWorkContent.join(', ') : '선택하세요'}</span>
+                            </button>
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                              <ClipboardCheck size={16} className={tempWorkContent.length > 0 ? 'text-green-600' : 'text-gray-400'} />
+                            </div>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                              <ChevronRight size={16} className={`text-gray-500 transition-transform ${isWorkContentDropdownOpen ? 'rotate-90' : 'rotate-0'}`} />
+                            </div>
+                            {isWorkContentDropdownOpen && (
+                              <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl overflow-hidden animate-modal-content">
+                                {[
+                                  { value: '롱폼' as const, icon: Video, desc: '롱폼 영상 편집' },
+                                  { value: '기획 숏폼' as const, icon: Video, desc: '기획 숏폼 영상 편집' },
+                                  { value: '본편 숏폼' as const, icon: Video, desc: '본편 기반 숏폼 편집' },
+                                  { value: '썸네일' as const, icon: Image, desc: '썸네일 디자인' },
+                                ].map((work) => {
+                                  const Icon = work.icon;
+                                  const isSelected = tempWorkContent.includes(work.value);
+                                  return (
+                                    <button
+                                      key={work.value}
+                                      type="button"
+                                      onClick={() => {
+                                        if (isSelected) {
+                                          setTempWorkContent(tempWorkContent.filter(w => w !== work.value));
+                                        } else {
+                                          setTempWorkContent([...tempWorkContent, work.value]);
+                                        }
+                                      }}
+                                      className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-green-50 transition-colors border-l-4 ${
+                                        isSelected ? 'bg-green-50 border-green-500' : 'border-transparent'
+                                      }`}
+                                    >
+                                      <Icon size={16} className={`flex-shrink-0 ${isSelected ? 'text-green-600' : 'text-gray-400'}`} />
+                                      <div className="flex-1 text-left">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-sm font-semibold text-gray-900">{work.value}</span>
+                                          {isSelected && <CheckCircle2 size={14} className="text-green-600" />}
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-0.5">{work.desc}</p>
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1817,7 +2176,7 @@ export default function ProjectDetailPage() {
                     {/* 매니저 카드 */}
                     <div className="bg-gray-50 rounded-xl p-5 shadow-sm border border-gray-100">
                       <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <UserCircle size={18} className="text-purple-600" />
+                        <UserCircle size={18} className="text-orange-600" />
                         매니저 <span className="text-gray-400 text-xs font-normal">(선택)</span>
                       </h3>
                       <div className="space-y-3">
@@ -1831,13 +2190,13 @@ export default function ProjectDetailPage() {
                             {tempManagerIds.map((managerId) => {
                               const manager = allPartners.find(p => p.id === managerId);
                               return manager ? (
-                                <div key={managerId} className="flex items-center gap-3 p-3 bg-gradient-to-r from-purple-50 to-purple-25 border border-purple-100 rounded-lg group hover:shadow-md transition-all">
-                                  <div className="flex-shrink-0 w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-semibold shadow-sm">
+                                <div key={managerId} className="flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-orange-25 border border-orange-100 rounded-lg group hover:shadow-md transition-all">
+                                  <div className="flex-shrink-0 w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center text-white font-semibold shadow-sm">
                                     {manager.name.charAt(0)}
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-gray-900 truncate">{manager.name}</p>
-                                    <p className="text-xs text-purple-600 font-medium">매니저</p>
+                                    <p className="text-xs text-orange-600 font-medium">매니저</p>
                                   </div>
                                   <button
                                     onClick={() => setTempManagerIds(tempManagerIds.filter(id => id !== managerId))}
@@ -1854,18 +2213,18 @@ export default function ProjectDetailPage() {
                           <button
                             type="button"
                             onClick={() => setIsManagerDropdownOpen(!isManagerDropdownOpen)}
-                            className="w-full pl-10 pr-10 py-2.5 border-2 border-purple-300 bg-purple-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:bg-white transition-all cursor-pointer font-medium text-purple-700 hover:border-purple-400 text-left"
+                            className="w-full pl-10 pr-10 py-2.5 border-2 border-orange-300 bg-orange-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white transition-all cursor-pointer font-medium text-orange-700 hover:border-orange-400 text-left"
                           >
                             + 매니저 추가
                           </button>
                           <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                            <UserCircle size={16} className="text-purple-600" />
+                            <UserCircle size={16} className="text-orange-600" />
                           </div>
                           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                            <ChevronRight size={16} className={`text-purple-600 transition-transform ${isManagerDropdownOpen ? 'rotate-90' : 'rotate-0'}`} />
+                            <ChevronRight size={16} className={`text-orange-600 transition-transform ${isManagerDropdownOpen ? 'rotate-90' : 'rotate-0'}`} />
                           </div>
                           {isManagerDropdownOpen && allPartners.filter(p => !tempManagerIds.includes(p.id)).length > 0 && (
-                            <div className="absolute z-50 w-full mt-2 bg-white border-2 border-purple-200 rounded-xl shadow-xl max-h-64 overflow-y-auto animate-modal-content">
+                            <div className="absolute z-50 w-full mt-2 bg-white border-2 border-orange-200 rounded-xl shadow-xl max-h-64 overflow-y-auto animate-modal-content">
                               {allPartners.filter(p => !tempManagerIds.includes(p.id)).map((manager) => (
                                 <button
                                   key={manager.id}
@@ -1874,9 +2233,9 @@ export default function ProjectDetailPage() {
                                     setTempManagerIds([...tempManagerIds, manager.id]);
                                     setIsManagerDropdownOpen(false);
                                   }}
-                                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-purple-50 transition-colors border-l-4 border-transparent text-left"
+                                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-orange-50 transition-colors border-l-4 border-transparent text-left"
                                 >
-                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
+                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
                                     {manager.name.charAt(0)}
                                   </div>
                                   <div className="flex-1">
@@ -1908,8 +2267,8 @@ export default function ProjectDetailPage() {
                               const partner = allPartners.find(p => p.id === partnerId);
                               return partner ? (
                                 <div key={partnerId} className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-green-25 border border-green-100 rounded-lg group hover:shadow-md transition-all">
-                                  <div className="flex-shrink-0 w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white font-semibold shadow-sm">
-                                    {partner.name.charAt(0)}
+                                  <div className="flex-shrink-0 w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                                    <User size={20} className="text-orange-500" />
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-gray-900 truncate">{partner.name}</p>
@@ -1952,8 +2311,8 @@ export default function ProjectDetailPage() {
                                   }}
                                   className="w-full px-4 py-3 flex items-center gap-3 hover:bg-green-50 transition-colors border-l-4 border-transparent text-left"
                                 >
-                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
-                                    {partner.name.charAt(0)}
+                                  <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                                    <User size={16} className="text-orange-500" />
                                   </div>
                                   <div className="flex-1">
                                     <span className="text-sm font-semibold text-gray-900">{partner.name}</span>
@@ -1971,28 +2330,28 @@ export default function ProjectDetailPage() {
                 {activeEditTab === 'budget' && (
                   <div className="space-y-5">
                     {/* 전체 비용 카드 */}
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100/80 rounded-xl p-6 shadow-sm border-2 border-blue-200">
+                    <div className="bg-gradient-to-br from-orange-50 to-orange-100/80 rounded-xl p-6 shadow-sm border-2 border-orange-200">
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-semibold text-blue-700">프로젝트 총 비용</h3>
-                        <DollarSign size={24} className="text-blue-500" />
+                        <h3 className="text-sm font-semibold text-orange-700">프로젝트 총 비용</h3>
+                        <DollarSign size={24} className="text-orange-500" />
                       </div>
                       <div className="relative">
                         <input
                           type="text"
                           value={formatCurrency(tempTotalAmount)}
                           onChange={(e) => updateTempTotalAmount(e.target.value)}
-                          className="w-full px-4 py-3 pr-16 text-3xl font-bold bg-gray-50 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400 transition-all"
+                          className="w-full px-4 py-3 pr-16 text-3xl font-bold bg-gray-50 border-2 border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-400 transition-all"
                           placeholder="0"
                         />
                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 font-medium">원</span>
                       </div>
-                      <p className="text-xs text-blue-600 mt-2">아래 작업별 비용의 합계와 다를 수 있습니다</p>
+                      <p className="text-xs text-orange-600 mt-2">아래 작업별 비용의 합계와 다를 수 있습니다</p>
                     </div>
 
                     {/* 작업별 비용 */}
                     <div className="bg-gray-50 rounded-xl p-5 shadow-sm border border-gray-100">
                       <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <Tag size={18} className="text-blue-600" />
+                        <Tag size={18} className="text-orange-600" />
                         작업별 비용 <span className="text-gray-400 text-xs font-normal">(선택)</span>
                       </h3>
                       <div className="grid grid-cols-2 gap-4">
@@ -2015,7 +2374,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['롱폼'].partnerCost)}
                                   onChange={(e) => updateTempWorkTypeCost('롱폼', 'partnerCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2028,7 +2387,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['롱폼'].managementCost)}
                                   onChange={(e) => updateTempWorkTypeCost('롱폼', 'managementCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2064,7 +2423,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['기획 숏폼'].partnerCost)}
                                   onChange={(e) => updateTempWorkTypeCost('기획 숏폼', 'partnerCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2077,7 +2436,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['기획 숏폼'].managementCost)}
                                   onChange={(e) => updateTempWorkTypeCost('기획 숏폼', 'managementCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2113,7 +2472,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['본편 숏폼'].partnerCost)}
                                   onChange={(e) => updateTempWorkTypeCost('본편 숏폼', 'partnerCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2126,7 +2485,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['본편 숏폼'].managementCost)}
                                   onChange={(e) => updateTempWorkTypeCost('본편 숏폼', 'managementCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2162,7 +2521,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['썸네일'].partnerCost)}
                                   onChange={(e) => updateTempWorkTypeCost('썸네일', 'partnerCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2175,7 +2534,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['썸네일'].managementCost)}
                                   onChange={(e) => updateTempWorkTypeCost('썸네일', 'managementCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2208,7 +2567,7 @@ export default function ProjectDetailPage() {
                 <button
                   onClick={saveProjectEditModal}
                   disabled={isSavingProject}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSavingProject ? '저장 중...' : '저장'}
                 </button>
@@ -2234,7 +2593,7 @@ export default function ProjectDetailPage() {
               <p className="text-gray-600 mb-6">
                 <span className="font-semibold text-gray-900">"{episodes.find(ep => ep.id === deleteEpisodeId)?.title}"</span>을(를) 삭제하시겠습니까?
                 <br />
-                <span className="text-sm text-blue-600">휴지통으로 이동되며, 30일 이내에 복구할 수 있습니다.</span>
+                <span className="text-sm text-orange-600">휴지통으로 이동되며, 30일 이내에 복구할 수 있습니다.</span>
               </p>
               <div className="flex justify-end space-x-3">
                 <button
@@ -2267,7 +2626,7 @@ export default function ProjectDetailPage() {
         }}
       />}
 
-      {/* 에피소드 상세 모달 */}
+      {/* 회차 상세 모달 */}
       {selectedEpisodeForDetail && (
         <EpisodeDetailModal
           episode={selectedEpisodeForDetail}
@@ -2319,7 +2678,7 @@ export default function ProjectDetailPage() {
 // 상태 배지 컴포넌트
 function StatusBadge({ status }: { status: string }) {
   const statusMap: Record<string, { label: string; color: string; bgColor: string }> = {
-    planning: { label: '기획 중', color: 'text-gray-600', bgColor: 'bg-blue-100' },
+    planning: { label: '시작 전', color: 'text-gray-600', bgColor: 'bg-orange-100' },
     in_progress: { label: '진행 중', color: 'text-gray-600', bgColor: 'bg-green-100' },
     completed: { label: '완료', color: 'text-gray-700', bgColor: 'bg-gray-100' },
     on_hold: { label: '보류', color: 'text-gray-600', bgColor: 'bg-orange-100' },
@@ -2334,11 +2693,11 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// 에피소드 상태 배지 컴포넌트
+// 회차 상태 배지 컴포넌트
 function EpisodeStatusBadge({ status }: { status: string }) {
   const statusMap: Record<string, { label: string; color: string; bgColor: string }> = {
     waiting: { label: '대기', color: 'text-gray-700', bgColor: 'bg-gray-100' },
-    in_progress: { label: '진행 중', color: 'text-gray-600', bgColor: 'bg-blue-100' },
+    in_progress: { label: '진행 중', color: 'text-gray-600', bgColor: 'bg-orange-100' },
     review: { label: '검토', color: 'text-yellow-700', bgColor: 'bg-yellow-100' },
     completed: { label: '완료', color: 'text-gray-600', bgColor: 'bg-green-100' },
   };

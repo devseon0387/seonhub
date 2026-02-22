@@ -115,9 +115,9 @@ export default function SettingsPage() {
       <div className="space-y-6">
         {/* 디자인 시스템 */}
         <Link href="/settings/design/components">
-          <div className="bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-200/50 rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer">
+          <div className="bg-gradient-to-br from-orange-50 to-orange-50 border-2 border-orange-200/50 rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-purple-500 rounded-lg">
+              <div className="p-2 bg-orange-500 rounded-lg">
                 <Palette className="text-white" size={24} />
               </div>
               <h2 className="text-xl font-semibold text-gray-900">디자인 시스템</h2>
@@ -164,7 +164,7 @@ export default function SettingsPage() {
               <button
                 onClick={handleSaveProfile}
                 disabled={profileLoading}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
+                className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
               >
                 {profileLoading ? '저장 중...' : '저장'}
               </button>
@@ -204,7 +204,7 @@ export default function SettingsPage() {
               <button
                 onClick={handleChangePassword}
                 disabled={passwordLoading}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
+                className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
               >
                 {passwordLoading ? '변경 중...' : '비밀번호 변경'}
               </button>
@@ -225,7 +225,7 @@ export default function SettingsPage() {
                 type="checkbox"
                 checked={notifNewProject}
                 onChange={(e) => setNotifNewProject(e.target.checked)}
-                className="w-5 h-5 text-blue-500"
+                className="w-5 h-5 text-orange-500"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -237,7 +237,7 @@ export default function SettingsPage() {
                 type="checkbox"
                 checked={notifNewPartner}
                 onChange={(e) => setNotifNewPartner(e.target.checked)}
-                className="w-5 h-5 text-blue-500"
+                className="w-5 h-5 text-orange-500"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -249,7 +249,7 @@ export default function SettingsPage() {
                 type="checkbox"
                 checked={notifProjectDone}
                 onChange={(e) => setNotifProjectDone(e.target.checked)}
-                className="w-5 h-5 text-blue-500"
+                className="w-5 h-5 text-orange-500"
               />
             </div>
             {notifMsg && (
@@ -261,7 +261,7 @@ export default function SettingsPage() {
             <div>
               <button
                 onClick={handleSaveNotifications}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
               >
                 저장
               </button>

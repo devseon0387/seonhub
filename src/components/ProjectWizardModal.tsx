@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/contexts/ToastContext';
-import { X, ChevronRight, ChevronLeft, ChevronDown, Check, Sparkles, Building2, Zap, Briefcase, Film, CheckCircle, Youtube, Camera, BookOpen, MoreHorizontal, Users } from 'lucide-react';
-import { FloatingLabelInput, FloatingLabelTextarea } from '@/components/FloatingLabelInput';
+import { X, ChevronRight, ChevronLeft, ChevronDown, Check, Sparkles, Building2, Zap, Briefcase, Film, CheckCircle, Youtube, Camera, BookOpen, MoreHorizontal, Users, User, Search } from 'lucide-react';
+import { FloatingLabelInput } from '@/components/FloatingLabelInput';
 import DateRangePicker from '@/components/DateRangePicker';
 import { Client, Partner } from '@/types';
 
@@ -37,6 +37,14 @@ interface WizardData {
     dates?: Array<{ startDate: string; endDate: string }>;
   };
 }
+
+const CATEGORIES = [
+  { label: '유튜브', icon: Youtube, color: 'text-red-500', bg: 'bg-red-50' },
+  { label: '브이로그', icon: Camera, color: 'text-orange-500', bg: 'bg-orange-50' },
+  { label: '기업 홍보', icon: Building2, color: 'text-orange-500', bg: 'bg-orange-50' },
+  { label: '교육', icon: BookOpen, color: 'text-green-500', bg: 'bg-green-50' },
+  { label: '기타', icon: MoreHorizontal, color: 'text-gray-500', bg: 'bg-gray-100' },
+];
 
 const stepVariants = {
   enter: (direction: number) => ({
@@ -100,6 +108,43 @@ export default function ProjectWizardModal({
   // 드롭다운 상태
   const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [isPartnerDropdownOpen, setIsPartnerDropdownOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+  const [partnerSearch, setPartnerSearch] = useState('');
+  const clientDropdownRef = useRef<HTMLButtonElement>(null);
+  const [clientDropdownPos, setClientDropdownPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
+  const [clientDropdownTarget, setClientDropdownTarget] = useState<'step2' | 'projectOnly'>('step2');
+  const categoryDropdownRef = useRef<HTMLButtonElement>(null);
+  const [categoryDropdownPos, setCategoryDropdownPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
+  const partnerDropdownRef = useRef<HTMLButtonElement>(null);
+  const [partnerDropdownPos, setPartnerDropdownPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
+
+  const openClientDropdown = useCallback((target: 'step2' | 'projectOnly') => {
+    if (clientDropdownRef.current) {
+      const rect = clientDropdownRef.current.getBoundingClientRect();
+      setClientDropdownPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+    }
+    setClientDropdownTarget(target);
+    setIsClientDropdownOpen(true);
+    setClientSearch('');
+  }, []);
+
+  const openCategoryDropdown = useCallback(() => {
+    if (categoryDropdownRef.current) {
+      const rect = categoryDropdownRef.current.getBoundingClientRect();
+      setCategoryDropdownPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+    }
+    setIsCategoryDropdownOpen(true);
+  }, []);
+
+  const openPartnerDropdown = useCallback(() => {
+    if (partnerDropdownRef.current) {
+      const rect = partnerDropdownRef.current.getBoundingClientRect();
+      setPartnerDropdownPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+    }
+    setIsPartnerDropdownOpen(true);
+    setPartnerSearch('');
+  }, []);
 
   const showToast = (message: string) => warning(message);
 
@@ -131,10 +176,14 @@ export default function ProjectWizardModal({
         showToast('클라이언트 이름을 입력해주세요.');
         return;
       }
+      // 기존 클라이언트 선택 시 프로젝트 폼 자동 활성화
+      if (clientOption === 'existing') {
+        setAddProjectNow(true);
+      }
     }
 
     if (currentStep === 3) {
-      if (addProjectNow === null) {
+      if (clientOption !== 'existing' && addProjectNow === null) {
         showToast('프로젝트 추가 여부를 선택해주세요.');
         return;
       }
@@ -211,6 +260,7 @@ export default function ProjectWizardModal({
 
 
   return (
+    <>
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -234,7 +284,7 @@ export default function ProjectWizardModal({
             onClick={(e) => e.stopPropagation()}
           >
             {/* 타임라인 헤더 */}
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 px-8 py-6">
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
                   <Sparkles className="text-white" size={24} />
@@ -256,10 +306,10 @@ export default function ProjectWizardModal({
                       <motion.div
                         className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors ${
                           currentStep > step.number
-                            ? 'bg-white text-blue-600'
+                            ? 'bg-white text-orange-600'
                             : currentStep === step.number
-                            ? 'bg-white text-blue-600'
-                            : 'bg-blue-400/30 text-white'
+                            ? 'bg-white text-orange-600'
+                            : 'bg-orange-400/30 text-white'
                         }`}
                         animate={
                           currentStep === step.number
@@ -282,14 +332,14 @@ export default function ProjectWizardModal({
                       </motion.div>
                       <span
                         className={`text-xs mt-2 font-medium transition-colors ${
-                          currentStep >= step.number ? 'text-white' : 'text-blue-200'
+                          currentStep >= step.number ? 'text-white' : 'text-orange-200'
                         }`}
                       >
                         {step.label}
                       </span>
                     </div>
                     {index < steps.length - 1 && (
-                      <div className="flex-1 h-1 mx-2 rounded-full bg-blue-400/30 overflow-hidden">
+                      <div className="flex-1 h-1 mx-2 rounded-full bg-orange-400/30 overflow-hidden">
                         <motion.div
                           className="h-full bg-white rounded-full"
                           initial={false}
@@ -328,14 +378,14 @@ export default function ProjectWizardModal({
                           onClick={() => setStartType('with-client')}
                           className={`w-full p-6 rounded-xl border-2 transition-colors text-left ${
                             startType === 'with-client'
-                              ? 'border-blue-500 bg-white'
-                              : 'border-gray-200 hover:border-blue-300'
+                              ? 'border-orange-500 bg-white'
+                              : 'border-gray-200 hover:border-orange-300'
                           }`}
                           whileTap={{ scale: 0.99 }}
                         >
                           <div className="flex items-start gap-4">
                             <motion.div
-                              className={`p-3 rounded-lg transition-colors ${startType === 'with-client' ? 'bg-blue-500' : 'bg-gray-100'}`}
+                              className={`p-3 rounded-lg transition-colors ${startType === 'with-client' ? 'bg-orange-500' : 'bg-gray-100'}`}
                               animate={{ scale: startType === 'with-client' ? 1.08 : 1 }}
                               transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                             >
@@ -353,7 +403,7 @@ export default function ProjectWizardModal({
                                   exit={{ scale: 0, opacity: 0 }}
                                   transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                                 >
-                                  <CheckCircle className="text-blue-500" size={24} />
+                                  <CheckCircle className="text-orange-500" size={24} />
                                 </motion.div>
                               )}
                             </AnimatePresence>
@@ -363,8 +413,8 @@ export default function ProjectWizardModal({
                         <div
                           className={`rounded-xl border-2 transition-colors ${
                             startType === 'project-only'
-                              ? 'border-blue-500 bg-white'
-                              : 'border-gray-200 hover:border-blue-300'
+                              ? 'border-orange-500 bg-white'
+                              : 'border-gray-200 hover:border-orange-300'
                           }`}
                         >
                           <motion.button
@@ -374,7 +424,7 @@ export default function ProjectWizardModal({
                           >
                             <div className="flex items-start gap-4">
                               <motion.div
-                                className={`p-3 rounded-lg transition-colors ${startType === 'project-only' ? 'bg-blue-500' : 'bg-gray-100'}`}
+                                className={`p-3 rounded-lg transition-colors ${startType === 'project-only' ? 'bg-orange-500' : 'bg-gray-100'}`}
                                 animate={{ scale: startType === 'project-only' ? 1.08 : 1 }}
                                 transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                               >
@@ -392,7 +442,7 @@ export default function ProjectWizardModal({
                                     exit={{ scale: 0, opacity: 0 }}
                                     transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                                   >
-                                    <CheckCircle className="text-blue-500" size={24} />
+                                    <CheckCircle className="text-orange-500" size={24} />
                                   </motion.div>
                                 )}
                               </AnimatePresence>
@@ -410,45 +460,37 @@ export default function ProjectWizardModal({
                                 className="overflow-hidden"
                               >
                                 <div className="px-6 pb-5 pt-0" onClick={(e) => e.stopPropagation()}>
-                                  <div className="border-t border-blue-200 pt-4">
-                                    <p className="text-xs text-blue-600 font-medium mb-2">기존 클라이언트 연결 (선택사항)</p>
-                                    <div className="border border-blue-100 rounded-xl bg-white overflow-hidden">
-                                      {clients.length === 0 ? (
-                                        <div className="px-4 py-3 text-sm text-gray-400 text-center">등록된 클라이언트가 없습니다</div>
-                                      ) : (
-                                        <div className="max-h-40 overflow-y-auto">
-                                          {projectOnlyClientId && (
-                                            <button
-                                              type="button"
-                                              onClick={() => setProjectOnlyClientId('')}
-                                              className="w-full px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2 text-left text-sm text-gray-400 border-b border-gray-100 transition-colors"
-                                            >
-                                              선택 안 함
-                                            </button>
-                                          )}
-                                          {clients.map((client) => (
-                                            <button
-                                              key={client.id}
-                                              type="button"
-                                              onClick={() => setProjectOnlyClientId(client.id)}
-                                              className={`w-full px-4 py-2.5 flex items-center gap-3 text-left text-sm transition-colors ${
-                                                projectOnlyClientId === client.id
-                                                  ? 'bg-blue-50 text-blue-700'
-                                                  : 'hover:bg-gray-50 text-gray-900'
-                                              }`}
-                                            >
-                                              <div className="w-7 h-7 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-                                                {client.name.charAt(0)}
-                                              </div>
-                                              <span className="font-medium">{client.name}</span>
-                                              {projectOnlyClientId === client.id && (
-                                                <Check size={15} className="ml-auto text-blue-500 flex-shrink-0" />
-                                              )}
-                                            </button>
-                                          ))}
+                                  <div className="border-t border-orange-200 pt-4">
+                                    <p className="text-xs text-orange-600 font-medium mb-2">기존 클라이언트 연결 (선택사항)</p>
+                                    {/* 선택된 클라이언트 칩 */}
+                                    {projectOnlyClientId && (() => {
+                                      const c = clients.find(cl => cl.id === projectOnlyClientId);
+                                      return c ? (
+                                        <div className="mb-2">
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-medium border border-orange-200">
+                                            <Building2 size={12} />
+                                            {c.name}
+                                            <button type="button" onClick={() => setProjectOnlyClientId('')} className="hover:text-orange-900"><X size={12} /></button>
+                                          </span>
                                         </div>
-                                      )}
-                                    </div>
+                                      ) : null;
+                                    })()}
+                                    {/* 드롭다운 트리거 */}
+                                    <button
+                                      ref={clientDropdownRef}
+                                      type="button"
+                                      onClick={() => isClientDropdownOpen ? setIsClientDropdownOpen(false) : openClientDropdown('projectOnly')}
+                                      className={`w-full px-4 py-2.5 border rounded-xl bg-white text-left flex items-center justify-between transition-all ${
+                                        isClientDropdownOpen ? 'border-orange-500 ring-2 ring-orange-100' : 'border-gray-300 hover:border-gray-400'
+                                      }`}
+                                    >
+                                      <span className={projectOnlyClientId ? 'text-gray-900 font-medium' : 'text-gray-400'}>
+                                        {projectOnlyClientId ? clients.find(c => c.id === projectOnlyClientId)?.name : '클라이언트를 선택하세요'}
+                                      </span>
+                                      <motion.div animate={{ rotate: isClientDropdownOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                                        <ChevronDown size={16} className="text-gray-400" />
+                                      </motion.div>
+                                    </button>
                                   </div>
                                 </div>
                               </motion.div>
@@ -471,13 +513,13 @@ export default function ProjectWizardModal({
                         {/* 기존 클라이언트 선택 */}
                         <div
                           className={`rounded-xl border-2 cursor-pointer transition-colors ${
-                            clientOption === 'existing' ? 'border-blue-500 bg-white' : 'border-gray-200 hover:border-blue-300'
+                            clientOption === 'existing' ? 'border-orange-500 bg-white' : 'border-gray-200 hover:border-orange-300'
                           }`}
                           onClick={() => setClientOption('existing')}
                         >
                           <div className="flex items-center gap-4 p-5">
                             <motion.div
-                              className={`p-3 rounded-lg transition-colors flex-shrink-0 ${clientOption === 'existing' ? 'bg-blue-500' : 'bg-gray-100'}`}
+                              className={`p-3 rounded-lg transition-colors flex-shrink-0 ${clientOption === 'existing' ? 'bg-orange-500' : 'bg-gray-100'}`}
                               animate={{ scale: clientOption === 'existing' ? 1.08 : 1 }}
                               transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                             >
@@ -490,7 +532,7 @@ export default function ProjectWizardModal({
                             <AnimatePresence>
                               {clientOption === 'existing' && (
                                 <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
-                                  <CheckCircle className="text-blue-500" size={22} />
+                                  <CheckCircle className="text-orange-500" size={22} />
                                 </motion.div>
                               )}
                             </AnimatePresence>
@@ -506,36 +548,36 @@ export default function ProjectWizardModal({
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <div className="px-5 pb-5 pt-0">
-                                  <div className="border-t border-blue-100 pt-4">
-                                    {clients.length === 0 ? (
-                                      <div className="text-sm text-gray-400 text-center py-4 bg-gray-50 rounded-xl">등록된 클라이언트가 없습니다</div>
-                                    ) : (
-                                      <div className="space-y-2 max-h-44 overflow-y-auto">
-                                        {clients.map((client) => (
-                                          <button
-                                            key={client.id}
-                                            type="button"
-                                            onClick={() => setSelectedClientId(client.id)}
-                                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left ${
-                                              selectedClientId === client.id
-                                                ? 'border-blue-400 bg-blue-50'
-                                                : 'border-gray-100 bg-gray-50 hover:border-blue-200 hover:bg-white'
-                                            }`}
-                                          >
-                                            <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                                              {client.name.charAt(0)}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                              <p className="font-medium text-gray-900 text-sm truncate">{client.name}</p>
-                                              {client.company && <p className="text-xs text-gray-400 truncate">{client.company}</p>}
-                                            </div>
-                                            {selectedClientId === client.id && (
-                                              <Check size={16} className="text-blue-500 flex-shrink-0" />
-                                            )}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
+                                  <div className="border-t border-orange-100 pt-4">
+                                    {/* 선택된 클라이언트 칩 */}
+                                    {selectedClientId && (() => {
+                                      const c = clients.find(cl => cl.id === selectedClientId);
+                                      return c ? (
+                                        <div className="mb-2">
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-medium border border-orange-200">
+                                            <Building2 size={12} />
+                                            {c.name}
+                                            <button type="button" onClick={() => setSelectedClientId('')} className="hover:text-orange-900"><X size={12} /></button>
+                                          </span>
+                                        </div>
+                                      ) : null;
+                                    })()}
+                                    {/* 드롭다운 트리거 */}
+                                    <button
+                                      ref={clientDropdownRef}
+                                      type="button"
+                                      onClick={() => isClientDropdownOpen ? setIsClientDropdownOpen(false) : openClientDropdown('step2')}
+                                      className={`w-full px-4 py-2.5 border rounded-xl bg-white text-left flex items-center justify-between transition-all ${
+                                        isClientDropdownOpen ? 'border-orange-500 ring-2 ring-orange-100' : 'border-gray-300 hover:border-gray-400'
+                                      }`}
+                                    >
+                                      <span className={selectedClientId ? 'text-gray-900 font-medium' : 'text-gray-400'}>
+                                        {selectedClientId ? clients.find(c => c.id === selectedClientId)?.name : '클라이언트를 선택하세요'}
+                                      </span>
+                                      <motion.div animate={{ rotate: isClientDropdownOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                                        <ChevronDown size={16} className="text-gray-400" />
+                                      </motion.div>
+                                    </button>
                                   </div>
                                 </div>
                               </motion.div>
@@ -547,13 +589,13 @@ export default function ProjectWizardModal({
                         {startType === 'with-client' && (
                           <div
                             className={`rounded-xl border-2 cursor-pointer transition-colors ${
-                              clientOption === 'new' ? 'border-blue-500 bg-white' : 'border-gray-200 hover:border-blue-300'
+                              clientOption === 'new' ? 'border-orange-500 bg-white' : 'border-gray-200 hover:border-orange-300'
                             }`}
                             onClick={() => setClientOption('new')}
                           >
                             <div className="flex items-center gap-4 p-5">
                               <motion.div
-                                className={`p-3 rounded-lg transition-colors flex-shrink-0 ${clientOption === 'new' ? 'bg-blue-500' : 'bg-gray-100'}`}
+                                className={`p-3 rounded-lg transition-colors flex-shrink-0 ${clientOption === 'new' ? 'bg-orange-500' : 'bg-gray-100'}`}
                                 animate={{ scale: clientOption === 'new' ? 1.08 : 1 }}
                                 transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                               >
@@ -566,7 +608,7 @@ export default function ProjectWizardModal({
                               <AnimatePresence>
                                 {clientOption === 'new' && (
                                   <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
-                                    <CheckCircle className="text-blue-500" size={22} />
+                                    <CheckCircle className="text-orange-500" size={22} />
                                   </motion.div>
                                 )}
                               </AnimatePresence>
@@ -582,10 +624,9 @@ export default function ProjectWizardModal({
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <div className="px-5 pb-5 pt-0">
-                                    <div className="border-t border-blue-100 pt-4 space-y-3">
+                                    <div className="border-t border-orange-100 pt-4 space-y-3">
                                       <FloatingLabelInput label="회사명" required value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
                                       <FloatingLabelInput label="담당자" value={newClientContact} onChange={(e) => setNewClientContact(e.target.value)} />
-                                      <FloatingLabelInput label="이메일" type="email" value={newClientEmail} onChange={(e) => setNewClientEmail(e.target.value)} />
                                     </div>
                                   </div>
                                 </motion.div>
@@ -597,14 +638,14 @@ export default function ProjectWizardModal({
                         {/* 건너뛰기 */}
                         <motion.button
                           className={`w-full rounded-xl border-2 transition-colors text-left ${
-                            clientOption === 'skip' ? 'border-blue-500 bg-white' : 'border-gray-200 hover:border-blue-300'
+                            clientOption === 'skip' ? 'border-orange-500 bg-white' : 'border-gray-200 hover:border-orange-300'
                           }`}
                           onClick={() => setClientOption('skip')}
                           whileTap={{ scale: 0.99 }}
                         >
                           <div className="flex items-center gap-4 p-5">
                             <motion.div
-                              className={`p-3 rounded-lg transition-colors flex-shrink-0 ${clientOption === 'skip' ? 'bg-blue-500' : 'bg-gray-100'}`}
+                              className={`p-3 rounded-lg transition-colors flex-shrink-0 ${clientOption === 'skip' ? 'bg-orange-500' : 'bg-gray-100'}`}
                               animate={{ scale: clientOption === 'skip' ? 1.08 : 1 }}
                               transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                             >
@@ -617,7 +658,7 @@ export default function ProjectWizardModal({
                             <AnimatePresence>
                               {clientOption === 'skip' && (
                                 <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
-                                  <CheckCircle className="text-blue-500" size={22} />
+                                  <CheckCircle className="text-orange-500" size={22} />
                                 </motion.div>
                               )}
                             </AnimatePresence>
@@ -632,219 +673,243 @@ export default function ProjectWizardModal({
                     <div className="space-y-6">
                       <div className="text-center mb-8">
                         <h3 className="text-2xl font-bold text-gray-900 mb-2">프로젝트 정보</h3>
-                        <p className="text-gray-500">프로젝트의 기본 정보를 입력하세요</p>
+                        <p className="text-gray-500">
+                          {clientOption === 'existing'
+                            ? '프로젝트의 기본 정보를 입력하세요'
+                            : '프로젝트의 기본 정보를 입력하세요'}
+                        </p>
                       </div>
 
-                      {/* 선택지 카드 */}
-                      <div className="space-y-3">
-                        {/* 지금 추가하기 */}
-                        <motion.div
-                          className={`rounded-xl border-2 transition-colors cursor-pointer ${
-                            addProjectNow === true ? 'border-blue-500 bg-white' : 'border-gray-200 hover:border-blue-300'
-                          }`}
-                          whileTap={{ scale: 0.99 }}
-                          onClick={() => setAddProjectNow(true)}
-                        >
-                          <div className="flex items-center gap-4 p-5">
-                            <div className={`p-2.5 rounded-lg transition-colors ${addProjectNow === true ? 'bg-blue-500' : 'bg-gray-100'}`}>
-                              <Film className={addProjectNow === true ? 'text-white' : 'text-gray-600'} size={20} />
-                            </div>
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-gray-900">지금 프로젝트 추가하기</h4>
-                              <p className="text-sm text-gray-500 mt-0.5">프로젝트 이름, 카테고리 등을 입력합니다</p>
-                            </div>
-                            <AnimatePresence>
-                              {addProjectNow === true && (
-                                <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
-                                  <CheckCircle className="text-blue-500" size={22} />
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        </motion.div>
-
-                      </div>
-
-                      {/* 지금 추가 선택 시 폼 */}
-                      <AnimatePresence>
-                        {addProjectNow === true && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-                            style={{ overflow: 'hidden' }}
-                          >
-                      <div className="space-y-4 pt-2 px-0.5 pb-0.5">
-                        <FloatingLabelInput
-                          label="프로젝트 이름"
-                          required
-                          value={projectTitle}
-                          onChange={(e) => setProjectTitle(e.target.value)}
-                          placeholder="예: 유튜브 채널 시리즈"
-                        />
-
-                        <div className="relative">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">카테고리</label>
+                      {/* 기존 클라이언트 선택 시 → 바로 폼 표시 */}
+                      {clientOption === 'existing' ? (
+                        <div className="space-y-4">
                           {(() => {
-                            const CATEGORIES = [
-                              { label: '유튜브', icon: Youtube, color: 'text-red-500', bg: 'bg-red-50' },
-                              { label: '브이로그', icon: Camera, color: 'text-purple-500', bg: 'bg-purple-50' },
-                              { label: '기업 홍보', icon: Building2, color: 'text-blue-500', bg: 'bg-blue-50' },
-                              { label: '교육', icon: BookOpen, color: 'text-green-500', bg: 'bg-green-50' },
-                              { label: '기타', icon: MoreHorizontal, color: 'text-gray-500', bg: 'bg-gray-100' },
-                            ];
                             const selected = CATEGORIES.find(c => c.label === projectCategory);
                             return (
                               <>
-                                <button
-                                  type="button"
-                                  onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                                  className={`w-full px-4 py-2.5 border rounded-xl bg-white text-left flex items-center justify-between transition-all ${
-                                    isCategoryDropdownOpen
-                                      ? 'border-blue-500 ring-2 ring-blue-100'
-                                      : 'border-gray-300 hover:border-gray-400'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    {selected ? (
-                                      <>
-                                        <div className={`w-6 h-6 rounded-md flex items-center justify-center ${selected.bg}`}>
-                                          <selected.icon size={14} className={selected.color} />
-                                        </div>
-                                        <span className="text-gray-900 font-medium">{selected.label}</span>
-                                      </>
-                                    ) : (
-                                      <span className="text-gray-400">선택하세요</span>
-                                    )}
-                                  </div>
-                                  <motion.div
-                                    animate={{ rotate: isCategoryDropdownOpen ? 180 : 0 }}
-                                    transition={{ duration: 0.2 }}
-                                  >
-                                    <ChevronDown size={16} className="text-gray-400" />
-                                  </motion.div>
-                                </button>
+                                <FloatingLabelInput
+                                  label="프로젝트 이름"
+                                  required
+                                  value={projectTitle}
+                                  onChange={(e) => setProjectTitle(e.target.value)}
+                                  placeholder="예: 유튜브 채널 시리즈"
+                                />
 
-                                <AnimatePresence>
-                                  {isCategoryDropdownOpen && (
-                                    <>
-                                      <div
-                                        className="fixed inset-0 z-10"
-                                        onClick={() => setIsCategoryDropdownOpen(false)}
-                                      />
-                                      <motion.div
-                                        className="absolute z-20 w-full mt-1.5 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden"
-                                        initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                        exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                                        transition={{ duration: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
-                                      >
-                                        {CATEGORIES.map((cat, idx) => (
-                                          <motion.button
-                                            key={cat.label}
-                                            type="button"
-                                            onClick={() => {
-                                              setProjectCategory(cat.label);
-                                              setIsCategoryDropdownOpen(false);
-                                            }}
-                                            className={`w-full px-4 py-2.5 text-left flex items-center gap-3 transition-colors ${
-                                              projectCategory === cat.label
-                                                ? 'bg-blue-50'
-                                                : 'hover:bg-gray-50'
-                                            }`}
-                                            initial={{ opacity: 0, x: -8 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: idx * 0.04, duration: 0.15 }}
-                                          >
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${cat.bg}`}>
-                                              <cat.icon size={16} className={cat.color} />
-                                            </div>
-                                            <span className={`font-medium text-sm ${projectCategory === cat.label ? 'text-blue-700' : 'text-gray-800'}`}>
-                                              {cat.label}
-                                            </span>
-                                            {projectCategory === cat.label && (
-                                              <Check size={14} className="ml-auto text-blue-500" />
-                                            )}
-                                          </motion.button>
-                                        ))}
-                                      </motion.div>
-                                    </>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">카테고리</label>
+                                  <button
+                                    ref={categoryDropdownRef}
+                                    type="button"
+                                    onClick={() => isCategoryDropdownOpen ? setIsCategoryDropdownOpen(false) : openCategoryDropdown()}
+                                    className={`w-full px-4 py-2.5 border rounded-xl bg-white text-left flex items-center justify-between transition-all ${
+                                      isCategoryDropdownOpen ? 'border-orange-500 ring-2 ring-orange-100' : 'border-gray-300 hover:border-gray-400'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      {selected ? (
+                                        <>
+                                          <div className={`w-6 h-6 rounded-md flex items-center justify-center ${selected.bg}`}>
+                                            <selected.icon size={14} className={selected.color} />
+                                          </div>
+                                          <span className="text-gray-900 font-medium">{selected.label}</span>
+                                        </>
+                                      ) : (
+                                        <span className="text-gray-400">선택하세요</span>
+                                      )}
+                                    </div>
+                                    <motion.div animate={{ rotate: isCategoryDropdownOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                                      <ChevronDown size={16} className="text-gray-400" />
+                                    </motion.div>
+                                  </button>
+                                </div>
+
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">파트너 선택</label>
+                                  {/* 선택된 파트너 칩 */}
+                                  {selectedPartnerIds.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 mb-2">
+                                      {selectedPartnerIds.map(id => {
+                                        const p = partners.find(pt => pt.id === id);
+                                        if (!p) return null;
+                                        return (
+                                          <span key={id} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-medium border border-orange-200">
+                                            {p.name}
+                                            <button type="button" onClick={() => togglePartner(id)} className="hover:text-orange-900"><X size={12} /></button>
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
                                   )}
-                                </AnimatePresence>
+                                  {/* 드롭다운 트리거 */}
+                                  <button
+                                    ref={partnerDropdownRef}
+                                    type="button"
+                                    onClick={() => isPartnerDropdownOpen ? setIsPartnerDropdownOpen(false) : openPartnerDropdown()}
+                                    className={`w-full px-4 py-2.5 border rounded-xl bg-white text-left flex items-center justify-between transition-all ${
+                                      isPartnerDropdownOpen ? 'border-orange-500 ring-2 ring-orange-100' : 'border-gray-300 hover:border-gray-400'
+                                    }`}
+                                  >
+                                    <span className={selectedPartnerIds.length > 0 ? 'text-gray-900 font-medium' : 'text-gray-400'}>
+                                      {selectedPartnerIds.length > 0 ? `${selectedPartnerIds.length}명 선택됨` : '파트너를 선택하세요'}
+                                    </span>
+                                    <motion.div animate={{ rotate: isPartnerDropdownOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                                      <ChevronDown size={16} className="text-gray-400" />
+                                    </motion.div>
+                                  </button>
+                                </div>
                               </>
                             );
                           })()}
                         </div>
-
-                        <FloatingLabelTextarea
-                          label="프로젝트 설명"
-                          value={projectDescription}
-                          onChange={(e) => setProjectDescription(e.target.value)}
-                          rows={3}
-                        />
-
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">파트너 선택</label>
-                          <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3">
-                            {partners.length === 0 ? (
-                              <p className="text-sm text-gray-400 text-center py-2">등록된 파트너가 없습니다</p>
-                            ) : (
-                              partners.map((partner) => (
-                                <label key={partner.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedPartnerIds.includes(partner.id)}
-                                    onChange={() => togglePartner(partner.id)}
-                                    className="w-4 h-4"
-                                  />
-                                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
-                                    {partner.name.charAt(0)}
-                                  </div>
-                                  <span className="text-sm text-gray-900">{partner.name}</span>
-                                </label>
-                              ))
-                            )}
-                          </div>
-                        </div>
-
-                        {/* 나중에 추가 - 폼 하단 */}
-                        {(() => {
-                          const disabled =
-                            (startType === 'project-only' && !projectOnlyClientId) ||
-                            (startType === 'with-client' && clientOption === 'skip');
-                          return (
-                            <div
-                              className={`rounded-xl border-2 transition-colors mt-2 ${
-                                disabled
-                                  ? 'border-gray-100 bg-gray-50 cursor-not-allowed opacity-50'
-                                  : 'border-gray-200 hover:border-blue-300 cursor-pointer'
-                              }`}
-                              onClick={() => {
-                                if (disabled) return;
-                                setAddProjectNow(false);
-                                goToStep(5);
-                              }}
+                      ) : (
+                        /* 기존 클라이언트 아닐 때 → 선택 카드 + 폼 */
+                        <>
+                          <div className="space-y-3">
+                            <motion.div
+                              className={`rounded-xl border-2 transition-colors cursor-pointer ${addProjectNow === true ? 'border-orange-500 bg-white' : 'border-gray-200 hover:border-orange-300'}`}
+                              whileTap={{ scale: 0.99 }}
+                              onClick={() => setAddProjectNow(true)}
                             >
-                              <div className="flex items-center gap-4 p-4">
-                                <div className={`p-2 rounded-lg transition-colors flex-shrink-0 ${disabled ? 'bg-gray-100' : 'bg-gray-100 group-hover:bg-blue-100'}`}>
-                                  <ChevronRight className={disabled ? 'text-gray-300' : 'text-gray-500'} size={18} />
+                              <div className="flex items-center gap-4 p-5">
+                                <div className={`p-2.5 rounded-lg transition-colors ${addProjectNow === true ? 'bg-orange-500' : 'bg-gray-100'}`}>
+                                  <Film className={addProjectNow === true ? 'text-white' : 'text-gray-600'} size={20} />
                                 </div>
                                 <div className="flex-1">
-                                  <h4 className={`font-medium text-sm ${disabled ? 'text-gray-400' : 'text-gray-600'}`}>나중에 프로젝트를 추가할게요</h4>
-                                  {disabled && (
-                                    <p className="text-xs text-red-400 mt-0.5">클라이언트를 먼저 연결해야 이 옵션을 선택할 수 있어요</p>
-                                  )}
+                                  <h4 className="font-semibold text-gray-900">지금 프로젝트 추가하기</h4>
+                                  <p className="text-sm text-gray-500 mt-0.5">프로젝트 이름, 카테고리 등을 입력합니다</p>
                                 </div>
+                                <AnimatePresence>
+                                  {addProjectNow === true && (
+                                    <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
+                                      <CheckCircle className="text-orange-500" size={22} />
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
                               </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                            </motion.div>
+                          </div>
+
+                          <AnimatePresence>
+                            {addProjectNow === true && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+                                style={{ overflow: 'hidden' }}
+                              >
+                                <div className="space-y-4 pt-2 px-0.5 pb-0.5">
+                                  <FloatingLabelInput label="프로젝트 이름" required value={projectTitle} onChange={(e) => setProjectTitle(e.target.value)} placeholder="예: 유튜브 채널 시리즈" />
+
+                                  <div className="relative">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">카테고리</label>
+                                    {(() => {
+                                      const selected = CATEGORIES.find(c => c.label === projectCategory);
+                                      return (
+                                          <button
+                                            ref={categoryDropdownRef}
+                                            type="button"
+                                            onClick={() => isCategoryDropdownOpen ? setIsCategoryDropdownOpen(false) : openCategoryDropdown()}
+                                            className={`w-full px-4 py-2.5 border rounded-xl bg-white text-left flex items-center justify-between transition-all ${isCategoryDropdownOpen ? 'border-orange-500 ring-2 ring-orange-100' : 'border-gray-300 hover:border-gray-400'}`}
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              {selected ? (
+                                                <>
+                                                  <div className={`w-6 h-6 rounded-md flex items-center justify-center ${selected.bg}`}>
+                                                    <selected.icon size={14} className={selected.color} />
+                                                  </div>
+                                                  <span className="text-gray-900 font-medium">{selected.label}</span>
+                                                </>
+                                              ) : (
+                                                <span className="text-gray-400">선택하세요</span>
+                                              )}
+                                            </div>
+                                            <motion.div animate={{ rotate: isCategoryDropdownOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                                              <ChevronDown size={16} className="text-gray-400" />
+                                            </motion.div>
+                                          </button>
+                                      );
+                                    })()}
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">파트너 선택</label>
+                                    {/* 선택된 파트너 칩 */}
+                                    {selectedPartnerIds.length > 0 && (
+                                      <div className="flex flex-wrap gap-1.5 mb-2">
+                                        {selectedPartnerIds.map(id => {
+                                          const p = partners.find(pt => pt.id === id);
+                                          if (!p) return null;
+                                          return (
+                                            <span key={id} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-medium border border-orange-200">
+                                              {p.name}
+                                              <button type="button" onClick={() => togglePartner(id)} className="hover:text-orange-900"><X size={12} /></button>
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                    {/* 드롭다운 트리거 */}
+                                    <button
+                                      ref={partnerDropdownRef}
+                                      type="button"
+                                      onClick={() => isPartnerDropdownOpen ? setIsPartnerDropdownOpen(false) : openPartnerDropdown()}
+                                      className={`w-full px-4 py-2.5 border rounded-xl bg-white text-left flex items-center justify-between transition-all ${
+                                        isPartnerDropdownOpen ? 'border-orange-500 ring-2 ring-orange-100' : 'border-gray-300 hover:border-gray-400'
+                                      }`}
+                                    >
+                                      <span className={selectedPartnerIds.length > 0 ? 'text-gray-900 font-medium' : 'text-gray-400'}>
+                                        {selectedPartnerIds.length > 0 ? `${selectedPartnerIds.length}명 선택됨` : '파트너를 선택하세요'}
+                                      </span>
+                                      <motion.div animate={{ rotate: isPartnerDropdownOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                                        <ChevronDown size={16} className="text-gray-400" />
+                                      </motion.div>
+                                    </button>
+                                  </div>
+
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
+                          {(() => {
+                            const disabled = (startType === 'project-only' && !projectOnlyClientId) || (startType === 'with-client' && clientOption === 'skip');
+                            return (
+                              <motion.div
+                                className={`rounded-xl border-2 transition-colors ${
+                                  addProjectNow === false
+                                    ? 'border-orange-500 bg-white'
+                                    : disabled ? 'border-gray-100 bg-gray-50 cursor-not-allowed opacity-50' : 'border-gray-200 hover:border-orange-300 cursor-pointer'
+                                }`}
+                                onClick={() => { if (disabled) return; setAddProjectNow(false); goToStep(5); }}
+                                whileTap={!disabled ? { scale: 0.99 } : {}}
+                              >
+                                <div className="flex items-center gap-4 p-5">
+                                  <motion.div
+                                    className={`p-2.5 rounded-lg transition-colors flex-shrink-0 ${addProjectNow === false ? 'bg-orange-500' : 'bg-gray-100'}`}
+                                    animate={{ scale: addProjectNow === false ? 1.08 : 1 }}
+                                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                                  >
+                                    <ChevronRight className={addProjectNow === false ? 'text-white' : disabled ? 'text-gray-300' : 'text-gray-600'} size={20} />
+                                  </motion.div>
+                                  <div className="flex-1">
+                                    <h4 className="font-semibold text-gray-900">나중에 프로젝트를 추가할게요</h4>
+                                    <p className="text-sm text-gray-500 mt-0.5">프로젝트 생성 후 추가합니다</p>
+                                    {disabled && <p className="text-xs text-red-400 mt-1">클라이언트를 먼저 연결해야 이 옵션을 선택할 수 있어요</p>}
+                                  </div>
+                                  <AnimatePresence>
+                                    {addProjectNow === false && (
+                                      <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
+                                        <CheckCircle className="text-orange-500" size={22} />
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                </div>
+                              </motion.div>
+                            );
+                          })()}
+                        </>
+                      )}
                     </div>
                   )}
 
@@ -860,8 +925,8 @@ export default function ProjectWizardModal({
                         <motion.div
                           className={`w-full p-6 rounded-xl border-2 transition-colors cursor-pointer ${
                             shouldCreateEpisodes === true
-                              ? 'border-blue-500 bg-white cursor-default'
-                              : 'border-gray-200 hover:border-blue-300'
+                              ? 'border-orange-500 bg-white cursor-default'
+                              : 'border-gray-200 hover:border-orange-300'
                           }`}
                           whileTap={{ scale: 0.99 }}
                           onClick={() => {
@@ -875,7 +940,7 @@ export default function ProjectWizardModal({
                           }}
                         >
                           <div className="flex items-start gap-4" onClick={(e) => shouldCreateEpisodes === true && e.stopPropagation()}>
-                            <div className="p-3 rounded-lg bg-blue-500 flex-shrink-0">
+                            <div className="p-3 rounded-lg bg-orange-500 flex-shrink-0">
                               <Film className="text-white" size={24} />
                             </div>
                             <div className="flex-1">
@@ -907,7 +972,7 @@ export default function ProjectWizardModal({
                                               }}
                                               className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
                                                 episodeInputType === 'quick' && episodeCount === count
-                                                  ? 'bg-blue-500 text-white shadow-lg'
+                                                  ? 'bg-orange-500 text-white shadow-lg'
                                                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                               }`}
                                               whileTap={{ scale: 0.95 }}
@@ -947,8 +1012,8 @@ export default function ProjectWizardModal({
                                             }}
                                             onFocus={() => setEpisodeInputType('custom')}
                                             placeholder="숫자 입력 (최대 10)"
-                                            className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                                              episodeInputType === 'custom' ? 'border-blue-500' : 'border-gray-300'
+                                            className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
+                                              episodeInputType === 'custom' ? 'border-orange-500' : 'border-gray-300'
                                             }`}
                                           />
                                           <span className="text-gray-600 font-medium">회</span>
@@ -965,8 +1030,8 @@ export default function ProjectWizardModal({
                                         <div className="flex items-center gap-3 px-0.5 mb-1">
                                           <div className="w-9 flex-shrink-0" />
                                           <div className="flex-1 grid grid-cols-2 gap-3">
-                                            <span className="text-xs font-medium text-blue-400 pl-1">시작일</span>
-                                            <span className="text-xs font-medium text-violet-400 pl-1">마감일</span>
+                                            <span className="text-xs font-medium text-orange-400 pl-1">시작일</span>
+                                            <span className="text-xs font-medium text-orange-400 pl-1">마감일</span>
                                           </div>
                                         </div>
 
@@ -980,8 +1045,8 @@ export default function ProjectWizardModal({
                                               transition={{ delay: i * 0.04, duration: 0.18 }}
                                               className="flex items-center gap-3"
                                             >
-                                              <div className="w-9 h-9 rounded-full bg-blue-50 border-2 border-blue-100 flex items-center justify-center flex-shrink-0">
-                                                <span className="text-[11px] font-bold text-blue-500">{i + 1}</span>
+                                              <div className="w-9 h-9 rounded-full bg-orange-50 border-2 border-orange-100 flex items-center justify-center flex-shrink-0">
+                                                <span className="text-[11px] font-bold text-orange-500">{i + 1}</span>
                                               </div>
                                               <div className="flex-1">
                                                 <DateRangePicker
@@ -1005,7 +1070,7 @@ export default function ProjectWizardModal({
                                       </div>
 
                                       <motion.p
-                                        className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg"
+                                        className="text-xs text-gray-500 bg-orange-50 p-3 rounded-lg"
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         transition={{ delay: 0.1 }}
@@ -1026,7 +1091,7 @@ export default function ProjectWizardModal({
                                   transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                                   className="flex-shrink-0"
                                 >
-                                  <CheckCircle className="text-blue-500" size={24} />
+                                  <CheckCircle className="text-orange-500" size={24} />
                                 </motion.div>
                               )}
                             </AnimatePresence>
@@ -1040,13 +1105,13 @@ export default function ProjectWizardModal({
                           }}
                           className={`w-full p-6 rounded-xl border-2 transition-colors text-left ${
                             shouldCreateEpisodes === false
-                              ? 'border-blue-500 bg-white'
-                              : 'border-gray-200 hover:border-blue-300'
+                              ? 'border-orange-500 bg-white'
+                              : 'border-gray-200 hover:border-orange-300'
                           }`}
                           whileTap={{ scale: 0.99 }}
                         >
                           <div className="flex items-start gap-4">
-                            <div className={`p-3 rounded-lg transition-colors ${shouldCreateEpisodes === false ? 'bg-blue-500' : 'bg-gray-100'}`}>
+                            <div className={`p-3 rounded-lg transition-colors ${shouldCreateEpisodes === false ? 'bg-orange-500' : 'bg-gray-100'}`}>
                               <ChevronRight className={shouldCreateEpisodes === false ? 'text-white' : 'text-gray-600'} size={24} />
                             </div>
                             <div className="flex-1">
@@ -1061,7 +1126,7 @@ export default function ProjectWizardModal({
                                   exit={{ scale: 0, opacity: 0 }}
                                   transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                                 >
-                                  <CheckCircle className="text-blue-500" size={24} />
+                                  <CheckCircle className="text-orange-500" size={24} />
                                 </motion.div>
                               )}
                             </AnimatePresence>
@@ -1108,19 +1173,19 @@ export default function ProjectWizardModal({
                       </div>
 
                       <motion.div
-                        className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200"
+                        className="bg-gradient-to-br from-orange-50 to-orange-50 rounded-xl p-6 border border-orange-200"
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.35 }}
                       >
                         <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                          <Briefcase size={20} className="text-blue-600" />
+                          <Briefcase size={20} className="text-orange-600" />
                           생성될 내용
                         </h4>
                         <div className="space-y-3">
                           {startType === 'with-client' && clientOption !== 'skip' && (
                             <div className="flex items-start gap-3">
-                              <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2" />
+                              <div className="w-1.5 h-1.5 bg-orange-600 rounded-full mt-2" />
                               <div>
                                 <span className="text-sm font-medium text-gray-700">클라이언트: </span>
                                 <span className="text-sm text-gray-900">
@@ -1134,7 +1199,7 @@ export default function ProjectWizardModal({
                             </div>
                           )}
                           <div className="flex items-start gap-3">
-                            <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2" />
+                            <div className="w-1.5 h-1.5 bg-orange-600 rounded-full mt-2" />
                             <div>
                               <span className="text-sm font-medium text-gray-700">프로젝트: </span>
                               <span className="text-sm text-gray-900">
@@ -1143,7 +1208,7 @@ export default function ProjectWizardModal({
                             </div>
                           </div>
                           <div className="flex items-start gap-3">
-                            <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2" />
+                            <div className="w-1.5 h-1.5 bg-orange-600 rounded-full mt-2" />
                             <div>
                               <span className="text-sm font-medium text-gray-700">카테고리: </span>
                               <span className="text-sm text-gray-900">{projectCategory}</span>
@@ -1151,7 +1216,7 @@ export default function ProjectWizardModal({
                           </div>
                           {shouldCreateEpisodes && (
                             <div className="flex items-start gap-3">
-                              <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2" />
+                              <div className="w-1.5 h-1.5 bg-orange-600 rounded-full mt-2" />
                               <div>
                                 <span className="text-sm font-medium text-gray-700">회차: </span>
                                 <span className="text-sm text-gray-900">{episodeCount}개 (1~{episodeCount}회)</span>
@@ -1160,7 +1225,7 @@ export default function ProjectWizardModal({
                           )}
                           {selectedPartnerIds.length > 0 && (
                             <div className="flex items-start gap-3">
-                              <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2" />
+                              <div className="w-1.5 h-1.5 bg-orange-600 rounded-full mt-2" />
                               <div>
                                 <span className="text-sm font-medium text-gray-700">파트너: </span>
                                 <span className="text-sm text-gray-900">
@@ -1192,7 +1257,7 @@ export default function ProjectWizardModal({
               {currentStep < 5 ? (
                 <motion.button
                   onClick={handleNext}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all shadow-md font-medium flex items-center gap-2"
+                  className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-md font-medium flex items-center gap-2"
                   whileTap={{ scale: 0.97 }}
                 >
                   다음
@@ -1214,5 +1279,182 @@ export default function ProjectWizardModal({
         </div>
       )}
     </AnimatePresence>
+
+    {/* 클라이언트 드롭다운 (fixed position - overflow 무시) */}
+    <AnimatePresence>
+      {isClientDropdownOpen && (
+        <>
+          <div className="fixed inset-0 z-[60]" onClick={() => setIsClientDropdownOpen(false)} />
+          <motion.div
+            className="fixed z-[61] bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden"
+            style={{ top: clientDropdownPos.top, left: clientDropdownPos.left, width: clientDropdownPos.width }}
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            {/* 검색 */}
+            <div className="px-3 pt-3 pb-2">
+              <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
+                <Search size={14} className="text-gray-400 flex-shrink-0" />
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="클라이언트 검색..."
+                  value={clientSearch}
+                  onChange={e => setClientSearch(e.target.value)}
+                  onKeyDown={e => e.key === 'Escape' && setIsClientDropdownOpen(false)}
+                  className="flex-1 text-sm bg-transparent focus:outline-none text-gray-700 placeholder-gray-400"
+                />
+                {clientSearch && (
+                  <button onClick={() => setClientSearch('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>
+                )}
+              </div>
+            </div>
+            <div className="max-h-48 overflow-y-auto pb-1">
+              {(() => {
+                const filtered = clients.filter(c => !clientSearch || c.name.toLowerCase().includes(clientSearch.toLowerCase()) || c.company?.toLowerCase().includes(clientSearch.toLowerCase()));
+                const currentId = clientDropdownTarget === 'step2' ? selectedClientId : projectOnlyClientId;
+                return filtered.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-4">{clientSearch ? '검색 결과가 없습니다' : '등록된 클라이언트가 없습니다'}</p>
+                ) : (
+                  filtered.map((client, idx) => (
+                    <motion.button
+                      key={client.id}
+                      type="button"
+                      onClick={() => {
+                        if (clientDropdownTarget === 'step2') setSelectedClientId(client.id);
+                        else setProjectOnlyClientId(client.id);
+                        setIsClientDropdownOpen(false);
+                        setClientSearch('');
+                      }}
+                      className={`w-full px-4 py-2.5 text-left flex items-center gap-3 transition-colors ${currentId === client.id ? 'bg-orange-50' : 'hover:bg-gray-50'}`}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.03, duration: 0.15 }}
+                    >
+                      <div className="w-7 h-7 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Building2 size={13} className="text-orange-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className={`font-medium text-sm ${currentId === client.id ? 'text-orange-700' : 'text-gray-800'}`}>{client.name}</span>
+                        {client.company && <p className="text-xs text-gray-400 truncate">{client.company}</p>}
+                      </div>
+                      {currentId === client.id && <Check size={14} className="ml-auto text-orange-500 flex-shrink-0" />}
+                    </motion.button>
+                  ))
+                );
+              })()}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+
+    {/* 카테고리 드롭다운 (fixed position - overflow 무시) */}
+    <AnimatePresence>
+      {isCategoryDropdownOpen && (
+        <>
+          <div className="fixed inset-0 z-[60]" onClick={() => setIsCategoryDropdownOpen(false)} />
+          <motion.div
+            className="fixed z-[61] bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden"
+            style={{ top: categoryDropdownPos.top, left: categoryDropdownPos.left, width: categoryDropdownPos.width }}
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            <div className="py-1">
+              {CATEGORIES.map((cat, idx) => (
+                <motion.button
+                  key={cat.label}
+                  type="button"
+                  onClick={() => {
+                    setProjectCategory(cat.label);
+                    setIsCategoryDropdownOpen(false);
+                  }}
+                  className={`w-full px-4 py-2.5 text-left flex items-center gap-3 transition-colors ${projectCategory === cat.label ? 'bg-orange-50' : 'hover:bg-gray-50'}`}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.03, duration: 0.15 }}
+                >
+                  <div className={`w-7 h-7 rounded-md flex items-center justify-center ${cat.bg}`}>
+                    <cat.icon size={14} className={cat.color} />
+                  </div>
+                  <span className={`font-medium text-sm ${projectCategory === cat.label ? 'text-orange-700' : 'text-gray-800'}`}>{cat.label}</span>
+                  {projectCategory === cat.label && <Check size={14} className="ml-auto text-orange-500 flex-shrink-0" />}
+                </motion.button>
+              ))}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+
+    {/* 파트너 드롭다운 (fixed position - overflow 무시) */}
+    <AnimatePresence>
+      {isPartnerDropdownOpen && (
+        <>
+          <div className="fixed inset-0 z-[60]" onClick={() => setIsPartnerDropdownOpen(false)} />
+          <motion.div
+            className="fixed z-[61] bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden"
+            style={{ top: partnerDropdownPos.top, left: partnerDropdownPos.left, width: partnerDropdownPos.width }}
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            {/* 검색 */}
+            <div className="px-3 pt-3 pb-2">
+              <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
+                <Search size={14} className="text-gray-400 flex-shrink-0" />
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="파트너 검색..."
+                  value={partnerSearch}
+                  onChange={e => setPartnerSearch(e.target.value)}
+                  onKeyDown={e => e.key === 'Escape' && setIsPartnerDropdownOpen(false)}
+                  className="flex-1 text-sm bg-transparent focus:outline-none text-gray-700 placeholder-gray-400"
+                />
+                {partnerSearch && (
+                  <button onClick={() => setPartnerSearch('')} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>
+                )}
+              </div>
+            </div>
+            <div className="max-h-48 overflow-y-auto pb-1">
+              {(() => {
+                const activePartners = partners.filter(p =>
+                  (!p.position || p.position === 'partner') && p.status === 'active' &&
+                  (!partnerSearch || p.name.toLowerCase().includes(partnerSearch.toLowerCase()))
+                );
+                return activePartners.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-4">{partnerSearch ? '검색 결과가 없습니다' : '활성 파트너가 없습니다'}</p>
+                ) : (
+                  activePartners.map((partner, idx) => (
+                    <motion.button
+                      key={partner.id}
+                      type="button"
+                      onClick={() => togglePartner(partner.id)}
+                      className={`w-full px-4 py-2.5 text-left flex items-center gap-3 transition-colors ${selectedPartnerIds.includes(partner.id) ? 'bg-orange-50' : 'hover:bg-gray-50'}`}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.03, duration: 0.15 }}
+                    >
+                      <div className="w-7 h-7 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <User size={13} className="text-orange-500" />
+                      </div>
+                      <span className={`font-medium text-sm ${selectedPartnerIds.includes(partner.id) ? 'text-orange-700' : 'text-gray-800'}`}>{partner.name}</span>
+                      {selectedPartnerIds.includes(partner.id) && <Check size={14} className="ml-auto text-orange-500 flex-shrink-0" />}
+                    </motion.button>
+                  ))
+                );
+              })()}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+    </>
   );
 }

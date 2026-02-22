@@ -45,7 +45,7 @@ export default function FinancePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
       </div>
     );
   }
@@ -68,7 +68,7 @@ export default function FinancePage() {
             {activeTab === key && (
               <motion.div
                 layoutId="finance-tab-pill"
-                className="absolute inset-0 bg-blue-500 rounded-xl shadow-lg shadow-blue-500/30"
+                className="absolute inset-0 bg-orange-500 rounded-xl shadow-lg shadow-orange-500/30"
                 transition={{ type: 'spring', stiffness: 380, damping: 30 }}
               />
             )}
@@ -91,10 +91,10 @@ export default function FinancePage() {
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-2 mb-4">
-            <div className="p-2 bg-purple-50 rounded-xl"><Users size={16} className="text-purple-500" /></div>
+            <div className="p-2 bg-orange-50 rounded-xl"><Users size={16} className="text-orange-500" /></div>
             <span className="text-sm text-gray-500 font-medium">파트너 지급</span>
           </div>
-          <p className="text-3xl font-bold text-purple-600">{(totalPartnerPayment / 10000).toFixed(0)}<span className="text-base font-medium text-purple-300 ml-0.5">만</span></p>
+          <p className="text-3xl font-bold text-orange-600">{(totalPartnerPayment / 10000).toFixed(0)}<span className="text-base font-medium text-orange-300 ml-0.5">만</span></p>
           <p className="text-xs text-gray-400 mt-1">&nbsp;</p>
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
@@ -118,7 +118,7 @@ export default function FinancePage() {
       {/* 프로젝트별 재무 */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-          <FolderOpen size={16} className="text-blue-500" />
+          <FolderOpen size={16} className="text-orange-500" />
           <h2 className="font-semibold text-gray-900">프로젝트별 재무</h2>
         </div>
         {displayProjects.length === 0 ? (
@@ -146,7 +146,7 @@ export default function FinancePage() {
                         <p className="text-xs text-gray-400 mt-0.5">{project.client}</p>
                       </div>
                       <p className="text-sm font-semibold text-gray-900 text-right">{(project.budget.totalAmount / 10000).toFixed(0)}만</p>
-                      <p className="text-sm font-semibold text-purple-600 text-right">{(project.budget.partnerPayment / 10000).toFixed(0)}만</p>
+                      <p className="text-sm font-semibold text-orange-600 text-right">{(project.budget.partnerPayment / 10000).toFixed(0)}만</p>
                       <p className="text-sm font-semibold text-orange-500 text-right">{(project.budget.managementFee / 10000).toFixed(0)}만</p>
                       <p className="text-sm font-semibold text-emerald-600 text-right">{(margin / 10000).toFixed(0)}만</p>
                     </div>
@@ -157,7 +157,7 @@ export default function FinancePage() {
               <div className="px-6 py-4 bg-gray-50 grid grid-cols-[1fr_80px_80px_80px_80px] gap-4 items-center border-t border-gray-100">
                 <p className="text-sm font-bold text-gray-700">합계</p>
                 <p className="text-sm font-bold text-gray-900 text-right">{(totalRevenue / 10000).toFixed(0)}만</p>
-                <p className="text-sm font-bold text-purple-600 text-right">{(totalPartnerPayment / 10000).toFixed(0)}만</p>
+                <p className="text-sm font-bold text-orange-600 text-right">{(totalPartnerPayment / 10000).toFixed(0)}만</p>
                 <p className="text-sm font-bold text-orange-500 text-right">{(totalManagementFee / 10000).toFixed(0)}만</p>
                 <p className="text-sm font-bold text-emerald-600 text-right">{(totalMargin / 10000).toFixed(0)}만</p>
               </div>

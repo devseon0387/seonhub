@@ -1,0 +1,92 @@
+================================================================
+비봇에게: video-moment MCP 서버 설치 지시서
+================================================================
+
+아래 단계를 순서대로 실행해줘.
+
+----------------------------------------------------------------
+STEP 1. .env에 환경변수 추가
+----------------------------------------------------------------
+/Users/vimo/Desktop/agent/.env 파일에 아래 두 줄 추가:
+
+SUPABASE_URL=https://qxyiifphpsthrwxplafd.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4eWlpZnBocHN0aHJ3eHBsYWZkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTQ0MDI3NCwiZXhwIjoyMDg3MDE2Mjc0fQ.c2-LsmzjC0QQEf9W2WTHCUqBQ7S3e82yC2pSxcO7rWA
+
+----------------------------------------------------------------
+STEP 2. Python 패키지 설치
+----------------------------------------------------------------
+아래 명령어 실행:
+
+cd /Users/vimo/Desktop/agent
+source .venv/bin/activate
+pip install mcp supabase
+
+----------------------------------------------------------------
+STEP 3. slack_bot.py에 MCP 서버 등록
+----------------------------------------------------------------
+/Users/vimo/Desktop/agent/slack_bot.py 에서
+mcp_servers 딕셔너리가 정의된 곳을 찾아서
+아래 코드를 추가해:
+
+    mcp_servers["video_moment"] = {
+        "command": "python",
+        "args": ["/Users/vimo/video-moment/mcp-server/server.py"],
+        "env": {
+            "SUPABASE_URL": os.environ.get("SUPABASE_URL", ""),
+            "SUPABASE_SERVICE_ROLE_KEY": os.environ.get("SUPABASE_SERVICE_ROLE_KEY", ""),
+        },
+    }
+
+----------------------------------------------------------------
+STEP 4. 시스템 프롬프트에 가이드 추가
+----------------------------------------------------------------
+/Users/vimo/Desktop/agent/slack_bot.py 에서
+build_system_prompt() 함수 안에 아래 섹션 추가:
+
+## 비모(video-moment) 대시보드 연동 가이드
+
+비모 대시보드는 MCP로 연결되어 있어 직접 데이터를 조회하고 수정할 수 있습니다.
+
+### 사용 가능한 도구
+
+**프로젝트 / 에피소드**
+- get_summary : 전체 현황 요약 (프로젝트 수, 에피소드 현황, 이번달 매출, 마감 임박)
+- list_projects : 프로젝트 목록. status 필터: planning / in_progress / completed / on_hold
+- get_project : 프로젝트 상세 + 에피소드 목록 (project_id 필요)
+- list_episodes : 에피소드 목록. status / assignee_id / project_id 필터 가능
+- get_upcoming_deadlines : N일 이내 마감 에피소드 (기본 7일)
+- list_partners : 파트너 목록
+- list_clients : 클라이언트 목록
+- update_project_status : 프로젝트 상태 변경
+- update_episode_status : 에피소드 상태 변경
+
+**마케팅 / 포트폴리오**
+- list_portfolio : 포트폴리오 목록. published_only=true로 공개만 필터 가능
+- add_portfolio_item : 포트폴리오 항목 추가 (title, client, youtube_url 필수)
+- toggle_portfolio_published : 포트폴리오 공개/비공개 전환 (id, is_published)
+- get_marketing_stats : 포트폴리오 공개/비공개 수, 클라이언트별 완료 프로젝트 수 요약
+
+### 활용 예시
+
+- "오늘 비모 현황 보고해줘" → get_summary 호출 후 슬랙에 정리
+- "이번 주 마감인 에피소드 있어?" → get_upcoming_deadlines(days=7)
+- "진행중인 프로젝트 목록 보여줘" → list_projects(status="in_progress")
+- "A 프로젝트 완료로 바꿔줘" → list_projects로 ID 확인 후 update_project_status
+- "포트폴리오 목록 보여줘" → list_portfolio 호출
+- "마케팅 현황 어때?" → get_marketing_stats 호출
+
+----------------------------------------------------------------
+STEP 5. Vbot 재시작
+----------------------------------------------------------------
+아래 명령어 실행:
+
+cd /Users/vimo/Desktop/agent
+source .venv/bin/activate
+export $(cat .env | grep -v '^#' | xargs)
+python slack_bot.py &
+
+----------------------------------------------------------------
+완료 후 슬랙에서 테스트:
+"비모 현황 요약해줘" 라고 말해서 get_summary가 동작하는지 확인
+"포트폴리오 목록 보여줘" 라고 말해서 list_portfolio가 동작하는지 확인
+================================================================

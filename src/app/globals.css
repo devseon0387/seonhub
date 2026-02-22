@@ -1,31 +1,58 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --accent: #ea580c;
+  --text-primary: #1c1917;
+  --text-secondary: #78716c;
+  --text-muted: #a8a29e;
+
+  /* 카드 토큰 */
+  --card-bg:     #ffffff;
+  --card-border: #ede9e6;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: #f5f4f2;
+  --color-foreground: var(--text-primary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: #f5f4f2;
+  background-attachment: fixed;
+  min-height: 100vh;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
-/* 커스텀 커서 - 모든 요소에서 기본 커서 숨김 */
-*, *::before, *::after {
-  cursor: none !important;
+/* 커스텀 커서 — 시스템 커서 완전 숨김 */
+html, body { cursor: none !important; }
+*, *::before, *::after { cursor: none !important; }
+
+/* ── Card utility ── */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: 14px;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(168,162,158,0.35); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(168,162,158,0.6); }
+* { scrollbar-color: rgba(168,162,158,0.35) transparent; scrollbar-width: thin; }
+
+/* ── Focus ── */
+*:focus-visible {
+  outline: none;
 }

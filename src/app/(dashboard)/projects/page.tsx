@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { getProjects, insertProject, getClients as fetchClients, getAllEpisodes, getPartners } from '@/lib/supabase/db';
-import { Calendar, User, X, ChevronDown, Search, ArrowRight, Plus } from 'lucide-react';
+import { Calendar, User, X, ChevronDown, Search, ArrowRight, Plus, Building2 } from 'lucide-react';
 import { calculateReserve } from '@/lib/utils';
 import Link from 'next/link';
 import { Project, Client, Episode, WorkContentType, Partner } from '@/types';
@@ -23,7 +23,7 @@ export default function ProjectsPage() {
   // Supabase에서 클라이언트 데이터 로드
   const [clients, setClients] = useState<Client[]>([]);
 
-  // Supabase에서 에피소드 데이터 로드
+  // Supabase에서 회차 데이터 로드
   const [episodes, setEpisodes] = useState<EpisodeWithProjectId[]>([]);
 
   // Supabase에서 파트너 데이터 로드
@@ -47,6 +47,15 @@ export default function ProjectsPage() {
   }, []);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail === 'new-project') setIsAddModalOpen(true);
+    };
+    window.addEventListener('fab:action', handler);
+    return () => window.removeEventListener('fab:action', handler);
+  }, []);
   const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
   const [isPartnerDropdownOpen, setIsPartnerDropdownOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'in_progress' | 'completed' | 'planning'>('all');
@@ -84,8 +93,8 @@ export default function ProjectsPage() {
 
   // 이 useEffect를 제거했습니다 - localStorage 덮어쓰기 문제 해결
 
-  // ⚠️ 에피소드 자동 저장 제거 - 모달에서 상태 변경 시에만 저장
-  // episodes 상태가 바뀔 때마다 저장하면 다른 에피소드가 삭제될 수 있습니다.
+  // ⚠️ 회차 자동 저장 제거 - 모달에서 상태 변경 시에만 저장
+  // episodes 상태가 바뀔 때마다 저장하면 다른 회차가 삭제될 수 있습니다.
 
   // 모달 닫기 함수
   const closeModal = () => {
@@ -157,7 +166,7 @@ export default function ProjectsPage() {
       : 0,
   };
 
-  // 오늘 전달할 에피소드 계산
+  // 오늘 전달할 회차 계산
   const today = new Date().toISOString().split('T')[0];
   const todayDeliveries = episodes.filter(episode => episode.dueDate === today)
     .map(episode => {
@@ -234,7 +243,7 @@ export default function ProjectsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
       </div>
     );
   }
@@ -287,14 +296,15 @@ export default function ProjectsPage() {
       `}</style>
 
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">프로젝트</h1>
-          <p className="text-gray-500 mt-2">진행 중인 프로젝트와 에피소드를 한눈에 관리하세요</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">프로젝트</h1>
+          <p className="text-gray-500 mt-1 sm:mt-2 text-sm sm:text-base">진행 중인 프로젝트와 회차를 한눈에 관리하세요</p>
         </div>
         <button
+          data-tour="tour-proj-new"
           onClick={() => setIsAddModalOpen(true)}
-          className="px-4 py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors font-medium flex items-center gap-1.5 text-sm"
+          className="px-4 py-2.5 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors active:scale-[0.97] font-medium flex items-center justify-center gap-1.5 text-sm self-start sm:self-auto"
         >
           <Plus size={16} />
           새 프로젝트
@@ -302,8 +312,8 @@ export default function ProjectsPage() {
       </div>
 
       {/* 필터 탭 + 정렬 */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-200 inline-flex gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div data-tour="tour-proj-filters" className="bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-2 shadow-sm border border-gray-200 inline-flex gap-1 sm:gap-2 overflow-x-auto scrollbar-hide">
           {([
             { key: 'all',        label: '전체',   count: projects.length },
             { key: 'planning',   label: '시작 전', count: projects.filter(p => p.status === 'planning').length },
@@ -313,16 +323,16 @@ export default function ProjectsPage() {
             <button
               key={key}
               onClick={() => setActiveFilter(key)}
-              className="relative px-6 py-3 rounded-xl font-semibold"
+              className="relative px-3 py-2.5 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl font-semibold flex-shrink-0"
             >
               {activeFilter === key && (
                 <motion.div
                   layoutId="project-filter-pill"
-                  className="absolute inset-0 bg-blue-500 rounded-xl shadow-lg shadow-blue-500/30"
+                  className="absolute inset-0 bg-orange-500 rounded-lg sm:rounded-xl shadow-lg shadow-orange-500/30"
                   transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                 />
               )}
-              <div className={`relative flex items-center gap-2 transition-colors duration-200 ${
+              <div className={`relative flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base transition-colors duration-200 ${
                 activeFilter === key ? 'text-white' : 'text-gray-600 hover:text-gray-900'
               }`}>
                 <span>{label}</span>
@@ -337,7 +347,7 @@ export default function ProjectsPage() {
         </div>
 
         {/* 검색 + 정렬 */}
-        <div className="flex items-center gap-2">
+        <div data-tour="tour-proj-search" className="flex items-center gap-2">
           <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5">
             <Search size={15} className="text-gray-400 flex-shrink-0" />
             <input
@@ -394,6 +404,7 @@ export default function ProjectsPage() {
             return (
               <motion.div
                 key={project.id}
+                {...(cardIndex === 0 ? { 'data-tour': 'tour-proj-grid' } : {})}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.15, delay: cardIndex * 0.03 }}
@@ -403,22 +414,22 @@ export default function ProjectsPage() {
                   className="group block bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-200 p-4"
                 >
                   {/* 클라이언트 + 상태 */}
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-1">
                     <span className="text-xs text-gray-400 truncate">{project.client}</span>
                     <StatusBadge status={project.status} />
                   </div>
 
                   {/* 프로젝트명 */}
-                  <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors text-sm leading-snug line-clamp-1 mb-3">
+                  <h3 className="font-semibold text-gray-900 group-hover:text-orange-600 transition-colors text-lg leading-snug line-clamp-1 mb-3">
                     {project.title}
                   </h3>
 
-                  {/* 하단: 파트너 + 에피소드 + 금액 */}
-                  <div className="flex items-center gap-3 text-xs text-gray-400">
+                  {/* 파트너 */}
+                  <div className="flex items-center gap-3 text-xs text-gray-400 mb-2">
                     {partner ? (
                       <div className="flex items-center gap-1 flex-1 min-w-0">
-                        <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0">
-                          {partner.name.charAt(0)}
+                        <div className="w-4 h-4 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <User size={8} className="text-orange-500" />
                         </div>
                         <span className="truncate">{partner.name}</span>
                       </div>
@@ -428,13 +439,41 @@ export default function ProjectsPage() {
                     {projectEpisodes.length > 0 && (
                       <span className="flex-shrink-0">{completedEpisodes}/{projectEpisodes.length}회차</span>
                     )}
-                    <span className="font-semibold text-gray-700 flex-shrink-0">
-                      {project.budget.totalAmount > 0
-                        ? `${(project.budget.totalAmount / 10000).toFixed(0)}만원`
-                        : '-'
-                      }
-                    </span>
                   </div>
+
+                  {/* 작업 현황 */}
+                  {projectEpisodes.length > 0 && (() => {
+                    const inProgressLong = projectEpisodes.filter(ep =>
+                      ep.workContent.includes('롱폼') &&
+                      (ep.workSteps?.['롱폼'] || []).some(s => s.status === 'in_progress')
+                    ).length;
+                    const inProgressShort = projectEpisodes.filter(ep =>
+                      (ep.workContent.includes('기획 숏폼') || ep.workContent.includes('본편 숏폼')) &&
+                      ((ep.workSteps?.['기획 숏폼'] || []).some(s => s.status === 'in_progress') ||
+                       (ep.workSteps?.['본편 숏폼'] || []).some(s => s.status === 'in_progress'))
+                    ).length;
+                    const totalLong = projectEpisodes.filter(ep => ep.workContent.includes('롱폼')).length;
+                    const totalShort = projectEpisodes.filter(ep =>
+                      ep.workContent.includes('기획 숏폼') || ep.workContent.includes('본편 숏폼')
+                    ).length;
+
+                    return (
+                      <div className="pt-2 border-t border-gray-50 space-y-1 text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-1 h-1 rounded-full bg-green-500 flex-shrink-0" />
+                          <span className="text-gray-500">작업 진행 중</span>
+                          <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-600 font-medium">롱폼 {inProgressLong}개</span>
+                          <span className="px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 font-medium">숏폼 {inProgressShort}개</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-1 h-1 rounded-full bg-gray-300 flex-shrink-0" />
+                          <span className="text-gray-400">누적 작업 수</span>
+                          <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-600 font-medium">롱폼 {totalLong}개</span>
+                          <span className="px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 font-medium">숏폼 {totalShort}개</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </Link>
               </motion.div>
             );
@@ -457,7 +496,7 @@ export default function ProjectsPage() {
               {isProjectSuccess ? (
                 /* 성공 화면 */
                 <div className="px-6 sm:px-8 py-16 flex flex-col items-center justify-center">
-                  <div className="checkmark-circle w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center mb-6">
+                  <div className="checkmark-circle w-24 h-24 bg-orange-500 rounded-full flex items-center justify-center mb-6">
                     <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
                       <path
                         className="checkmark-check"
@@ -517,11 +556,11 @@ export default function ProjectsPage() {
                           <button
                             type="button"
                             onClick={() => setIsClientDropdownOpen(!isClientDropdownOpen)}
-                            className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-left flex items-center justify-between hover:border-gray-300 transition-all"
+                            className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white text-left flex items-center justify-between hover:border-gray-300 transition-all"
                           >
                             {newProject.client ? (
                               <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                                <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
                                   {newProject.client.charAt(0)}
                                 </div>
                                 <span className="text-gray-900 font-medium">{newProject.client}</span>
@@ -546,10 +585,10 @@ export default function ProjectsPage() {
                                       setNewProject({ ...newProject, client: client.name });
                                       setIsClientDropdownOpen(false);
                                     }}
-                                    className="w-full px-4 py-3 hover:bg-blue-50 flex items-center gap-3 text-left transition-colors first:rounded-t-xl last:rounded-b-xl"
+                                    className="w-full px-4 py-3 hover:bg-orange-50 flex items-center gap-3 text-left transition-colors first:rounded-t-xl last:rounded-b-xl"
                                   >
-                                    <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                                      {client.name.charAt(0)}
+                                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                      <Building2 size={15} className="text-orange-500" />
                                     </div>
                                     <div>
                                       <p className="text-gray-900 font-medium">{client.name}</p>
@@ -572,12 +611,12 @@ export default function ProjectsPage() {
                           <button
                             type="button"
                             onClick={() => setIsPartnerDropdownOpen(!isPartnerDropdownOpen)}
-                            className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-left flex items-center justify-between hover:border-gray-300 transition-all"
+                            className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white text-left flex items-center justify-between hover:border-gray-300 transition-all"
                           >
                             {newProject.partnerId ? (
                               <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                                  {allPartners.find(p => p.id === newProject.partnerId)?.name.charAt(0)}
+                                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <User size={16} className="text-orange-500" />
                                 </div>
                                 <span className="text-gray-900 font-medium">
                                   {allPartners.find(p => p.id === newProject.partnerId)?.name}
@@ -603,10 +642,10 @@ export default function ProjectsPage() {
                                       setNewProject({ ...newProject, partnerId: partner.id });
                                       setIsPartnerDropdownOpen(false);
                                     }}
-                                    className="w-full px-4 py-3 hover:bg-blue-50 flex items-center gap-3 text-left transition-colors first:rounded-t-xl last:rounded-b-xl"
+                                    className="w-full px-4 py-3 hover:bg-orange-50 flex items-center gap-3 text-left transition-colors first:rounded-t-xl last:rounded-b-xl"
                                   >
-                                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                                      {partner.name.charAt(0)}
+                                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                      <User size={16} className="text-orange-500" />
                                     </div>
                                     <div>
                                       <p className="text-gray-900 font-medium">{partner.name}</p>
@@ -670,7 +709,7 @@ export default function ProjectsPage() {
                       <button
                         onClick={handleAddProject}
                         disabled={!newProject.title || !newProject.client || !newProject.partnerId}
-                        className="flex-1 h-14 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-600 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98] shadow-lg shadow-blue-500/30"
+                        className="flex-1 h-14 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98] shadow-lg shadow-orange-500/30"
                       >
                         프로젝트 시작하기
                       </button>
@@ -791,8 +830,8 @@ export default function ProjectsPage() {
                                   <div className="flex items-center gap-4 text-sm text-gray-600">
                                     {partner && (
                                       <div className="flex items-center gap-1">
-                                        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-[10px] font-semibold">
-                                          {partner.name.charAt(0)}
+                                        <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                          <User size={10} className="text-orange-500" />
                                         </div>
                                         <span>{partner.name}</span>
                                       </div>
@@ -954,7 +993,7 @@ function TabButton({
       onClick={onClick}
       className={`px-4 py-3 font-medium text-sm transition-colors ${
         active
-          ? 'text-blue-600 border-b-2 border-blue-600'
+          ? 'text-orange-600 border-b-2 border-orange-600'
           : 'text-gray-600 hover:text-gray-900'
       }`}
     >
@@ -966,7 +1005,7 @@ function TabButton({
 // 상태 배지 컴포넌트
 function StatusBadge({ status }: { status: string }) {
   const statusMap: Record<string, { label: string; color: string }> = {
-    planning: { label: '시작 전', color: 'bg-blue-50 text-blue-600' },
+    planning: { label: '시작 전', color: 'bg-orange-50 text-orange-600' },
     in_progress: { label: '진행 중', color: 'bg-green-50 text-green-600' },
     completed: { label: '종료', color: 'bg-gray-100 text-gray-500' },
     on_hold: { label: '보류', color: 'bg-orange-50 text-orange-500' },

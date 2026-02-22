@@ -2,10 +2,9 @@
 
 import { useEffect, useRef } from 'react';
 
-const LERP_RING   = 0.1;
-const LERP_DOT    = 0.1;   // 점 크기 보간 속도
+const LERP_RING  = 0.1;
+const LERP_DOT   = 0.1;
 const DOT_DEFAULT = 13;
-const DOT_HOVER   = 32;
 const RING_SIZE   = 50;
 
 export default function CustomCursor() {
@@ -23,9 +22,7 @@ export default function CustomCursor() {
     let ringX  = -100, ringY  = -100;
     let rafId: number;
     let hovering = false;
-    let pressing = false;
 
-    // 점 크기를 RAF로 보간 — CSS transition 불필요
     let dotCurrent = DOT_DEFAULT;
     let dotTarget  = DOT_DEFAULT;
 
@@ -38,11 +35,30 @@ export default function CustomCursor() {
 
     const applyDefault = () => {
       dotTarget = DOT_DEFAULT;
-      ring.style.opacity = '0.45';
+      dot.style.opacity      = '1';
+      dot.style.background   = 'rgb(234,88,12)';
+      // 링 — 원래 스타일
+      ring.style.opacity     = '0.45';
+      ring.style.width       = `${RING_SIZE}px`;
+      ring.style.height      = `${RING_SIZE}px`;
+      ring.style.marginLeft  = `-${RING_SIZE / 2}px`;
+      ring.style.marginTop   = `-${RING_SIZE / 2}px`;
+      ring.style.background  = 'transparent';
+      ring.style.border      = '2px solid rgba(234,88,12,0.7)';
     };
+
     const applyHover = () => {
-      dotTarget = DOT_HOVER;
-      ring.style.opacity = '0';
+      // 점 사라짐
+      dot.style.opacity = '0';
+      // 링 — 수정 후 스타일 (버블처럼 줄어들며 채워짐)
+      const s = 30;
+      ring.style.opacity     = '1';
+      ring.style.width       = `${s}px`;
+      ring.style.height      = `${s}px`;
+      ring.style.marginLeft  = `-${s / 2}px`;
+      ring.style.marginTop   = `-${s / 2}px`;
+      ring.style.background  = 'rgba(234,88,12,0.13)';
+      ring.style.border      = '1.5px solid rgba(234,88,12,0.75)';
     };
 
     const onMouseMove = (e: MouseEvent) => {
@@ -63,28 +79,25 @@ export default function CustomCursor() {
     };
 
     const onMouseDown = () => {
-      pressing = true;
-      // 점이 링 안쪽까지 꽉 차도록 성장
-      dotTarget = RING_SIZE - 4;
-      // 링도 살짝 진하게
-      ring.style.opacity = hovering ? '0.5' : '0.6';
+      if (hovering) {
+        ring.style.background = 'rgba(234,88,12,0.22)';
+        ring.style.border     = '1.5px solid rgba(234,88,12,1)';
+      } else {
+        dotTarget = RING_SIZE - 4;
+        ring.style.opacity = '0.6';
+      }
     };
-
     const onMouseUp = () => {
-      pressing = false;
       hovering ? applyHover() : applyDefault();
     };
 
     const onDocLeave = () => { dot.style.opacity = '0'; ring.style.opacity = '0'; };
-    const onDocEnter = () => { dot.style.opacity = '1'; if (!hovering) ring.style.opacity = '0.45'; };
+    const onDocEnter = () => { if (!hovering) { dot.style.opacity = '1'; ring.style.opacity = '0.45'; } };
 
-    // 단일 RAF 루프 — 점 크기 + 링 위치 함께 처리
     const loop = () => {
-      // 점 크기 lerp
       dotCurrent += (dotTarget - dotCurrent) * LERP_DOT;
       setDot(dotCurrent);
 
-      // 링 위치 lerp
       ringX += (mouseX - ringX) * LERP_RING;
       ringY += (mouseY - ringY) * LERP_RING;
       ring.style.transform = `translate(${ringX}px, ${ringY}px)`;
@@ -98,8 +111,8 @@ export default function CustomCursor() {
     window.addEventListener('mouseout',  onMouseOut,  { passive: true });
     window.addEventListener('mousedown', onMouseDown, { passive: true });
     window.addEventListener('mouseup',   onMouseUp,   { passive: true });
-    document.addEventListener('mouseleave', onDocLeave,  { passive: true });
-    document.addEventListener('mouseenter', onDocEnter,  { passive: true });
+    document.addEventListener('mouseleave', onDocLeave, { passive: true });
+    document.addEventListener('mouseenter', onDocEnter, { passive: true });
 
     return () => {
       cancelAnimationFrame(rafId);
@@ -118,19 +131,18 @@ export default function CustomCursor() {
       <div
         ref={dotRef}
         style={{
-          position:        'fixed',
-          top:             0,
-          left:            0,
-          width:           DOT_DEFAULT,
-          height:          DOT_DEFAULT,
-          marginLeft:      -(DOT_DEFAULT / 2),
-          marginTop:       -(DOT_DEFAULT / 2),
-          backgroundColor: 'rgb(59,130,246)',
-          borderRadius:    '50%',
-          pointerEvents:   'none',
-          zIndex:          99999,
-          // 크기는 RAF가 처리 — opacity만 transition
-          transition:      'opacity 0.3s ease',
+          position:      'fixed',
+          top:           0,
+          left:          0,
+          width:         DOT_DEFAULT,
+          height:        DOT_DEFAULT,
+          marginLeft:    -(DOT_DEFAULT / 2),
+          marginTop:     -(DOT_DEFAULT / 2),
+          background:    'rgb(234,88,12)',
+          borderRadius:  '50%',
+          pointerEvents: 'none',
+          zIndex:        99999,
+          transition:    'opacity 0.15s ease',
         }}
       />
       <div
@@ -144,11 +156,12 @@ export default function CustomCursor() {
           marginLeft:    -(RING_SIZE / 2),
           marginTop:     -(RING_SIZE / 2),
           borderRadius:  '50%',
-          border:        '2px solid rgba(96,165,250,0.85)',
+          border:        '2px solid rgba(234,88,12,0.7)',
+          background:    'transparent',
           pointerEvents: 'none',
           zIndex:        99998,
-          opacity:       0.75,
-          transition:    'opacity 0.2s ease',
+          opacity:       0.45,
+          transition:    'width 0.2s ease, height 0.2s ease, margin 0.2s ease, background 0.2s ease, border 0.2s ease, opacity 0.2s ease',
         }}
       />
     </>

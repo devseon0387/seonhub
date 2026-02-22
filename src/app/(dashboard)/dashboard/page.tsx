@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, FolderOpen, CheckCircle, Clock, TrendingUp, Wallet, Calendar, X, ChevronDown, Sparkles, AlertTriangle, Megaphone } from 'lucide-react';
+import { Users, FolderOpen, CheckCircle, Clock, TrendingUp, Wallet, Calendar, X, ChevronDown, Sparkles, AlertTriangle, Megaphone, Building2, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { Project, Episode, Partner, Client, WorkContentType } from '@/types';
@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 모든 에피소드 데이터 (프로젝트별로 저장되어 있음)
+  // 모든 회차 데이터 (프로젝트별로 저장되어 있음)
   const [allEpisodes, setAllEpisodes] = useState<(Episode & { projectId: string })[]>([]);
 
   // 위자드 모달 상태
@@ -90,6 +90,12 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
+    // 로그인 직후 환영 토스트
+    if (sessionStorage.getItem('vm_just_logged_in')) {
+      sessionStorage.removeItem('vm_just_logged_in');
+      toast.success('로그인에 성공했습니다!');
+    }
+
     const loadData = async () => {
       const [projectsData, partnersData, clientsData, episodesData] = await Promise.all([
         getProjects(),
@@ -255,7 +261,7 @@ export default function DashboardPage() {
     return completedDate >= thisMonthStart && completedDate <= thisMonthEnd;
   });
 
-  // 이번 달 에피소드 필터링 (완료일 기준)
+  // 이번 달 회차 필터링 (완료일 기준)
   const thisMonthCompletedEpisodes = allEpisodes.filter(ep => {
     if (ep.status !== 'completed' || !ep.completedAt) return false;
     const completedDate = new Date(ep.completedAt);
@@ -298,7 +304,7 @@ export default function DashboardPage() {
     .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
     .slice(0, 5);
 
-  // 검수 대기 중인 에피소드
+  // 검수 대기 중인 회차
   const reviewingEpisodes = allEpisodes.filter(ep => ep.status === 'review').slice(0, 5);
 
   // 파트너별 작업 현황
@@ -320,385 +326,376 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: '#ea580c' }} />
       </div>
     );
   }
 
+  // ── 카드 토큰
+  const CARD: React.CSSProperties = {
+    background:   '#ffffff',
+    border:       '1px solid #ede9e6',
+    boxShadow:    '0 1px 3px rgba(0,0,0,0.05)',
+    borderRadius: '14px',
+  };
+
+  // 내부 행 구분선
+  const rowDivider = '1px solid #f0ece9';
+  // 섹션 마이크로 라벨
+  const μ = (t: string) => (
+    <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.12em', color: '#c4b5a5', textTransform: 'uppercase', marginBottom: '4px' }}>{t}</p>
+  );
+
   return (
-    <div className="space-y-8">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between">
+    <div>
+
+      {/* ── 헤더 ── */}
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">대시보드</h1>
-          <p className="text-gray-500 mt-2">콘텐츠 제작, 마케팅, 재무 현황을 한눈에 확인하세요</p>
+          <p style={{ fontSize: '11px', fontWeight: 500, color: '#a8a29e', marginBottom: '4px' }}>
+            {now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
+          </p>
+          <h1 style={{ fontSize: 'clamp(22px,2.5vw,32px)', fontWeight: 700, color: '#1c1917', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+            대시보드
+          </h1>
         </div>
         <button
           onClick={() => setIsWizardOpen(true)}
-          className="px-5 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg shadow-blue-500/30 font-semibold flex items-center gap-2"
+          className="flex items-center gap-2 flex-shrink-0 active:scale-[0.97]"
+          style={{
+            padding:      '9px 16px',
+            borderRadius: '9px',
+            fontSize:     '13px',
+            fontWeight:   600,
+            color:        '#ffffff',
+            background:   '#ea580c',
+            border:       'none',
+            cursor:       'pointer',
+            transition:   'background 0.12s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#c2410c'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#ea580c'; }}
         >
-          <Sparkles size={18} />
-          새 프로젝트 시작
+          <Sparkles size={13} /> 새 프로젝트
         </button>
       </div>
 
-      {/* 탭 네비게이션 */}
-      <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-200 inline-flex gap-2">
+      {/* ── 스탯 스트립 ── */}
+      <div style={{ ...CARD, marginBottom: '20px', overflow: 'hidden' }} className="flex flex-wrap sm:flex-nowrap">
+        {[
+          { value: stats.inProgress,                 label: '진행 중',           color: '#ea580c' },
+          { value: stats.total,                      label: '전체 프로젝트',     color: '#1c1917' },
+          { value: reviewingEpisodes.length,          label: '검수 대기',         color: reviewingEpisodes.length  > 0 ? '#c2410c' : '#1c1917' },
+          { value: upcomingDeadlines.length,          label: 'D-7 마감',          color: upcomingDeadlines.length  > 0 ? '#dc2626' : '#1c1917' },
+          { value: thisMonthStats.completedEpisodes, label: '이달 완료',         color: '#1c1917' },
+        ].map(({ value, label: lbl, color }, i, arr) => (
+          <div
+            key={lbl}
+            className="flex-1 min-w-[calc(33.333%-1px)] sm:min-w-0"
+            style={{
+              padding:     'clamp(12px,2vw,20px) clamp(8px,1.5vw,24px)',
+              borderRight: i < arr.length - 1 ? rowDivider : 'none',
+              textAlign:   'center',
+            }}
+          >
+            <p style={{ fontSize: 'clamp(18px,2.5vw,34px)', fontWeight: 700, color, letterSpacing: '-0.03em', lineHeight: 1 }}>{value}</p>
+            <p style={{ fontSize: 'clamp(9px,1vw,11px)', color: '#a8a29e', marginTop: '5px', fontWeight: 400 }}>{lbl}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── 탭 ── */}
+      <div className="flex overflow-x-auto scrollbar-hide" style={{ borderBottom: '1px solid #ede9e6', marginBottom: '20px' }}>
         {([
-          { key: 'content' as const, icon: FolderOpen, label: '콘텐츠 제작' },
-          { key: 'marketing' as const, icon: Megaphone, label: '마케팅' },
-          { key: 'finance' as const, icon: Wallet, label: '재무' },
-        ]).map(({ key, icon: Icon, label }) => (
+          { key: 'content'   as const, icon: FolderOpen, label: '콘텐츠 제작' },
+          { key: 'marketing' as const, icon: Megaphone,  label: '마케팅'      },
+          { key: 'finance'   as const, icon: Wallet,     label: '재무'        },
+        ]).map(({ key, icon: Icon, label: tl }) => (
           <button
             key={key}
             onClick={() => switchTab(key)}
-            className="relative px-6 py-3 rounded-xl font-semibold"
+            className="relative flex items-center gap-1.5 sm:gap-2 pb-3 mr-4 sm:mr-7 transition-colors duration-150 whitespace-nowrap flex-shrink-0"
+            style={{ fontSize: '13px', fontWeight: 600, color: activeTab === key ? '#1c1917' : '#c4b5a5' }}
           >
+            <Icon size={14} />
+            <span>{tl}</span>
             {activeTab === key && (
               <motion.div
-                layoutId="dashboard-tab-pill"
-                className="absolute inset-0 bg-blue-500 rounded-xl shadow-lg shadow-blue-500/30"
-                transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                layoutId="lg-tab"
+                style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '1.5px', background: '#ea580c', borderRadius: '99px' }}
+                transition={{ type: 'spring', stiffness: 420, damping: 34 }}
               />
             )}
-            <div className={`relative flex items-center gap-2 transition-colors duration-200 ${
-              activeTab === key ? 'text-white' : 'text-gray-600 hover:text-gray-900'
-            }`}>
-              <Icon size={18} />
-              <span>{label}</span>
-            </div>
           </button>
         ))}
       </div>
 
-      {/* 탭 콘텐츠 */}
+      {/* ── 탭 콘텐츠 ── */}
       <div style={{ overflowX: 'clip' }}>
       <AnimatePresence mode="wait" custom={tabDirection}>
-        <motion.div
-          key={activeTab}
-          custom={tabDirection}
+        <motion.div key={activeTab} custom={tabDirection}
           variants={{
-            enter: (dir: number) => ({ x: dir > 0 ? 50 : -50, opacity: 0 }),
+            enter:  (d: number) => ({ x: d > 0 ? 24 : -24, opacity: 0 }),
             center: { x: 0, opacity: 1 },
-            exit: (dir: number) => ({ x: dir > 0 ? -50 : 50, opacity: 0 }),
+            exit:   (d: number) => ({ x: d > 0 ? -24 : 24, opacity: 0 }),
           }}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+          initial="enter" animate="center" exit="exit"
+          transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
 
-        {/* 콘텐츠 제작 탭 */}
+        {/* ── 콘텐츠 제작 ── */}
         {activeTab === 'content' && (
-        <div className="space-y-6">
-          {/* 핵심 지표 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 bg-blue-50 rounded-xl"><FolderOpen size={16} className="text-blue-500" /></div>
-                <span className="text-sm text-gray-500 font-medium">진행 중</span>
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-[1fr_320px]" style={{ alignItems: 'start' }}>
+
+          {/* 왼쪽: 프로젝트 */}
+          <div style={{ ...CARD, overflow: 'hidden' }}>
+            <div style={{ padding: '20px 24px 16px', borderBottom: rowDivider, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                {μ('Projects')}
+                <h2 style={{ fontSize: '17px', fontWeight: 700, color: '#1c1917', letterSpacing: '-0.015em' }}>진행 중인 프로젝트</h2>
               </div>
-              <p className="text-3xl font-bold text-gray-900">{stats.inProgress}</p>
-              <p className="text-xs text-gray-400 mt-1">전체 {stats.total}개 프로젝트</p>
+              <Link href="/projects" style={{ fontSize: '12px', fontWeight: 600, color: '#ea580c' }}>전체 보기 →</Link>
             </div>
 
-            <div className={`rounded-2xl shadow-sm border p-5 ${upcomingDeadlines.length > 0 ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100'}`}>
-              <div className="flex items-center gap-2 mb-4">
-                <div className={`p-2 rounded-xl ${upcomingDeadlines.length > 0 ? 'bg-red-100' : 'bg-orange-50'}`}>
-                  <AlertTriangle size={16} className={upcomingDeadlines.length > 0 ? 'text-red-500' : 'text-orange-400'} />
-                </div>
-                <span className="text-sm text-gray-500 font-medium">마감 D-7</span>
-              </div>
-              <p className={`text-3xl font-bold ${upcomingDeadlines.length > 0 ? 'text-red-600' : 'text-gray-900'}`}>{upcomingDeadlines.length}</p>
-              <p className="text-xs text-gray-400 mt-1">7일 이내 마감</p>
-            </div>
-
-            <div className={`rounded-2xl shadow-sm border p-5 ${reviewingEpisodes.length > 0 ? 'bg-purple-50 border-purple-100' : 'bg-white border-gray-100'}`}>
-              <div className="flex items-center gap-2 mb-4">
-                <div className={`p-2 rounded-xl ${reviewingEpisodes.length > 0 ? 'bg-purple-100' : 'bg-purple-50'}`}>
-                  <CheckCircle size={16} className="text-purple-500" />
-                </div>
-                <span className="text-sm text-gray-500 font-medium">검수 대기</span>
-              </div>
-              <p className={`text-3xl font-bold ${reviewingEpisodes.length > 0 ? 'text-purple-600' : 'text-gray-900'}`}>{reviewingEpisodes.length}</p>
-              <p className="text-xs text-gray-400 mt-1">검수 필요</p>
-            </div>
-          </div>
-
-          {/* 검수 대기 & 마감 임박 & 파트너 현황 */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            {/* 검수 대기 */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle size={16} className="text-purple-500" />
-                  <h2 className="font-semibold text-gray-900">검수 대기 중</h2>
-                </div>
-                {reviewingEpisodes.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-600 font-bold">{reviewingEpisodes.length}</span>
-                )}
-              </div>
-              <div className="divide-y divide-gray-50">
-                {reviewingEpisodes.length === 0 ? (
-                  <EmptyReviews />
-                ) : (
-                  reviewingEpisodes.map((episode) => {
-                    const project = projects.find(p => p.id === episode.projectId);
-                    const partner = partners.find(p => p.id === episode.assignee);
-                    return (
-                      <div key={episode.id} className="px-5 py-3.5 hover:bg-gray-50 transition-colors">
-                        <p className="text-sm font-medium text-gray-900 truncate">{episode.title}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          {project && <p className="text-xs text-gray-400 truncate">{project.title}</p>}
-                          {partner && (
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <div className="w-4 h-4 bg-purple-400 rounded-full flex items-center justify-center text-white text-[9px] font-bold">
-                                {partner.name.charAt(0)}
-                              </div>
-                              <span className="text-xs text-gray-400">{partner.name}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* 다가오는 마감일 */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Calendar size={16} className="text-orange-500" />
-                  <h2 className="font-semibold text-gray-900">다가오는 마감일</h2>
-                </div>
-                {upcomingDeadlines.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 font-bold">{upcomingDeadlines.length}</span>
-                )}
-              </div>
-              <div className="divide-y divide-gray-50">
-                {upcomingDeadlines.length === 0 ? (
-                  <EmptyDeadlines />
-                ) : (
-                  upcomingDeadlines.map((episode) => {
-                    const project = projects.find(p => p.id === episode.projectId);
-                    const daysUntilDue = Math.ceil((new Date(episode.dueDate!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                    const isUrgent = daysUntilDue <= 2;
-                    return (
-                      <div key={episode.id} className="px-5 py-3.5 hover:bg-gray-50 transition-colors flex items-center justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{episode.title}</p>
-                          {project && <p className="text-xs text-gray-400 mt-0.5 truncate">{project.title}</p>}
-                        </div>
-                        <span className={`flex-shrink-0 text-xs px-2 py-1 rounded-lg font-semibold ${
-                          isUrgent ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-700'
-                        }`}>
-                          {daysUntilDue === 0 ? '오늘' : daysUntilDue === 1 ? '내일' : `${daysUntilDue}일`}
-                        </span>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* 파트너별 작업 현황 */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-                <Users size={16} className="text-blue-500" />
-                <h2 className="font-semibold text-gray-900">파트너 현황</h2>
-              </div>
-              <div className="divide-y divide-gray-50">
-                {partnerWorkload.length === 0 ? (
-                  <div className="px-5 py-10 text-center text-gray-400 text-sm">
-                    <Users className="mx-auto mb-2 text-gray-200" size={28} />
-                    작업 중인 파트너가 없습니다
-                  </div>
-                ) : (
-                  partnerWorkload.map(({ partner, inProgress, waiting, completed, total }) => (
-                    <div key={partner.id} className="px-5 py-3.5 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                          {partner.name.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{partner.name}</p>
-                        </div>
-                        <span className="text-xs text-gray-400">{total}개</span>
-                      </div>
-                      <div className="flex gap-1.5 ml-10">
-                        {inProgress > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-medium">진행 {inProgress}</span>}
-                        {waiting > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">대기 {waiting}</span>}
-                        {completed > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">완료 {completed}</span>}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* 진행 중인 프로젝트 */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FolderOpen size={16} className="text-blue-500" />
-                <h2 className="font-semibold text-gray-900">진행 중인 프로젝트</h2>
-              </div>
-              <Link href="/projects" className="text-sm text-blue-500 hover:text-blue-600 font-medium transition-colors">
-                전체 보기 →
-              </Link>
-            </div>
             {projects.filter(p => p.status === 'in_progress' || p.status === 'planning').length === 0 ? (
-              <div className="py-16 text-center text-gray-400">
-                <FolderOpen className="mx-auto mb-3 text-gray-200" size={36} />
-                <p className="font-medium text-gray-500 mb-1">진행 중인 프로젝트가 없어요</p>
-                <p className="text-xs mb-4">새 프로젝트를 시작해보세요</p>
-                <button
-                  onClick={() => setIsWizardOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors"
-                >
-                  <Sparkles size={14} /> 프로젝트 시작
+              <div style={{ padding: '64px 24px', textAlign: 'center' }}>
+                <FolderOpen style={{ margin: '0 auto 12px', color: '#fcd9bd', display: 'block' }} size={32} />
+                <p style={{ fontWeight: 600, color: '#78716c', fontSize: '14px', marginBottom: '4px' }}>진행 중인 프로젝트가 없어요</p>
+                <p style={{ color: '#c4b5a5', fontSize: '12px', marginBottom: '20px' }}>새 프로젝트를 시작해보세요</p>
+                <button onClick={() => setIsWizardOpen(true)} style={{ ...CARD, display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, color: '#ea580c', borderRadius: '999px' }}>
+                  <Sparkles size={13} /> 프로젝트 시작
                 </button>
               </div>
             ) : (
-              <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {projects.filter(p => p.status === 'in_progress' || p.status === 'planning').slice(0, 6).map((project) => {
+              <div>
+                {/* 컬럼 헤더 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 80px', padding: '8px 24px', borderBottom: rowDivider, background: '#faf9f8' }}>
+                  {['프로젝트', '진행률', '상태'].map((h, i) => (
+                    <p key={h} style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', color: '#c4b5a5', textTransform: 'uppercase', textAlign: i > 0 ? 'center' : 'left' }}>{h}</p>
+                  ))}
+                </div>
+                {projects.filter(p => p.status === 'in_progress' || p.status === 'planning').slice(0, 8).map((project, i, arr) => {
                   const partner = partners.find(p => p.id === project.partnerId);
-                  const projectEpisodes = allEpisodes.filter(ep => ep.projectId === project.id);
-                  const totalEpisodes = projectEpisodes.length;
-                  const completedEpisodes = projectEpisodes.filter(ep => ep.status === 'completed').length;
-                  const progressRate = totalEpisodes > 0 ? Math.round((completedEpisodes / totalEpisodes) * 100) : 0;
+                  const eps     = allEpisodes.filter(ep => ep.projectId === project.id);
+                  const done    = eps.filter(ep => ep.status === 'completed').length;
+                  const pct     = eps.length > 0 ? Math.round((done / eps.length) * 100) : 0;
                   return (
-                    <Link
-                      key={project.id}
-                      href={`/projects/${project.id}`}
-                      className="group block bg-gray-50 hover:bg-blue-50 border border-gray-100 hover:border-blue-200 rounded-xl p-4 transition-all duration-200"
+                    <Link key={project.id} href={`/projects/${project.id}`}
+                      style={{ display: 'grid', gridTemplateColumns: '1fr 120px 80px', alignItems: 'center', padding: '14px 24px', borderBottom: i < arr.length - 1 ? rowDivider : 'none', transition: 'background 0.12s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#f9f7f5'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}
                     >
-                      <div className="flex items-start justify-between mb-2">
-                        <span className="text-xs text-gray-400 truncate">{project.client}</span>
+                      <div style={{ minWidth: 0, paddingRight: '16px' }}>
+                        <p style={{ fontSize: '14px', fontWeight: 600, color: '#1c1917', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{project.title}</p>
+                        <p style={{ fontSize: '11px', color: '#a8a29e', marginTop: '2px' }}>
+                          {project.client}{partner && <span style={{ color: '#c4b5a5' }}> · {partner.name}</span>}
+                          {eps.length > 0 && <span style={{ color: '#c4b5a5' }}> · {done}/{eps.length}</span>}
+                        </p>
+                      </div>
+                      <div style={{ padding: '0 8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ flex: 1, height: '3px', borderRadius: '99px', background: '#f0ece9', overflow: 'hidden' }}>
+                            <div style={{ width: `${pct}%`, height: '100%', background: pct >= 80 ? '#16a34a' : '#ea580c', borderRadius: '99px', transition: 'width 0.5s' }} />
+                          </div>
+                          <span style={{ fontSize: '11px', fontWeight: 600, color: '#a8a29e', flexShrink: 0 }}>{pct}%</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'center' }}>
                         <StatusBadge status={project.status} />
                       </div>
-                      <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 text-sm leading-snug line-clamp-1 transition-colors mb-3">
-                        {project.title}
-                      </h3>
-                      {totalEpisodes > 0 && (
-                        <div className="mb-3">
-                          <div className="flex justify-between text-xs text-gray-400 mb-1">
-                            <span>진행률</span>
-                            <span>{completedEpisodes}/{totalEpisodes}</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                            <div
-                              className="bg-blue-500 h-1.5 rounded-full transition-all duration-500"
-                              style={{ width: `${progressRate}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-                      {partner && (
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center text-white text-[9px] font-bold">
-                            {partner.name.charAt(0)}
-                          </div>
-                          <span className="text-xs text-gray-400">{partner.name}</span>
-                        </div>
-                      )}
                     </Link>
                   );
                 })}
               </div>
             )}
           </div>
-        </div>
-        )}
 
-        {/* 마케팅 탭 */}
-        {activeTab === 'marketing' && (
-        <div className="py-24 text-center text-gray-400">
-          <Megaphone className="mx-auto mb-3 text-gray-200" size={44} />
-          <p className="font-medium text-gray-500">마케팅 기능 준비 중</p>
-          <p className="text-xs mt-1 text-gray-400">곧 업데이트될 예정이에요</p>
-        </div>
-        )}
+          {/* 오른쪽: 검수 + 마감 + 파트너 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-        {/* 재무 탭 */}
-        {activeTab === 'finance' && (
-        <div className="space-y-6">
-          {/* 재무 KPI */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 bg-green-50 rounded-xl"><TrendingUp size={16} className="text-green-500" /></div>
-                <span className="text-sm text-gray-500 font-medium">총 매출</span>
+            {/* 검수 대기 */}
+            <div style={{ ...CARD, overflow: 'hidden' }}>
+              <div style={{ padding: '16px 20px 12px', borderBottom: rowDivider, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  {μ('Review')}
+                  <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#1c1917', letterSpacing: '-0.01em' }}>검수 대기</h3>
+                </div>
+                {reviewingEpisodes.length > 0 && (
+                  <span style={{ fontSize: '24px', fontWeight: 700, color: '#ea580c', letterSpacing: '-0.03em' }}>{reviewingEpisodes.length}</span>
+                )}
               </div>
-              <p className="text-3xl font-bold text-gray-900">{(thisMonthRevenue / 10000).toFixed(0)}<span className="text-base font-medium text-gray-400 ml-0.5">만</span></p>
-              <p className="text-xs text-gray-400 mt-1">신규 {thisMonthProjects.length}건</p>
+              {reviewingEpisodes.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center' }}>
+                  <p style={{ fontSize: '12px', color: '#c4b5a5' }}>검수 대기 없음</p>
+                </div>
+              ) : reviewingEpisodes.map((ep, i, arr) => {
+                const proj = projects.find(p => p.id === ep.projectId);
+                return (
+                  <div key={ep.id} style={{ padding: '10px 20px', borderBottom: i < arr.length - 1 ? rowDivider : 'none', display: 'flex', alignItems: 'center', gap: '10px', transition: 'background 0.12s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f9f7f5'}
+                    onMouseLeave={e => e.currentTarget.style.background = ''}
+                  >
+                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#ea580c', flexShrink: 0 }} />
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: '12px', fontWeight: 600, color: '#1c1917', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ep.title}</p>
+                      {proj && <p style={{ fontSize: '11px', color: '#a8a29e', marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{proj.title}</p>}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 bg-purple-50 rounded-xl"><Users size={16} className="text-purple-500" /></div>
-                <span className="text-sm text-gray-500 font-medium">파트너 지급</span>
-              </div>
-              <p className="text-3xl font-bold text-purple-600">{(thisMonthPartnerPayment / 10000).toFixed(0)}<span className="text-base font-medium text-purple-300 ml-0.5">만</span></p>
-              <p className="text-xs text-gray-400 mt-1">&nbsp;</p>
-            </div>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 bg-orange-50 rounded-xl"><Clock size={16} className="text-orange-500" /></div>
-                <span className="text-sm text-gray-500 font-medium">매니징 비용</span>
-              </div>
-              <p className="text-3xl font-bold text-orange-500">{(thisMonthManagementFee / 10000).toFixed(0)}<span className="text-base font-medium text-orange-300 ml-0.5">만</span></p>
-              <p className="text-xs text-gray-400 mt-1">&nbsp;</p>
-            </div>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 bg-emerald-50 rounded-xl"><Wallet size={16} className="text-emerald-500" /></div>
-                <span className="text-sm text-gray-500 font-medium">유보금</span>
-              </div>
-              <p className="text-3xl font-bold text-emerald-600">{(thisMonthMargin / 10000).toFixed(0)}<span className="text-base font-medium text-emerald-300 ml-0.5">만</span></p>
-              <p className="text-xs text-gray-400 mt-1">평균 마진율 {thisMonthAvgMarginRate}%</p>
-            </div>
-          </div>
 
-          {/* 이번 달 프로젝트별 재무 */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-              <FolderOpen size={16} className="text-blue-500" />
-              <h2 className="font-semibold text-gray-900">이번 달 프로젝트 재무</h2>
-            </div>
-            {thisMonthProjects.length === 0 ? (
-              <div className="py-16 text-center text-gray-400">
-                <Wallet className="mx-auto mb-3 text-gray-200" size={36} />
-                <p className="font-medium text-gray-500">이번 달 등록된 프로젝트가 없어요</p>
+            {/* D-7 마감 */}
+            <div style={{ ...CARD, overflow: 'hidden' }}>
+              <div style={{ padding: '16px 20px 12px', borderBottom: rowDivider, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  {μ('Deadline')}
+                  <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#1c1917', letterSpacing: '-0.01em' }}>D-7 마감</h3>
+                </div>
+                {upcomingDeadlines.length > 0 && (
+                  <span style={{ fontSize: '24px', fontWeight: 700, color: '#dc2626', letterSpacing: '-0.03em' }}>{upcomingDeadlines.length}</span>
+                )}
               </div>
-            ) : (
-              <div className="divide-y divide-gray-50">
-                {thisMonthProjects.map((project) => (
-                  <div key={project.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{project.title}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{project.client}</p>
+              {upcomingDeadlines.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center' }}>
+                  <p style={{ fontSize: '12px', color: '#c4b5a5' }}>임박한 마감 없음</p>
+                </div>
+              ) : upcomingDeadlines.map((ep, i, arr) => {
+                const proj = projects.find(p => p.id === ep.projectId);
+                const days = Math.ceil((new Date(ep.dueDate!).getTime() - now.getTime()) / 86400000);
+                const urg  = days <= 2;
+                return (
+                  <div key={ep.id} style={{ padding: '10px 20px', borderBottom: i < arr.length - 1 ? rowDivider : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', transition: 'background 0.12s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f9f7f5'}
+                    onMouseLeave={e => e.currentTarget.style.background = ''}
+                  >
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={{ fontSize: '12px', fontWeight: 600, color: '#1c1917', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ep.title}</p>
+                      {proj && <p style={{ fontSize: '11px', color: '#a8a29e', marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{proj.title}</p>}
+                    </div>
+                    <span style={{ flexShrink: 0, fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '8px', background: urg ? '#fef2f2' : '#fef9ed', color: urg ? '#dc2626' : '#d97706', border: urg ? '1px solid #fecaca' : '1px solid #fde68a' }}>
+                      {days === 0 ? '오늘' : days === 1 ? '내일' : `D-${days}`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 파트너 현황 */}
+            {partnerWorkload.length > 0 && (
+              <div style={{ ...CARD, overflow: 'hidden' }}>
+                <div style={{ padding: '16px 20px 12px', borderBottom: rowDivider }}>
+                  {μ('Team')}
+                  <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#1c1917', letterSpacing: '-0.01em' }}>파트너 현황</h3>
+                </div>
+                {partnerWorkload.map(({ partner, inProgress: ip, waiting: w, completed: c, total: t }, i, arr) => (
+                  <div key={partner.id} style={{ padding: '12px 20px', borderBottom: i < arr.length - 1 ? rowDivider : 'none', transition: 'background 0.12s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f9f7f5'}
+                    onMouseLeave={e => e.currentTarget.style.background = ''}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '24px', height: '24px', borderRadius: '8px', background: 'linear-gradient(135deg,#ea580c,#f97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, color: '#fff' }}>
+                          {partner.name.charAt(0)}
+                        </div>
+                        <p style={{ fontSize: '13px', fontWeight: 600, color: '#1c1917' }}>{partner.name}</p>
                       </div>
-                      <div className="flex gap-6 text-right flex-shrink-0">
-                        <div>
-                          <p className="text-xs text-gray-400">매출</p>
-                          <p className="text-sm font-semibold text-gray-900">{(project.budget.totalAmount / 10000).toFixed(0)}만</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400">파트너</p>
-                          <p className="text-sm font-semibold text-purple-600">{(project.budget.partnerPayment / 10000).toFixed(0)}만</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400">유보금</p>
-                          <p className="text-sm font-semibold text-emerald-600">{((project.budget.totalAmount - project.budget.partnerPayment - project.budget.managementFee) / 10000).toFixed(0)}만</p>
-                        </div>
-                      </div>
+                      <p style={{ fontSize: '11px', color: '#c4b5a5' }}>{t}개</p>
+                    </div>
+                    <div style={{ display: 'flex', borderRadius: '99px', overflow: 'hidden', height: '3px', background: '#f0ece9' }}>
+                      <div style={{ width: `${t > 0 ? (c/t)*100 : 0}%`, background: '#16a34a', transition: 'width 0.5s' }} />
+                      <div style={{ width: `${t > 0 ? (ip/t)*100 : 0}%`, background: '#ea580c', transition: 'width 0.5s' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                      {ip > 0 && <span style={{ fontSize: '10px', color: '#ea580c', fontWeight: 600 }}>진행 {ip}</span>}
+                      {w  > 0 && <span style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600 }}>대기 {w}</span>}
+                      {c  > 0 && <span style={{ fontSize: '10px', color: '#16a34a', fontWeight: 600 }}>완료 {c}</span>}
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        </div>
+        )}
+
+        {/* ── 마케팅 탭 ── */}
+        {activeTab === 'marketing' && (
+          <div style={{ ...CARD, padding: '80px 24px', textAlign: 'center' }}>
+            <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#f0ece9', border: '1px solid rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', backdropFilter: 'blur(20px)' }}>
+              <Megaphone size={24} style={{ color: '#c4b5a5' }} />
+            </div>
+            <p style={{ fontWeight: 700, color: '#1c1917', fontSize: '16px', marginBottom: '6px' }}>마케팅 기능 준비 중</p>
+            <p style={{ color: '#c4b5a5', fontSize: '13px' }}>곧 업데이트될 예정이에요</p>
+          </div>
+        )}
+
+        {/* ── 재무 탭 ── */}
+        {activeTab === 'finance' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+          {/* KPI 스트립 */}
+          <div style={{ ...CARD, display: 'flex', overflow: 'hidden' }}>
+            {[
+              { en: 'Revenue',    kr: '이번 달 총 매출',  value: (thisMonthRevenue         / 10000).toFixed(0), sub: `신규 ${thisMonthProjects.length}건`, color: '#1c1917' },
+              { en: 'Partner',    kr: '파트너 지급',      value: (thisMonthPartnerPayment  / 10000).toFixed(0), sub: '\u00a0',                              color: '#ea580c' },
+              { en: 'Management', kr: '매니징 비용',      value: (thisMonthManagementFee   / 10000).toFixed(0), sub: '\u00a0',                              color: '#f97316' },
+              { en: 'Reserve',    kr: '유보금',           value: (thisMonthMargin          / 10000).toFixed(0), sub: `마진율 ${thisMonthAvgMarginRate}%`,   color: '#0891b2' },
+            ].map(({ en, kr, value, sub, color }, i, arr) => (
+              <div key={en} style={{ flex: 1, padding: '24px 24px 20px', borderRight: i < arr.length - 1 ? rowDivider : 'none', textAlign: 'center' }}>
+                {μ(en)}
+                <p style={{ fontSize: 'clamp(24px,3vw,36px)', fontWeight: 700, color, letterSpacing: '-0.03em', lineHeight: 1, marginBottom: '4px' }}>
+                  {value}<span style={{ fontSize: '14px', opacity: 0.45, marginLeft: '2px' }}>만</span>
+                </p>
+                <p style={{ fontSize: '11px', color: '#a8a29e' }}>{kr}</p>
+                <p style={{ fontSize: '10px', color: '#c4b5a5', marginTop: '2px' }}>{sub}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* 프로젝트 재무 테이블 */}
+          <div style={{ ...CARD, overflow: 'hidden' }}>
+            <div style={{ padding: '20px 24px 16px', borderBottom: rowDivider }}>
+              {μ('This Month')}
+              <h2 style={{ fontSize: '17px', fontWeight: 700, color: '#1c1917', letterSpacing: '-0.015em' }}>이번 달 프로젝트 재무</h2>
+            </div>
+            {thisMonthProjects.length === 0 ? (
+              <div style={{ padding: '64px 24px', textAlign: 'center' }}>
+                <Wallet style={{ margin: '0 auto 12px', color: '#c4b5a5', display: 'block' }} size={28} />
+                <p style={{ fontWeight: 600, color: '#78716c', fontSize: '14px' }}>이번 달 등록된 프로젝트가 없어요</p>
+              </div>
+            ) : (
+              <div>
+                {/* 헤더 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px 90px', padding: '8px 24px', borderBottom: rowDivider, background: '#faf9f8' }}>
+                  {['프로젝트', '매출', '파트너', '유보금'].map((h, i) => (
+                    <p key={h} style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', color: '#c4b5a5', textTransform: 'uppercase', textAlign: i > 0 ? 'right' : 'left' }}>{h}</p>
+                  ))}
+                </div>
+                {thisMonthProjects.map((project, i, arr) => {
+                  const res = project.budget.totalAmount - project.budget.partnerPayment - project.budget.managementFee;
+                  return (
+                    <div key={project.id} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px 90px', alignItems: 'center', padding: '14px 24px', borderBottom: i < arr.length - 1 ? rowDivider : 'none', transition: 'background 0.12s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#f9f7f5'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}
+                    >
+                      <div style={{ minWidth: 0, paddingRight: '12px' }}>
+                        <p style={{ fontSize: '14px', fontWeight: 600, color: '#1c1917', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{project.title}</p>
+                        <p style={{ fontSize: '11px', color: '#a8a29e', marginTop: '1px' }}>{project.client}</p>
+                      </div>
+                      <p style={{ fontSize: '14px', fontWeight: 700, color: '#1c1917', textAlign: 'right' }}>{(project.budget.totalAmount / 10000).toFixed(0)}<span style={{ fontSize: '10px', opacity: 0.4 }}>만</span></p>
+                      <p style={{ fontSize: '14px', fontWeight: 700, color: '#ea580c',  textAlign: 'right' }}>{(project.budget.partnerPayment / 10000).toFixed(0)}<span style={{ fontSize: '10px', opacity: 0.4 }}>만</span></p>
+                      <p style={{ fontSize: '14px', fontWeight: 700, color: '#16a34a',  textAlign: 'right' }}>{(res / 10000).toFixed(0)}<span style={{ fontSize: '10px', opacity: 0.4 }}>만</span></p>
+                    </div>
+                  );
+                })}
+                {/* 합계 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px 90px', alignItems: 'center', padding: '12px 24px', background: '#faf9f8', borderTop: rowDivider }}>
+                  <p style={{ fontSize: '11px', fontWeight: 700, color: '#c4b5a5', letterSpacing: '0.1em', textTransform: 'uppercase' }}>합계</p>
+                  <p style={{ fontSize: '15px', fontWeight: 700, color: '#1c1917', textAlign: 'right' }}>{(thisMonthRevenue / 10000).toFixed(0)}<span style={{ fontSize: '10px', opacity: 0.4 }}>만</span></p>
+                  <p style={{ fontSize: '15px', fontWeight: 700, color: '#ea580c',  textAlign: 'right' }}>{(thisMonthPartnerPayment / 10000).toFixed(0)}<span style={{ fontSize: '10px', opacity: 0.4 }}>만</span></p>
+                  <p style={{ fontSize: '15px', fontWeight: 700, color: '#16a34a',  textAlign: 'right' }}>{(thisMonthMargin / 10000).toFixed(0)}<span style={{ fontSize: '10px', opacity: 0.4 }}>만</span></p>
+                </div>
               </div>
             )}
           </div>
@@ -740,6 +737,7 @@ export default function DashboardPage() {
           });
 
           if (!savedProject) { toast.error('프로젝트 생성에 실패했습니다.'); setIsWizardOpen(false); return; }
+          toast.success('프로젝트가 만들어졌어요!');
           setProjects(prev => [savedProject, ...prev]);
 
           if (data.episodes.shouldCreate && data.episodes.count) {
@@ -770,7 +768,7 @@ export default function DashboardPage() {
 
       {/* 클라이언트 추가 모달 - Toss Style */}
       {isAddClientModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
           <style jsx>{`
             @keyframes checkmark {
               0% {
@@ -801,6 +799,16 @@ export default function DashboardPage() {
               stroke-dashoffset: 100;
               animation: checkmark 0.5s 0.3s cubic-bezier(0.65, 0, 0.45, 1) forwards;
             }
+            @keyframes dash-modal-content-in {
+              from { opacity: 0; transform: scale(0.95) translateY(8px); }
+              to { opacity: 1; transform: scale(1) translateY(0); }
+            }
+            @keyframes dash-modal-sheet-in {
+              from { opacity: 0; transform: translateY(24px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            .animate-dash-modal { animation: dash-modal-content-in 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+            .animate-dash-sheet { animation: dash-modal-sheet-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
           `}</style>
           <div
             className="fixed inset-0 bg-black/40 backdrop-blur-sm"
@@ -808,13 +816,13 @@ export default function DashboardPage() {
           />
           <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
             <div
-              className="relative bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl max-w-2xl w-full animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 duration-300"
+              className="relative bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl max-w-2xl w-full animate-dash-sheet"
               onClick={(e) => e.stopPropagation()}
             >
               {isClientSuccess ? (
                 /* 성공 화면 */
                 <div className="px-6 sm:px-8 py-12 flex flex-col items-center justify-center">
-                  <div className="checkmark-circle w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center mb-6">
+                  <div className="checkmark-circle w-24 h-24 bg-orange-500 rounded-full flex items-center justify-center mb-6">
                     <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
                       <path
                         className="checkmark-check"
@@ -835,7 +843,7 @@ export default function DashboardPage() {
                     <div className="flex gap-3">
                       <button
                         onClick={handleAddProjectFromClient}
-                        className="flex-1 h-14 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl font-semibold text-base hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg shadow-blue-500/30"
+                        className="flex-1 h-14 bg-orange-600 text-white rounded-2xl font-semibold text-base hover:bg-orange-700 transition-all shadow-lg shadow-orange-500/20"
                       >
                         프로젝트 추가
                       </button>
@@ -945,7 +953,7 @@ export default function DashboardPage() {
                   <button
                     onClick={handleAddClient}
                     disabled={!newClient.name}
-                    className="flex-1 h-14 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-600 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98] shadow-lg shadow-blue-500/30"
+                    className="flex-1 h-14 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98] shadow-lg shadow-orange-500/25"
                   >
                     클라이언트 추가하기
                   </button>
@@ -960,7 +968,7 @@ export default function DashboardPage() {
 
       {/* 파트너 추가 모달 - Toss Style */}
       {isAddPartnerModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
           <style jsx>{`
             @keyframes checkmark {
               0% {
@@ -998,13 +1006,13 @@ export default function DashboardPage() {
           />
           <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
             <div
-              className="relative bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl max-w-lg w-full animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 duration-300"
+              className="relative bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl max-w-lg w-full animate-dash-sheet"
               onClick={(e) => e.stopPropagation()}
             >
               {isPartnerSuccess ? (
                 /* 성공 화면 */
                 <div className="px-6 sm:px-8 py-16 flex flex-col items-center justify-center">
-                  <div className="checkmark-circle w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center mb-6">
+                  <div className="checkmark-circle w-24 h-24 bg-orange-500 rounded-full flex items-center justify-center mb-6">
                     <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
                       <path
                         className="checkmark-check"
@@ -1077,7 +1085,7 @@ export default function DashboardPage() {
                         onClick={() => setNewPartner({ ...newPartner, partnerType: 'freelancer' })}
                         className={`h-14 rounded-xl font-semibold transition-all ${
                           newPartner.partnerType === 'freelancer'
-                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
+                            ? 'bg-orange-600 text-white shadow-lg shadow-orange-500/25'
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         }`}
                       >
@@ -1088,7 +1096,7 @@ export default function DashboardPage() {
                         onClick={() => setNewPartner({ ...newPartner, partnerType: 'business' })}
                         className={`h-14 rounded-xl font-semibold transition-all ${
                           newPartner.partnerType === 'business'
-                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
+                            ? 'bg-orange-600 text-white shadow-lg shadow-orange-500/25'
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         }`}
                       >
@@ -1106,7 +1114,7 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         onClick={() => setIsGenerationDropdownOpen(!isGenerationDropdownOpen)}
-                        className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-left flex items-center justify-between hover:border-gray-300 transition-all"
+                        className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white text-left flex items-center justify-between hover:border-gray-300 transition-all"
                       >
                         <span className="text-gray-900 font-medium">{newPartner.generation}기</span>
                         <ChevronDown size={20} className="text-gray-400" />
@@ -1121,7 +1129,7 @@ export default function DashboardPage() {
                                 setNewPartner({ ...newPartner, generation: gen });
                                 setIsGenerationDropdownOpen(false);
                               }}
-                              className="w-full px-4 py-3 hover:bg-blue-50 text-left transition-colors first:rounded-t-xl last:rounded-b-xl"
+                              className="w-full px-4 py-3 hover:bg-orange-50 text-left transition-colors first:rounded-t-xl last:rounded-b-xl"
                             >
                               <span className="text-gray-900 font-medium">{gen}기</span>
                             </button>
@@ -1145,7 +1153,7 @@ export default function DashboardPage() {
                   <button
                     onClick={handleAddPartner}
                     disabled={!newPartner.name || !newPartner.email}
-                    className="flex-1 h-14 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-600 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98] shadow-lg shadow-blue-500/30"
+                    className="flex-1 h-14 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98] shadow-lg shadow-orange-500/25"
                   >
                     파트너 추가하기
                   </button>
@@ -1160,7 +1168,7 @@ export default function DashboardPage() {
 
       {/* 프로젝트 추가 모달 - Toss Style */}
       {isAddProjectModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
           <style jsx>{`
             @keyframes checkmark {
               0% {
@@ -1198,13 +1206,13 @@ export default function DashboardPage() {
           />
           <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
             <div
-              className="relative bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 duration-300"
+              className="relative bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-dash-sheet"
               onClick={(e) => e.stopPropagation()}
             >
               {isProjectSuccess ? (
                 /* 성공 화면 */
                 <div className="px-6 sm:px-8 py-16 flex flex-col items-center justify-center">
-                  <div className="checkmark-circle w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center mb-6">
+                  <div className="checkmark-circle w-24 h-24 bg-orange-500 rounded-full flex items-center justify-center mb-6">
                     <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
                       <path
                         className="checkmark-check"
@@ -1264,11 +1272,11 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         onClick={() => setIsClientDropdownOpen(!isClientDropdownOpen)}
-                        className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-left flex items-center justify-between hover:border-gray-300 transition-all"
+                        className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white text-left flex items-center justify-between hover:border-gray-300 transition-all"
                       >
                         {newProject.client ? (
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                            <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
                               {newProject.client.charAt(0)}
                             </div>
                             <span className="text-gray-900 font-medium">{newProject.client}</span>
@@ -1288,7 +1296,7 @@ export default function DashboardPage() {
                                   setIsClientDropdownOpen(false);
                                   setIsAddClientModalOpen(true);
                                 }}
-                                className="text-sm text-blue-500 hover:text-blue-600 font-medium"
+                                className="text-sm text-orange-500 hover:text-orange-600 font-medium"
                               >
                                 클라이언트 먼저 추가하기 →
                               </button>
@@ -1302,10 +1310,10 @@ export default function DashboardPage() {
                                   setNewProject({ ...newProject, client: client.name });
                                   setIsClientDropdownOpen(false);
                                 }}
-                                className="w-full px-4 py-3 hover:bg-blue-50 flex items-center gap-3 text-left transition-colors first:rounded-t-xl last:rounded-b-xl"
+                                className="w-full px-4 py-3 hover:bg-orange-50 flex items-center gap-3 text-left transition-colors first:rounded-t-xl last:rounded-b-xl"
                               >
-                                <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                                  {client.name.charAt(0)}
+                                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <Building2 size={15} className="text-orange-500" />
                                 </div>
                                 <div>
                                   <p className="text-gray-900 font-medium">{client.name}</p>
@@ -1328,12 +1336,12 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         onClick={() => setIsPartnerDropdownOpen(!isPartnerDropdownOpen)}
-                        className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-left flex items-center justify-between hover:border-gray-300 transition-all"
+                        className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white text-left flex items-center justify-between hover:border-gray-300 transition-all"
                       >
                         {newProject.partnerId ? (
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                              {partners.find(p => p.id === newProject.partnerId)?.name.charAt(0)}
+                            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                              <User size={16} className="text-orange-500" />
                             </div>
                             <span className="text-gray-900 font-medium">
                               {partners.find(p => p.id === newProject.partnerId)?.name}
@@ -1354,7 +1362,7 @@ export default function DashboardPage() {
                                   setIsPartnerDropdownOpen(false);
                                   setIsAddPartnerModalOpen(true);
                                 }}
-                                className="text-sm text-blue-500 hover:text-blue-600 font-medium"
+                                className="text-sm text-orange-500 hover:text-orange-600 font-medium"
                               >
                                 파트너 먼저 추가하기 →
                               </button>
@@ -1368,10 +1376,10 @@ export default function DashboardPage() {
                                   setNewProject({ ...newProject, partnerId: partner.id });
                                   setIsPartnerDropdownOpen(false);
                                 }}
-                                className="w-full px-4 py-3 hover:bg-blue-50 flex items-center gap-3 text-left transition-colors first:rounded-t-xl last:rounded-b-xl"
+                                className="w-full px-4 py-3 hover:bg-orange-50 flex items-center gap-3 text-left transition-colors first:rounded-t-xl last:rounded-b-xl"
                               >
-                                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                                  {partner.name.charAt(0)}
+                                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <User size={16} className="text-orange-500" />
                                 </div>
                                 <div>
                                   <p className="text-gray-900 font-medium">{partner.name}</p>
@@ -1435,7 +1443,7 @@ export default function DashboardPage() {
                   <button
                     onClick={handleAddProject}
                     disabled={!newProject.title || !newProject.client || !newProject.partnerId}
-                    className="flex-1 h-14 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-600 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98] shadow-lg shadow-blue-500/30"
+                    className="flex-1 h-14 bg-orange-600 text-white font-semibold rounded-xl hover:bg-orange-700 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98] shadow-lg shadow-orange-500/25"
                   >
                     프로젝트 시작하기
                   </button>
@@ -1454,17 +1462,17 @@ export default function DashboardPage() {
 
 // 상태 배지 컴포넌트
 function StatusBadge({ status }: { status: string }) {
-  const statusMap: Record<string, { label: string; color: string }> = {
-    planning: { label: '시작 전', color: 'bg-blue-50 text-blue-600' },
-    in_progress: { label: '진행 중', color: 'bg-yellow-50 text-yellow-700' },
-    completed: { label: '종료', color: 'bg-gray-100 text-gray-500' },
-    on_hold: { label: '보류', color: 'bg-orange-50 text-orange-500' },
+  const statusMap: Record<string, { label: string; style: React.CSSProperties }> = {
+    planning: { label: '시작 전', style: { background: 'rgba(234,88,12,0.1)', color: '#c2410c' } },
+    in_progress: { label: '진행 중', style: { background: 'rgba(245,158,11,0.1)', color: '#d97706' } },
+    completed: { label: '종료', style: { background: 'rgba(148,163,184,0.15)', color: '#64748b' } },
+    on_hold: { label: '보류', style: { background: 'rgba(249,115,22,0.1)', color: '#ea580c' } },
   };
 
-  const { label, color } = statusMap[status] || statusMap.on_hold;
+  const { label, style } = statusMap[status] || statusMap.on_hold;
 
   return (
-    <span className={`px-2 py-0.5 rounded-lg text-xs font-medium whitespace-nowrap ${color}`}>
+    <span className="px-2 py-0.5 rounded-lg text-xs font-medium whitespace-nowrap" style={style}>
       {label}
     </span>
   );

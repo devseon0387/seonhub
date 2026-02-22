@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Episode, Partner, WorkContentType } from '@/types';
-import { Calendar } from 'lucide-react';
+import { Calendar, User } from 'lucide-react';
 import EpisodeDetailModal from './EpisodeDetailModal';
 
 const workContentOptions: WorkContentType[] = ['롱폼', '기획 숏폼', '본편 숏폼', '썸네일'];
@@ -47,7 +47,6 @@ export default function EpisodeTable({ episodes: initialEpisodes, partners, mana
       )
     );
 
-    console.log('✅ Updated:', episodeId, field, value);
   };
 
   const handleWorkContentToggle = (episodeId: string, contentType: WorkContentType) => {
@@ -69,7 +68,7 @@ export default function EpisodeTable({ episodes: initialEpisodes, partners, mana
     const statusMap: Record<string, string> = {
       waiting: 'bg-gray-100 text-gray-800',
       in_progress: 'bg-yellow-100 text-yellow-800',
-      review: 'bg-blue-100 text-blue-800',
+      review: 'bg-orange-100 text-orange-800',
       completed: 'bg-green-100 text-green-800',
     };
     return statusMap[status] || statusMap.waiting;
@@ -130,7 +129,7 @@ export default function EpisodeTable({ episodes: initialEpisodes, partners, mana
               >
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="text-sm font-medium text-gray-900">
-                    {episode.episodeNumber}화
+                    {episode.episodeNumber}편
                   </span>
                 </td>
 
@@ -138,7 +137,7 @@ export default function EpisodeTable({ episodes: initialEpisodes, partners, mana
                 <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                   {isEditingWorkContent ? (
                     <div
-                      className="min-w-[200px] p-3 bg-white border border-blue-300 rounded shadow-lg"
+                      className="min-w-[200px] p-3 bg-white border border-orange-300 rounded shadow-lg"
                       onMouseDown={(e) => e.preventDefault()}
                     >
                       <div className="space-y-2">
@@ -151,7 +150,7 @@ export default function EpisodeTable({ episodes: initialEpisodes, partners, mana
                               type="checkbox"
                               checked={episode.workContent.includes(option)}
                               onChange={() => handleWorkContentToggle(episode.id, option)}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                             />
                             <span className="text-sm text-gray-700">{option}</span>
                           </label>
@@ -159,7 +158,7 @@ export default function EpisodeTable({ episodes: initialEpisodes, partners, mana
                       </div>
                       <button
                         onClick={() => setEditingCell(null)}
-                        className="mt-2 w-full px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+                        className="mt-2 w-full px-3 py-1 bg-orange-500 text-white text-xs rounded hover:bg-orange-600"
                       >
                         완료
                       </button>
@@ -173,7 +172,7 @@ export default function EpisodeTable({ episodes: initialEpisodes, partners, mana
                         episode.workContent.map((content) => (
                           <span
                             key={content}
-                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium"
+                            className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium"
                           >
                             {content}
                           </span>
@@ -194,7 +193,7 @@ export default function EpisodeTable({ episodes: initialEpisodes, partners, mana
                   {isEditingStatus ? (
                     <select
                       autoFocus
-                      className="text-xs px-3 py-1 rounded-full border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="text-xs px-3 py-1 rounded-full border border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-500"
                       defaultValue={episode.status}
                       onChange={(e) => handleSelectChange(episode.id, 'status', e.target.value)}
                       onBlur={() => setEditingCell(null)}
@@ -218,15 +217,15 @@ export default function EpisodeTable({ episodes: initialEpisodes, partners, mana
                 <td className="px-6 py-4 whitespace-nowrap relative" onClick={(e) => e.stopPropagation()}>
                   {isEditingAssignee ? (
                     <>
-                      <div className="absolute z-20 bg-white border border-blue-300 rounded-lg shadow-lg max-h-60 overflow-auto min-w-[180px]">
+                      <div className="absolute z-20 bg-white border border-orange-300 rounded-lg shadow-lg max-h-60 overflow-auto min-w-[180px]">
                         {partners.map(partner => (
                           <button
                             key={partner.id}
                             onClick={() => handleSelectChange(episode.id, 'assignee', partner.id)}
-                            className="w-full flex items-center px-3 py-2 hover:bg-blue-50 transition-colors text-left"
+                            className="w-full flex items-center px-3 py-2 hover:bg-orange-50 transition-colors text-left"
                           >
-                            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-3">
-                              {partner.name.charAt(0)}
+                            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mr-3">
+                              <User size={16} className="text-orange-500" />
                             </div>
                             <span className="text-sm text-gray-900">{partner.name}</span>
                           </button>
@@ -242,7 +241,7 @@ export default function EpisodeTable({ episodes: initialEpisodes, partners, mana
                       onClick={() => handleCellClick(episode.id, 'assignee')}
                       className="flex items-center hover:bg-gray-100 rounded px-2 py-1 transition-colors"
                     >
-                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2">
+                      <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2">
                         {assignee?.name.charAt(0)}
                       </div>
                       <span className="text-sm text-gray-900">{assignee?.name}</span>
@@ -254,14 +253,14 @@ export default function EpisodeTable({ episodes: initialEpisodes, partners, mana
                 <td className="px-6 py-4 whitespace-nowrap relative" onClick={(e) => e.stopPropagation()}>
                   {isEditingManager ? (
                     <>
-                      <div className="absolute z-20 bg-white border border-blue-300 rounded-lg shadow-lg max-h-60 overflow-auto min-w-[180px]">
+                      <div className="absolute z-20 bg-white border border-orange-300 rounded-lg shadow-lg max-h-60 overflow-auto min-w-[180px]">
                         {managers.map(mgr => (
                           <button
                             key={mgr.id}
                             onClick={() => handleSelectChange(episode.id, 'manager', mgr.id)}
-                            className="w-full flex items-center px-3 py-2 hover:bg-purple-50 transition-colors text-left"
+                            className="w-full flex items-center px-3 py-2 hover:bg-orange-50 transition-colors text-left"
                           >
-                            <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-3">
+                            <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-3">
                               {mgr.name.charAt(0)}
                             </div>
                             <span className="text-sm text-gray-900">{mgr.name}</span>
@@ -278,7 +277,7 @@ export default function EpisodeTable({ episodes: initialEpisodes, partners, mana
                       onClick={() => handleCellClick(episode.id, 'manager')}
                       className="flex items-center hover:bg-gray-100 rounded px-2 py-1 transition-colors"
                     >
-                      <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2">
+                      <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2">
                         {manager?.name.charAt(0)}
                       </div>
                       <span className="text-sm text-gray-900">{manager?.name}</span>
@@ -288,32 +287,34 @@ export default function EpisodeTable({ episodes: initialEpisodes, partners, mana
 
                 {/* 작업 기간 */}
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    <div className="flex items-center text-gray-500">
-                      <Calendar size={14} className="mr-1" />
-                      {new Date(episode.startDate).toLocaleDateString('ko-KR', {
-                        month: 'short',
-                        day: 'numeric'
-                      })}
-                      {episode.endDate && (
-                        <>
-                          {' ~ '}
-                          {new Date(episode.endDate).toLocaleDateString('ko-KR', {
-                            month: 'short',
-                            day: 'numeric'
-                          })}
-                        </>
-                      )}
-                    </div>
-                    {episode.dueDate && !episode.endDate && (
-                      <div className="text-xs text-orange-600 mt-1">
-                        마감: {new Date(episode.dueDate).toLocaleDateString('ko-KR', {
-                          month: 'short',
-                          day: 'numeric'
-                        })}
+                  {(() => {
+                    const isValidDate = (d: string) => d && !isNaN(new Date(d).getTime());
+                    const fmt = (d: string) => new Date(d).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+                    const hasDate = isValidDate(episode.startDate) || isValidDate(episode.endDate) || isValidDate(episode.dueDate ?? '');
+                    if (!hasDate) {
+                      return (
+                        <span className="text-xs font-medium text-red-300">
+                          마감 기한을 입력해 주세요!
+                        </span>
+                      );
+                    }
+                    return (
+                      <div className="text-sm text-gray-900">
+                        <div className="flex items-center text-gray-500">
+                          <Calendar size={14} className="mr-1" />
+                          {isValidDate(episode.startDate) ? fmt(episode.startDate) : ''}
+                          {isValidDate(episode.endDate ?? '') && (
+                            <>{isValidDate(episode.startDate) ? ' ~ ' : ''}{fmt(episode.endDate!)}</>
+                          )}
+                        </div>
+                        {episode.dueDate && isValidDate(episode.dueDate) && !episode.endDate && (
+                          <div className="text-xs text-orange-600 mt-1">
+                            마감: {fmt(episode.dueDate)}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
                 </td>
               </tr>
             );

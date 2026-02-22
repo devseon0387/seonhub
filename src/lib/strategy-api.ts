@@ -39,6 +39,15 @@ export const strategyApi = {
     return r.json();
   },
 
+  async updateGroup(id: string, updates: { name?: string; emoji?: string }): Promise<StrategyGroup> {
+    const r = await fetch(`/api/strategy/groups/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    return r.json();
+  },
+
   async deleteGroup(id: string): Promise<void> {
     await fetch(`/api/strategy/groups/${id}`, { method: 'DELETE' });
   },

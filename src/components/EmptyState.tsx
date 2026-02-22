@@ -58,7 +58,7 @@ export default function EmptyState({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
           onClick={action.onClick}
-          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium shadow-lg hover:shadow-xl"
+          className="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium shadow-lg hover:shadow-xl"
         >
           {action.label}
         </motion.button>
@@ -73,7 +73,7 @@ export function EmptyProjects({ onAdd }: { onAdd?: () => void }) {
     <EmptyState
       icon={require('lucide-react').FolderOpen}
       title="프로젝트가 없습니다"
-      description="새 프로젝트를 추가하여 비디오 작업을 시작하세요. 프로젝트를 통해 클라이언트, 파트너, 에피소드를 관리할 수 있습니다."
+      description="새 프로젝트를 추가하여 비디오 작업을 시작하세요. 프로젝트를 통해 클라이언트, 파트너, 회차를 관리할 수 있습니다."
       action={
         onAdd
           ? {
@@ -82,8 +82,8 @@ export function EmptyProjects({ onAdd }: { onAdd?: () => void }) {
             }
           : undefined
       }
-      iconColor="text-purple-500"
-      iconBgColor="bg-purple-50"
+      iconColor="text-orange-500"
+      iconBgColor="bg-orange-50"
     />
   );
 }
@@ -92,18 +92,18 @@ export function EmptyEpisodes({ onAdd }: { onAdd?: () => void }) {
   return (
     <EmptyState
       icon={require('lucide-react').Film}
-      title="에피소드가 없습니다"
-      description="프로젝트에 에피소드를 추가하여 작업을 시작하세요. 각 에피소드는 개별적으로 관리됩니다."
+      title="회차가 없습니다"
+      description="프로젝트에 회차를 추가하여 작업을 시작하세요. 각 회차는 개별적으로 관리됩니다."
       action={
         onAdd
           ? {
-              label: '+ 에피소드 추가하기',
+              label: '+ 회차 추가하기',
               onClick: onAdd,
             }
           : undefined
       }
-      iconColor="text-blue-500"
-      iconBgColor="bg-blue-50"
+      iconColor="text-orange-500"
+      iconBgColor="bg-orange-50"
     />
   );
 }
@@ -165,7 +165,7 @@ export function EmptyTrash() {
     <EmptyState
       icon={require('lucide-react').Trash2}
       title="휴지통이 비어있습니다"
-      description="삭제된 항목이 없습니다. 삭제한 프로젝트나 에피소드가 여기에 표시됩니다."
+      description="삭제된 항목이 없습니다. 삭제한 프로젝트나 회차가 여기에 표시됩니다."
       iconColor="text-gray-400"
       iconBgColor="bg-gray-100"
     />
@@ -190,8 +190,8 @@ export function EmptyDeadlines() {
       icon={require('lucide-react').Calendar}
       title="다가오는 마감일이 없습니다"
       description="7일 이내에 마감되는 작업이 없습니다. 여유롭게 작업을 진행하세요!"
-      iconColor="text-blue-400"
-      iconBgColor="bg-blue-50"
+      iconColor="text-orange-400"
+      iconBgColor="bg-orange-50"
     />
   );
 }

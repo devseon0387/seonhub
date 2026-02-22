@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Client, Project, Partner } from '@/types';
-import { ArrowLeft, Mail, Phone, Building2, MapPin, Calendar, DollarSign, TrendingUp } from 'lucide-react';
+import { Client, Project, Partner, Episode } from '@/types';
+import { ArrowLeft, Mail, Phone, Building2, MapPin, User } from 'lucide-react';
 import Link from 'next/link';
-import { calculateReserve } from '@/lib/utils';
-import { getClients, getProjects, getPartners } from '@/lib/supabase/db';
+import { getClients, getProjects, getPartners, getAllEpisodes } from '@/lib/supabase/db';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ClientDetailPage() {
   const params = useParams();
@@ -16,14 +16,16 @@ export default function ClientDetailPage() {
   const [client, setClient] = useState<Client | null>(null);
   const [clientProjects, setClientProjects] = useState<Project[]>([]);
   const [allPartners, setAllPartners] = useState<Partner[]>([]);
+  const [episodes, setEpisodes] = useState<(Episode & { projectId: string })[]>([]);
   const [activeFilter, setActiveFilter] = useState<'all' | 'in_progress' | 'completed' | 'planning'>('all');
 
   useEffect(() => {
     const loadData = async () => {
-      const [clients, projects, partners] = await Promise.all([
+      const [clients, projects, partners, episodesData] = await Promise.all([
         getClients(),
         getProjects(),
         getPartners(),
+        getAllEpisodes(),
       ]);
       const foundClient = clients.find(c => c.id === clientId);
       if (foundClient) {
@@ -31,6 +33,7 @@ export default function ClientDetailPage() {
         setClientProjects(projects.filter(p => p.client === foundClient.name));
       }
       setAllPartners(partners);
+      setEpisodes(episodesData);
     };
     loadData();
   }, [clientId]);
@@ -74,8 +77,8 @@ export default function ClientDetailPage() {
 
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center text-white text-2xl font-semibold">
-                  {client.name.charAt(0)}
+                <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Building2 size={28} className="text-orange-500" />
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">{client.name}</h1>
@@ -161,7 +164,7 @@ export default function ClientDetailPage() {
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <p className="text-sm font-medium text-gray-600">총 금액</p>
-            <p className="text-3xl font-bold text-blue-600 mt-2">
+            <p className="text-3xl font-bold text-orange-600 mt-2">
               {totalBudget.toLocaleString()}
               <span className="text-sm text-gray-500">원</span>
             </p>
@@ -169,157 +172,141 @@ export default function ClientDetailPage() {
         </div>
 
         {/* 프로젝트 섹션 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <h2 className="text-xl font-bold text-gray-900">프로젝트 목록</h2>
           </div>
 
           {/* 필터 탭 */}
-          <div className="px-6 py-3 border-b border-gray-200 flex space-x-2">
-            <TabButton active={activeFilter === 'all'} onClick={() => setActiveFilter('all')}>
-              전체 ({clientProjects.length})
-            </TabButton>
-            <TabButton active={activeFilter === 'in_progress'} onClick={() => setActiveFilter('in_progress')}>
-              진행 중 ({inProgressProjects})
-            </TabButton>
-            <TabButton active={activeFilter === 'completed'} onClick={() => setActiveFilter('completed')}>
-              완료 ({completedProjects})
-            </TabButton>
-            <TabButton active={activeFilter === 'planning'} onClick={() => setActiveFilter('planning')}>
-              기획 중 ({clientProjects.filter(p => p.status === 'planning').length})
-            </TabButton>
+          <div className="bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-2 shadow-sm border border-gray-200 inline-flex gap-1 sm:gap-2 overflow-x-auto scrollbar-hide mb-4">
+            {([
+              { key: 'all',         label: '전체',   count: clientProjects.length },
+              { key: 'planning',    label: '시작 전', count: clientProjects.filter(p => p.status === 'planning').length },
+              { key: 'in_progress', label: '진행 중', count: inProgressProjects },
+              { key: 'completed',   label: '종료',   count: completedProjects },
+            ] as const).map(({ key, label, count }) => (
+              <button
+                key={key}
+                onClick={() => setActiveFilter(key)}
+                className="relative px-3 py-2.5 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl font-semibold flex-shrink-0"
+              >
+                {activeFilter === key && (
+                  <motion.div
+                    layoutId="client-project-filter-pill"
+                    className="absolute inset-0 bg-orange-500 rounded-lg sm:rounded-xl shadow-lg shadow-orange-500/30"
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <div className={`relative flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base transition-colors duration-200 ${
+                  activeFilter === key ? 'text-white' : 'text-gray-600 hover:text-gray-900'
+                }`}>
+                  <span>{label}</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold transition-colors duration-200 ${
+                    activeFilter === key ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {count}
+                  </span>
+                </div>
+              </button>
+            ))}
           </div>
 
           {/* 프로젝트 그리드 */}
-          <div className="p-6">
-            {filteredProjects.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredProjects.map((project) => {
-                  const partner = allPartners.find(p => p.id === project.partnerId);
-                  const isInProgress = project.status === 'in_progress';
-                  const bgColor = isInProgress ? 'bg-gradient-to-br from-green-400 to-green-600' : 'bg-gradient-to-br from-red-400 to-red-600';
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeFilter}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
+            >
+              {filteredProjects.length === 0 ? (
+                <div className="col-span-full py-20 text-center text-gray-400 text-sm">
+                  해당 필터에 맞는 프로젝트가 없습니다
+                </div>
+              ) : filteredProjects.map((project, cardIndex) => {
+                const partner = allPartners.find(p => p.id === project.partnerId);
+                const projectEpisodes = episodes.filter(e => e.projectId === project.id);
+                const completedEpisodes = projectEpisodes.filter(ep => {
+                  const allTypes = ep.workContent || [];
+                  if (allTypes.length === 0) return false;
+                  return allTypes.every(wt => {
+                    const steps = ep.workSteps?.[wt] || [];
+                    return steps.length > 0 && steps.every(s => s.status === 'completed');
+                  });
+                }).length;
 
-                  return (
+                return (
+                  <motion.div
+                    key={project.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.15, delay: cardIndex * 0.03 }}
+                  >
                     <Link
-                      key={project.id}
                       href={`/projects/${project.id}`}
-                      className="bg-white rounded-lg shadow hover:shadow-xl transition-all duration-200 overflow-hidden group block hover:scale-[1.02] hover:border-blue-200 border border-gray-200"
+                      className="group block bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-200 p-4"
                     >
-                      {/* 썸네일 영역 */}
-                      <div className={`h-12 ${bgColor} relative`}>
-                        <div className="absolute top-2 right-2">
-                          <StatusBadge status={project.status} />
-                        </div>
+                      {/* 클라이언트 + 상태 */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-gray-400 truncate">{project.client}</span>
+                        <StatusBadge status={project.status} />
                       </div>
 
-                      {/* 프로젝트 정보 */}
-                      <div className="p-4">
-                        <h3 className="text-base font-semibold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors line-clamp-1">
-                          {project.title}
-                        </h3>
+                      {/* 프로젝트명 */}
+                      <h3 className="font-semibold text-gray-900 group-hover:text-orange-600 transition-colors text-sm leading-snug line-clamp-1 mb-3">
+                        {project.title}
+                      </h3>
 
-                        {/* 메타 정보 */}
-                        <div className="space-y-2 mb-3">
-                          {partner && (
-                            <div className="flex items-center text-xs text-gray-700">
-                              <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-[10px] font-semibold mr-1.5">
-                                {partner.name.charAt(0)}
-                              </div>
-                              <span className="truncate font-medium">{partner.name}</span>
+                      {/* 하단: 파트너 + 회차 + 금액 */}
+                      <div className="flex items-center gap-3 text-xs text-gray-400">
+                        {partner ? (
+                          <div className="flex items-center gap-1 flex-1 min-w-0">
+                            <div className="w-4 h-4 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                              <User size={8} className="text-orange-500" />
                             </div>
-                          )}
-                          <div className="flex items-center text-xs text-gray-500">
-                            <Calendar size={12} className="mr-1" />
-                            <span>{new Date(project.createdAt).toLocaleDateString('ko-KR')}</span>
+                            <span className="truncate">{partner.name}</span>
                           </div>
-                        </div>
-
-                        {/* 금액 정보 */}
-                        <div className="pt-3 border-t border-gray-100">
-                          <div className="flex items-baseline justify-between">
-                            <span className="text-xs text-gray-500">총 금액</span>
-                            <span className="text-sm font-bold text-gray-900">
-                              {project.budget.totalAmount.toLocaleString()}원
-                            </span>
-                          </div>
-                          <div className="flex items-baseline justify-between mt-1">
-                            <span className="text-xs text-gray-500">유보금</span>
-                            <span className="text-xs font-semibold text-green-600">
-                              {calculateReserve(project.budget).toLocaleString()}원
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* 태그 */}
-                        {project.tags && project.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-3">
-                            {project.tags.slice(0, 2).map((tag, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                            {project.tags.length > 2 && (
-                              <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                                +{project.tags.length - 2}
-                              </span>
-                            )}
-                          </div>
+                        ) : (
+                          <div className="flex-1" />
                         )}
+                        {projectEpisodes.length > 0 && (
+                          <span className="flex-shrink-0">{completedEpisodes}/{projectEpisodes.length}회차</span>
+                        )}
+                        <span className="font-semibold text-gray-700 flex-shrink-0">
+                          {project.budget.totalAmount > 0
+                            ? `${(project.budget.totalAmount / 10000).toFixed(0)}만원`
+                            : '-'
+                          }
+                        </span>
                       </div>
                     </Link>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-12 text-gray-500">
-                <p className="text-base">해당 필터에 맞는 프로젝트가 없습니다.</p>
-              </div>
-            )}
-          </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
     </div>
   );
 }
 
-// 탭 버튼 컴포넌트
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-        active
-          ? 'bg-white text-blue-600 border-b-2 border-blue-600'
-          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
 // 상태 배지 컴포넌트
 function StatusBadge({ status }: { status: string }) {
-  const statusStyles = {
-    planning: 'bg-gray-100 text-gray-800',
-    in_progress: 'bg-yellow-100 text-yellow-800',
-    completed: 'bg-green-100 text-green-800',
-    on_hold: 'bg-red-100 text-red-800',
+  const statusMap: Record<string, { label: string; color: string }> = {
+    planning: { label: '시작 전', color: 'bg-orange-50 text-orange-600' },
+    in_progress: { label: '진행 중', color: 'bg-green-50 text-green-600' },
+    completed: { label: '종료', color: 'bg-gray-100 text-gray-500' },
+    on_hold: { label: '보류', color: 'bg-orange-50 text-orange-500' },
   };
 
-  const statusLabels = {
-    planning: '기획',
-    in_progress: '진행중',
-    completed: '완료',
-    on_hold: '보류',
-  };
+  const { label, color } = statusMap[status] || statusMap.on_hold;
 
   return (
-    <span className={`px-2 py-1 rounded text-xs font-medium ${statusStyles[status as keyof typeof statusStyles] || statusStyles.planning}`}>
-      {statusLabels[status as keyof typeof statusLabels] || status}
+    <span className={`px-2 py-0.5 rounded-lg text-xs font-medium whitespace-nowrap flex-shrink-0 ${color}`}>
+      {label}
     </span>
   );
 }

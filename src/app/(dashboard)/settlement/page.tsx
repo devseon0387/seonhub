@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { Users, Receipt, FolderOpen, Briefcase, TrendingUp, ClipboardCheck, Wallet, ArrowRight, ChevronDown } from 'lucide-react';
-import { Project, Partner, Client } from '@/types';
+import { Project, Partner, Client, Episode } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getProjects, getPartners, getClients } from '@/lib/supabase/db';
+import { getProjects, getPartners, getClients, getProjectEpisodes } from '@/lib/supabase/db';
 
 const statusConfig: Record<string, { label: string; dot: string; badge: string }> = {
-  planning:    { label: '시작 전', dot: 'bg-blue-400',   badge: 'bg-blue-50 text-blue-600' },
+  planning:    { label: '시작 전', dot: 'bg-orange-400',   badge: 'bg-orange-50 text-orange-600' },
   in_progress: { label: '진행 중', dot: 'bg-yellow-400', badge: 'bg-yellow-50 text-yellow-700' },
   completed:   { label: '종료',   dot: 'bg-gray-300',   badge: 'bg-gray-100 text-gray-500' },
 };
@@ -27,6 +27,11 @@ export default function SettlementPage() {
   const togglePartner = (id: string) => setOpenPartners(prev => ({ ...prev, [id]: !prev[id] }));
   const isPartnerOpen = (id: string) => openPartners[id] !== false; // 기본 열림
 
+  const [episodesMap, setEpisodesMap] = useState<Record<string, (Episode & { projectId: string })[]>>({});
+  const [openProjects, setOpenProjects] = useState<Record<string, boolean>>({});
+  const toggleProject = (id: string) => setOpenProjects(prev => ({ ...prev, [id]: !prev[id] }));
+  const isProjectOpen = (id: string) => openProjects[id] !== false; // 기본 열림
+
   const TAB_ORDER = ['client', 'partner', 'manager'] as const;
   const switchTab = (tab: 'client' | 'partner' | 'manager') => {
     setTabDirection(TAB_ORDER.indexOf(tab) > TAB_ORDER.indexOf(activeTab) ? 1 : -1);
@@ -35,10 +40,19 @@ export default function SettlementPage() {
 
   useEffect(() => {
     Promise.all([getProjects(), getPartners(), getClients()]).then(
-      ([projectsData, partnersData, clientsData]) => {
+      async ([projectsData, partnersData, clientsData]) => {
         setProjects(projectsData);
         setPartners(partnersData);
         setClients(clientsData);
+
+        // 모든 프로젝트의 에피소드를 병렬로 로드
+        const epEntries = await Promise.all(
+          projectsData.map(async (p) => {
+            const eps = await getProjectEpisodes(p.id);
+            return [p.id, eps] as const;
+          })
+        );
+        setEpisodesMap(Object.fromEntries(epEntries));
         setLoading(false);
       }
     );
@@ -77,9 +91,23 @@ export default function SettlementPage() {
   return (
     <div className="space-y-8">
       {/* 헤더 */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">정산</h1>
-        <p className="text-gray-500 mt-2">클라이언트 수금 후 파트너와 매니저에게 지급하세요</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-gray-900">이번 달 정산</h1>
+            <span className="px-3 py-1 bg-orange-100 text-orange-600 text-sm rounded-full font-semibold">
+              {new Date().getFullYear()}년 {new Date().getMonth() + 1}월
+            </span>
+          </div>
+          <p className="text-gray-500 mt-2">클라이언트 수금 후 파트너와 매니저에게 지급하세요</p>
+        </div>
+        <a
+          href="/settlement/history"
+          className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:border-gray-300 hover:text-gray-900 transition-all shadow-sm"
+        >
+          <Receipt size={16} />
+          월별 정산 내역
+        </a>
       </div>
 
       {/* 정산 흐름 요약 */}
@@ -87,16 +115,16 @@ export default function SettlementPage() {
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex-1 min-w-[100px]">
             <p className="text-xs text-gray-400 mb-1 flex items-center gap-1.5">
-              <Briefcase size={11} className="text-blue-400" />클라이언트 수금
+              <Briefcase size={11} className="text-orange-400" />클라이언트 수금
             </p>
-            <p className="text-xl font-bold text-blue-600">{(clientGrandTotal / 10000).toFixed(0)}<span className="text-sm font-medium text-blue-300 ml-0.5">만원</span></p>
+            <p className="text-xl font-bold text-orange-600">{(clientGrandTotal / 10000).toFixed(0)}<span className="text-sm font-medium text-orange-300 ml-0.5">만원</span></p>
           </div>
           <ArrowRight size={14} className="text-gray-200 flex-shrink-0" />
           <div className="flex-1 min-w-[100px]">
             <p className="text-xs text-gray-400 mb-1 flex items-center gap-1.5">
-              <Users size={11} className="text-purple-400" />파트너 지급
+              <Users size={11} className="text-orange-400" />파트너 지급
             </p>
-            <p className="text-xl font-bold text-purple-600">{(partnerGrandTotal / 10000).toFixed(0)}<span className="text-sm font-medium text-purple-300 ml-0.5">만원</span></p>
+            <p className="text-xl font-bold text-orange-600">{(partnerGrandTotal / 10000).toFixed(0)}<span className="text-sm font-medium text-orange-300 ml-0.5">만원</span></p>
           </div>
           <ArrowRight size={14} className="text-gray-200 flex-shrink-0" />
           <div className="flex-1 min-w-[100px]">
@@ -117,7 +145,7 @@ export default function SettlementPage() {
 
       {loading && (
         <div className="flex items-center justify-center h-32">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
         </div>
       )}
 
@@ -132,7 +160,7 @@ export default function SettlementPage() {
             {activeTab === key && (
               <motion.div
                 layoutId="settlement-tab-pill"
-                className="absolute inset-0 bg-blue-500 rounded-xl shadow-lg shadow-blue-500/30"
+                className="absolute inset-0 bg-orange-500 rounded-xl shadow-lg shadow-orange-500/30"
                 transition={{ type: 'spring', stiffness: 380, damping: 30 }}
               />
             )}
@@ -166,11 +194,11 @@ export default function SettlementPage() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Briefcase size={16} className="text-blue-500" />
+                  <Briefcase size={16} className="text-orange-500" />
                   <h2 className="font-semibold text-gray-900">클라이언트별 정산 내역</h2>
                 </div>
                 {clientSettlements.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 font-bold">{clientSettlements.length}개</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 font-bold">{clientSettlements.length}개</span>
                 )}
               </div>
 
@@ -213,14 +241,49 @@ export default function SettlementPage() {
                           >
                             {cp.map(project => {
                               const sc = statusConfig[project.status] ?? statusConfig.planning;
+                              const episodes = (episodesMap[project.id] || []) as Episode[];
                               return (
-                                <div key={project.id} className="pl-10 pr-5 py-3 hover:bg-gray-50 transition-colors flex items-center justify-between border-t border-gray-50">
-                                  <div className="flex items-center gap-2.5 min-w-0">
-                                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sc.dot}`} />
-                                    <span className="text-sm text-gray-600 truncate">{project.title}</span>
-                                    <span className="text-xs text-gray-400 flex-shrink-0">{sc.label}</span>
-                                  </div>
-                                  <span className="text-sm text-gray-700 ml-4 flex-shrink-0">{(project.budget.totalAmount / 10000).toFixed(0)}만원</span>
+                                <div key={project.id}>
+                                  <button
+                                    onClick={() => episodes.length > 0 && toggleProject(project.id)}
+                                    className={`w-full pl-10 pr-5 py-3 hover:bg-gray-50 transition-colors flex items-center justify-between border-t border-gray-50 ${episodes.length > 0 ? 'cursor-pointer' : 'cursor-default'}`}
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      {episodes.length > 0 && (
+                                        <ChevronDown size={12} className={`text-gray-300 transition-transform duration-200 flex-shrink-0 ${isProjectOpen(project.id) ? '' : '-rotate-90'}`} />
+                                      )}
+                                      <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sc.dot}`} />
+                                      <span className="text-sm text-gray-600 truncate">{project.title}</span>
+                                      <span className="text-xs text-gray-400 flex-shrink-0">{sc.label}</span>
+                                      {episodes.length > 0 && (
+                                        <span className="text-xs text-gray-300 flex-shrink-0">{episodes.length}회차</span>
+                                      )}
+                                    </div>
+                                    <span className="text-sm text-gray-700 ml-4 flex-shrink-0">{(project.budget.totalAmount / 10000).toFixed(0)}만원</span>
+                                  </button>
+                                  <AnimatePresence initial={false}>
+                                    {isProjectOpen(project.id) && episodes.length > 0 && (
+                                      <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.15 }}
+                                        style={{ overflow: 'hidden' }}
+                                      >
+                                        {episodes.map(ep => (
+                                          <div key={ep.id} className="pl-16 pr-5 py-2.5 flex items-center justify-between border-t border-gray-50 bg-gray-50/50">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <span className="text-xs text-orange-400 font-semibold flex-shrink-0">{ep.episodeNumber}편</span>
+                                              <span className="text-sm text-gray-600 truncate">{ep.title}</span>
+                                            </div>
+                                            {ep.budget && (
+                                              <span className="text-xs text-gray-500 ml-3 flex-shrink-0">{(ep.budget.totalAmount / 10000).toFixed(0)}만원</span>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
                                 </div>
                               );
                             })}
@@ -243,11 +306,11 @@ export default function SettlementPage() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Users size={16} className="text-purple-500" />
+                  <Users size={16} className="text-orange-500" />
                   <h2 className="font-semibold text-gray-900">파트너별 정산 내역</h2>
                 </div>
                 {partnerSettlements.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-600 font-bold">{partnerSettlements.length}명</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 font-bold">{partnerSettlements.length}명</span>
                 )}
               </div>
 
@@ -290,14 +353,49 @@ export default function SettlementPage() {
                           >
                             {partnerProjects.map(project => {
                               const sc = statusConfig[project.status] ?? statusConfig.planning;
+                              const episodes = (episodesMap[project.id] || []) as Episode[];
                               return (
-                                <div key={project.id} className="pl-10 pr-5 py-3 hover:bg-gray-50 transition-colors flex items-center justify-between border-t border-gray-50">
-                                  <div className="flex items-center gap-2.5 min-w-0">
-                                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sc.dot}`} />
-                                    <span className="text-sm text-gray-600 truncate">{project.title}</span>
-                                    <span className="text-xs text-gray-400 flex-shrink-0">{project.client}</span>
-                                  </div>
-                                  <span className="text-sm text-gray-700 ml-4 flex-shrink-0">{(project.budget.partnerPayment / 10000).toFixed(0)}만원</span>
+                                <div key={project.id}>
+                                  <button
+                                    onClick={() => episodes.length > 0 && toggleProject(`p-${project.id}`)}
+                                    className={`w-full pl-10 pr-5 py-3 hover:bg-gray-50 transition-colors flex items-center justify-between border-t border-gray-50 ${episodes.length > 0 ? 'cursor-pointer' : 'cursor-default'}`}
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      {episodes.length > 0 && (
+                                        <ChevronDown size={12} className={`text-gray-300 transition-transform duration-200 flex-shrink-0 ${isProjectOpen(`p-${project.id}`) ? '' : '-rotate-90'}`} />
+                                      )}
+                                      <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sc.dot}`} />
+                                      <span className="text-sm text-gray-600 truncate">{project.title}</span>
+                                      <span className="text-xs text-gray-400 flex-shrink-0">{project.client}</span>
+                                      {episodes.length > 0 && (
+                                        <span className="text-xs text-gray-300 flex-shrink-0">{episodes.length}회차</span>
+                                      )}
+                                    </div>
+                                    <span className="text-sm text-gray-700 ml-4 flex-shrink-0">{(project.budget.partnerPayment / 10000).toFixed(0)}만원</span>
+                                  </button>
+                                  <AnimatePresence initial={false}>
+                                    {isProjectOpen(`p-${project.id}`) && episodes.length > 0 && (
+                                      <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.15 }}
+                                        style={{ overflow: 'hidden' }}
+                                      >
+                                        {episodes.map(ep => (
+                                          <div key={ep.id} className="pl-16 pr-5 py-2.5 flex items-center justify-between border-t border-gray-50 bg-gray-50/50">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <span className="text-xs text-orange-400 font-semibold flex-shrink-0">{ep.episodeNumber}편</span>
+                                              <span className="text-sm text-gray-600 truncate">{ep.title}</span>
+                                            </div>
+                                            {ep.budget && (
+                                              <span className="text-xs text-gray-500 ml-3 flex-shrink-0">{(ep.budget.partnerPayment / 10000).toFixed(0)}만원</span>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
                                 </div>
                               );
                             })}
@@ -308,7 +406,7 @@ export default function SettlementPage() {
                   ))}
                   <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
                     <span className="text-sm font-semibold text-gray-500">총 지급 예정</span>
-                    <span className="text-base font-bold text-purple-600">{(partnerGrandTotal / 10000).toFixed(0)}만원</span>
+                    <span className="text-base font-bold text-orange-600">{(partnerGrandTotal / 10000).toFixed(0)}만원</span>
                   </div>
                 </>
               )}

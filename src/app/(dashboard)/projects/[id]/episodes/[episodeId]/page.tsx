@@ -3,19 +3,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Episode, Partner, EpisodeWorkItem, WorkContentType, Project, WorkStep, WorkTypeBudget } from '@/types';
-import { Plus, Calendar, DollarSign, ChevronDown, ChevronRight, ArrowLeft, X } from 'lucide-react';
+import { Plus, Calendar, DollarSign, ChevronDown, ChevronRight, ArrowLeft, X, User } from 'lucide-react';
 import { getProjects, getProjectEpisodes, getPartners, upsertEpisode } from '@/lib/supabase/db';
+import DateRangePicker from '@/components/DateRangePicker';
+import DatePicker from '@/components/DatePicker';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // 모든 작업 타입 정의
 const ALL_WORK_TYPES: WorkContentType[] = ['롱폼', '기획 숏폼', '본편 숏폼', '썸네일'];
 
-// 작업 타입별 템플릿
-const WORK_STEP_TEMPLATES: Record<WorkContentType, string[]> = {
-  '롱폼': ['1차 종편', '2차 종편', '최종 납품'],
-  '기획 숏폼': ['기획', '촬영', '편집', '납품'],
-  '본편 숏폼': ['편집', '검토', '수정', '최종 납품'],
-  '썸네일': ['초안', '수정', '최종본'],
-};
 
 interface EpisodeWithProjectId extends Episode {
   projectId: string;
@@ -31,10 +27,14 @@ export default function EpisodeDetailPage() {
   const [episode, setEpisode] = useState<Episode | null>(null);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [editingField, setEditingField] = useState<string | null>(null);
+  const [partnerSearch, setPartnerSearch] = useState('');
+  const [confirmRemove, setConfirmRemove] = useState<WorkContentType | null>(null);
   const [editedEpisode, setEditedEpisode] = useState<Episode | null>(null);
 
   // 초기 마운트 추적
   const isInitialMount = useRef(true);
+  // 수정 후에만 주황→검정 애니메이션 재생
+  const [editedFields, setEditedFields] = useState<Set<string>>(new Set());
 
   // 자동 저장 상태
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -45,6 +45,10 @@ export default function EpisodeDetailPage() {
     basicInfo: false,
     budget: false,
   });
+  const [paymentStatusOpen, setPaymentStatusOpen] = useState(false);
+  const paymentStatusRef = useRef<HTMLDivElement>(null);
+  const [invoiceStatusOpen, setInvoiceStatusOpen] = useState(false);
+  const invoiceStatusRef = useRef<HTMLDivElement>(null);
 
   // 각 작업 타입별 작업 단계들을 관리
   const [workSteps, setWorkSteps] = useState<Record<WorkContentType, WorkStep[]>>({
@@ -52,6 +56,13 @@ export default function EpisodeDetailPage() {
     '기획 숏폼': [],
     '본편 숏폼': [],
     '썸네일': [],
+  });
+
+  const [prevWorkSteps, setPrevWorkSteps] = useState<Record<WorkContentType, WorkStep[] | null>>({
+    '롱폼': null,
+    '기획 숏폼': null,
+    '본편 숏폼': null,
+    '썸네일': null,
   });
 
   // 각 작업 타입별 비용 관리
@@ -189,6 +200,21 @@ export default function EpisodeDetailPage() {
 
   // 데이터 로드
   useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (paymentStatusRef.current && !paymentStatusRef.current.contains(e.target as Node)) {
+        setPaymentStatusOpen(false);
+      }
+      if (invoiceStatusRef.current && !invoiceStatusRef.current.contains(e.target as Node)) {
+        setInvoiceStatusOpen(false);
+      }
+    };
+    if (paymentStatusOpen || invoiceStatusOpen) {
+      document.addEventListener('mousedown', handleClick);
+    }
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [paymentStatusOpen, invoiceStatusOpen]);
+
+  useEffect(() => {
     const loadData = async () => {
       const [projects, episodes, partnersData] = await Promise.all([
         getProjects(),
@@ -205,7 +231,20 @@ export default function EpisodeDetailPage() {
         setEditedEpisode(foundEpisode);
 
         if (foundEpisode.workSteps) {
-          setWorkSteps(foundEpisode.workSteps);
+          // 기존 작업 단계들의 label을 카테고리 기반으로 자동 재생성
+          const relabeledSteps = { ...foundEpisode.workSteps };
+          for (const wt of Object.keys(relabeledSteps) as WorkContentType[]) {
+            const steps = relabeledSteps[wt];
+            if (!steps) continue;
+            const categoryCount: Record<string, number> = {};
+            relabeledSteps[wt] = steps.map(step => {
+              const cat = step.category || '가편';
+              if (cat === '원본 전달') return { ...step, label: '원본 전달' };
+              categoryCount[cat] = (categoryCount[cat] || 0) + 1;
+              return { ...step, label: `${categoryCount[cat]}차 ${cat}` };
+            });
+          }
+          setWorkSteps(relabeledSteps);
         }
 
         if (foundEpisode.workBudgets) {
@@ -255,8 +294,8 @@ export default function EpisodeDetailPage() {
 
   if (!episode || !editedEpisode || !project) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/20 to-purple-50/20 flex items-center justify-center">
-        <div className="text-center bg-white/40 backdrop-blur-xl rounded-2xl shadow-xl border border-white/60 px-8 py-6">
+      <div className="min-h-screen bg-[#f5f4f2] flex items-center justify-center">
+        <div className="text-center bg-white rounded-xl border border-gray-100 px-8 py-6">
           <p className="text-gray-500">로딩 중...</p>
         </div>
       </div>
@@ -264,29 +303,7 @@ export default function EpisodeDetailPage() {
   }
 
   const partner = partners.find(p => p.id === editedEpisode.assignee);
-
-  // 전체 작업 단계 개수 계산
-  const getTotalStepsCount = (): number => {
-    return activeWorkTypes.reduce((total, workType) => {
-      return total + (workSteps[workType]?.length || 0);
-    }, 0);
-  };
-
-  // 완료된 작업 단계 개수 계산
-  const getCompletedStepsCount = (): number => {
-    return activeWorkTypes.reduce((total, workType) => {
-      const completedSteps = workSteps[workType]?.filter(step => step.status === 'completed').length || 0;
-      return total + completedSteps;
-    }, 0);
-  };
-
-  // 진행률 계산 (작업 단계 기준)
-  const calculateProgress = () => {
-    const totalSteps = getTotalStepsCount();
-    if (totalSteps === 0) return 0;
-    const completedSteps = getCompletedStepsCount();
-    return Math.round((completedSteps / totalSteps) * 100);
-  };
+  const managerPartner = partners.find(p => p.id === editedEpisode.manager);
 
   // 실제 종료일 계산 (모든 작업 단계의 마감일 중 가장 늦은 날짜)
   const calculateActualEndDate = (): string | null => {
@@ -343,7 +360,8 @@ export default function EpisodeDetailPage() {
     // 작업 단계도 1개 자동 생성
     const newStep: WorkStep = {
       id: `${workType}-${Date.now()}`,
-      label: '',
+      label: '원본 전달',
+      category: '원본 전달',
       status: 'waiting',
       startDate: editedEpisode.startDate,
       dueDate: editedEpisode.dueDate || '',
@@ -374,11 +392,24 @@ export default function EpisodeDetailPage() {
     }));
   };
 
+  // 카테고리별 자동 label 생성
+  const generateStepLabel = (category: string, workType: WorkContentType, existingSteps: WorkStep[], excludeStepId?: string) => {
+    if (category === '원본 전달') return '원본 전달';
+    const sameCategory = existingSteps.filter(s => s.category === category && s.id !== excludeStepId);
+    const count = sameCategory.length + 1;
+    return `${count}차 ${category}`;
+  };
+
   // 작업 단계 추가
   const handleAddWorkStep = (workType: WorkContentType) => {
+    const existing = workSteps[workType] || [];
+    const isFirst = existing.length === 0;
+    const category = isFirst ? '원본 전달' : '가편';
+    const label = generateStepLabel(category, workType, existing);
     const newStep: WorkStep = {
       id: `${workType}-${Date.now()}`,
-      label: '',
+      label,
+      category,
       status: 'waiting',
       startDate: editedEpisode.startDate,
       dueDate: editedEpisode.dueDate || '',
@@ -406,12 +437,25 @@ export default function EpisodeDetailPage() {
     field: keyof WorkStep,
     value: string
   ) => {
-    setWorkSteps(prev => ({
-      ...prev,
-      [workType]: prev[workType].map(step =>
-        step.id === stepId ? { ...step, [field]: value } : step
-      ),
-    }));
+    setWorkSteps(prev => {
+      const steps = prev[workType];
+      if (field === 'category') {
+        // 카테고리 변경 시 label 자동 갱신
+        const label = generateStepLabel(value, workType, steps, stepId);
+        return {
+          ...prev,
+          [workType]: steps.map(step =>
+            step.id === stepId ? { ...step, category: value, label } : step
+          ),
+        };
+      }
+      return {
+        ...prev,
+        [workType]: steps.map(step =>
+          step.id === stepId ? { ...step, [field]: value } : step
+        ),
+      };
+    });
   };
 
   // 비용 토글
@@ -423,6 +467,16 @@ export default function EpisodeDetailPage() {
   };
 
   // 비용 업데이트
+  // 금액 포맷: 550000 → "550,000"
+  const formatCurrency = (v: number | undefined): string => {
+    if (!v) return '';
+    return v.toLocaleString();
+  };
+  // 콤마 제거 후 숫자 파싱
+  const parseCurrency = (s: string): number => {
+    return Number(s.replace(/,/g, '')) || 0;
+  };
+
   const handleUpdateBudget = (
     workType: WorkContentType,
     field: 'partnerPayment' | 'managementFee',
@@ -443,30 +497,22 @@ export default function EpisodeDetailPage() {
     return budget.partnerPayment + budget.managementFee;
   };
 
-  // 템플릿 적용
-  const handleApplyTemplate = (workType: WorkContentType) => {
-    const template = WORK_STEP_TEMPLATES[workType];
-    const newSteps: WorkStep[] = template.map((label, index) => ({
-      id: `${workType}-${Date.now()}-${index}`,
-      label,
-      status: 'waiting' as const,
-      startDate: editedEpisode?.startDate || new Date().toISOString().split('T')[0],
-      dueDate: editedEpisode?.dueDate || '',
-      assigneeId: editedEpisode?.assignee || undefined,
-    }));
-
-    setWorkSteps(prev => ({
-      ...prev,
-      [workType]: newSteps,
-    }));
-  };
 
   // 모든 작업 단계를 완료로 표시
   const handleMarkAllComplete = (workType: WorkContentType) => {
+    setPrevWorkSteps(prev => ({ ...prev, [workType]: workSteps[workType].map(s => ({ ...s })) }));
     setWorkSteps(prev => ({
       ...prev,
       [workType]: prev[workType].map(step => ({ ...step, status: 'completed' as const })),
     }));
+  };
+
+  // 되돌리기
+  const handleUndoMarkAll = (workType: WorkContentType) => {
+    const saved = prevWorkSteps[workType];
+    if (!saved) return;
+    setWorkSteps(prev => ({ ...prev, [workType]: saved }));
+    setPrevWorkSteps(prev => ({ ...prev, [workType]: null }));
   };
 
   // 섹션 토글
@@ -537,6 +583,7 @@ export default function EpisodeDetailPage() {
 
   const handleFieldChange = (field: string, value: any) => {
     setEditedEpisode(prev => prev ? ({ ...prev, [field]: value }) : null);
+    setEditedFields(prev => new Set(prev).add(field));
   };
 
   const handleFieldBlur = () => {
@@ -547,7 +594,7 @@ export default function EpisodeDetailPage() {
     const statusMap: Record<string, string> = {
       waiting: 'bg-gray-100 text-gray-800',
       in_progress: 'bg-yellow-100 text-yellow-800',
-      review: 'bg-blue-100 text-blue-800',
+      review: 'bg-orange-100 text-orange-800',
       completed: 'bg-green-100 text-green-800',
     };
     return statusMap[status] || statusMap.waiting;
@@ -564,11 +611,11 @@ export default function EpisodeDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/20 to-purple-50/20">
+    <div className="min-h-screen bg-[#f5f4f2]">
       <div className="max-w-5xl mx-auto py-8 px-4">
-        {/* 헤더 */}
-        <div className="bg-white/40 backdrop-blur-xl rounded-2xl shadow-xl border border-white/60 mb-6">
-          <div className="px-6 py-4 border-b border-gray-200">
+        {/* 헤더 + 기본 정보 통합 */}
+        <div data-tour="tour-episode-header" className="bg-white rounded-xl border border-gray-100 mb-6">
+          <div className="px-6 py-4">
             {/* 뒤로가기 버튼 */}
             <button
               onClick={() => router.push(`/projects/${projectId}`)}
@@ -578,18 +625,78 @@ export default function EpisodeDetailPage() {
               <span className="text-sm font-medium">프로젝트로 돌아가기</span>
             </button>
 
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center space-x-3">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {episode.episodeNumber}화
-                </h1>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(getOverallEpisodeStatus())}`}>
-                  {getStatusLabel(getOverallEpisodeStatus())}
-                </span>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-1">
+                {editingField === 'episodeNumber' ? (
+                  <motion.div
+                    className="flex items-center"
+                    initial={{ scaleX: 0.9, opacity: 0 }}
+                    animate={{ scaleX: 1, opacity: 1 }}
+                    transition={{ duration: 0.15, ease: 'easeOut' }}
+                    style={{ originX: 0 }}
+                  >
+                    <input
+                      type="number"
+                      autoFocus
+                      value={editedEpisode.episodeNumber}
+                      onChange={(e) => handleFieldChange('episodeNumber', Number(e.target.value))}
+                      onBlur={handleFieldBlur}
+                      className="text-2xl font-bold text-gray-900 bg-orange-50/50 border-b-2 border-orange-400 border-t-0 border-l-0 border-r-0 rounded-none px-1 py-0.5 w-16 focus:outline-none focus:ring-0 appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                    <span className="text-2xl font-bold text-gray-900 ml-0.5">편</span>
+                  </motion.div>
+                ) : (
+                  <motion.span
+                    key={`ep-display-${editedEpisode.episodeNumber}`}
+                    onClick={() => handleFieldClick('episodeNumber')}
+                    className="text-2xl font-bold cursor-pointer hover:bg-gray-50 rounded px-2 py-1 -mx-2"
+                    initial={{ color: editedFields.has('episodeNumber') ? '#ea580c' : '#1c1917' }}
+                    animate={{ color: '#1c1917' }}
+                    transition={{ duration: 0.6, delay: 1, ease: 'easeOut' }}
+                  >
+                    {editedEpisode.episodeNumber}편
+                  </motion.span>
+                )}
+                {editingField === 'title' ? (
+                  <motion.div
+                    initial={{ scaleX: 0.9, opacity: 0 }}
+                    animate={{ scaleX: 1, opacity: 1 }}
+                    transition={{ duration: 0.15, ease: 'easeOut' }}
+                    style={{ originX: 0 }}
+                  >
+                    <input
+                      type="text"
+                      autoFocus
+                      value={editedEpisode.title}
+                      onChange={(e) => handleFieldChange('title', e.target.value)}
+                      onBlur={handleFieldBlur}
+                      className="text-2xl font-bold text-gray-900 bg-orange-50/50 border-b-2 border-orange-400 border-t-0 border-l-0 border-r-0 rounded-none px-1 py-0.5 focus:outline-none focus:ring-0"
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.span
+                    key={`title-display-${editedEpisode.title}`}
+                    onClick={() => handleFieldClick('title')}
+                    className="text-2xl font-bold cursor-pointer hover:bg-gray-50 rounded px-2 py-1"
+                    initial={{ color: editedFields.has('title') ? '#ea580c' : '#1c1917' }}
+                    animate={{ color: '#1c1917' }}
+                    transition={{ duration: 0.6, delay: 1, ease: 'easeOut' }}
+                  >
+                    {editedEpisode.title}
+                  </motion.span>
+                )}
+                {(() => {
+                  const overallStatus = getOverallEpisodeStatus();
+                  return (
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ${getStatusColor(overallStatus)}`}>
+                      {getStatusLabel(overallStatus)}
+                    </span>
+                  );
+                })()}
               </div>
 
               {/* 자동 저장 표시 */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {saveStatus === 'saving' && (
                   <span className="text-xs text-gray-500 flex items-center gap-1">
                     <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
@@ -607,21 +714,77 @@ export default function EpisodeDetailPage() {
               </div>
             </div>
 
-            {/* 기본 정보 요약 */}
-            <div className="flex items-center gap-4 text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-gray-900">{editedEpisode.title}</span>
-              </div>
-              {editedEpisode.dueDate && (
-                <div className="flex items-center gap-1">
-                  <Calendar size={14} />
-                  <span>마감: {new Date(editedEpisode.dueDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}</span>
+            {/* 기본 정보 */}
+            <div data-tour="tour-episode-info" className="border-t border-gray-200 pt-4 space-y-3">
+              <div className="grid grid-cols-3 gap-4 mb-1">
+                <div>
+                  <label className="text-sm text-gray-500 block">시작일</label>
                 </div>
-              )}
-              {episode.budget && (
-                <div className="flex items-center gap-1">
-                  <DollarSign size={14} />
-                  <span>총 {episode.budget.totalAmount.toLocaleString()}원</span>
+                <div>
+                  <label className="text-sm text-gray-500 block">예정 종료일</label>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-500 block flex items-center gap-1">
+                    실제 종료일
+                    <span className="text-xs text-gray-400">(자동)</span>
+                  </label>
+                </div>
+              </div>
+              <div className="grid grid-cols-[1fr_1fr_1fr] gap-4">
+                <div className="col-span-2">
+                  <DateRangePicker
+                    startDate={editedEpisode.startDate?.split('T')[0] ?? ''}
+                    endDate={editedEpisode.dueDate?.split('T')[0] ?? ''}
+                    onStartChange={(v) => handleFieldChange('startDate', v)}
+                    onEndChange={(v) => handleFieldChange('dueDate', v === 'tbd' ? '' : v)}
+                  />
+                </div>
+                <div>
+                  {(() => {
+                    const actualEndDate = calculateActualEndDate();
+                    return (
+                      <div className="h-12 px-4 border-2 border-gray-200 rounded-xl flex items-center gap-2 bg-gray-50/50">
+                        <Calendar size={16} className={actualEndDate ? 'text-orange-500' : 'text-gray-400'} />
+                        <span className={`text-sm ${actualEndDate ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
+                          {!actualEndDate ? '작업 마감일 필요' : (() => {
+                            const [y, m, d] = actualEndDate.split('-').map(Number);
+                            return `${y}년 ${m}월 ${d}일`;
+                          })()}
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* 담당자 / 매니저 */}
+              {(partner || managerPartner) && (
+                <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
+                  {partner && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">파트너:</span>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 bg-gray-100 rounded-full flex items-center justify-center">
+                          <span className="text-[10px] font-medium text-gray-600">{partner.name.charAt(0)}</span>
+                        </div>
+                        <span className="text-sm text-gray-700">{partner.name}</span>
+                      </div>
+                    </div>
+                  )}
+                  {partner && managerPartner && (
+                    <span className="text-gray-300">·</span>
+                  )}
+                  {managerPartner && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">매니저:</span>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 bg-gray-100 rounded-full flex items-center justify-center">
+                          <span className="text-[10px] font-medium text-gray-600">{managerPartner.name.charAt(0)}</span>
+                        </div>
+                        <span className="text-sm text-gray-700">{managerPartner.name}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -630,8 +793,322 @@ export default function EpisodeDetailPage() {
 
         {/* 본문 */}
         <div className="space-y-6">
+
+          {/* 비용 정보 */}
+          {editedEpisode.budget && (
+            <div className="bg-white rounded-xl border border-gray-100">
+              <div
+                className={`flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50 transition-colors ${collapsedSections.budget ? 'rounded-xl' : 'rounded-t-xl'}`}
+                onClick={() => toggleSection('budget')}
+              >
+                <h3 className="text-lg font-semibold text-gray-900">회차별 비용</h3>
+                {collapsedSections.budget ? (
+                  <ChevronRight size={20} className="text-gray-400" />
+                ) : (
+                  <ChevronDown size={20} className="text-gray-400" />
+                )}
+              </div>
+              <div className={`transition-all duration-300 ease-in-out ${!collapsedSections.budget ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                <div className="px-6 pb-6">
+                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    {(() => {
+                      const totalPartner = activeWorkTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.partnerPayment || 0), 0);
+                      const totalManagement = activeWorkTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.managementFee || 0), 0);
+                      const totalAmount = editedEpisode.budget!.totalAmount;
+                      return (
+                        <>
+                          {/* 1행: 총 비용 | 파트너 지급 | 매니저 지급 | 유보금 */}
+                          <div className="grid grid-cols-4 gap-4">
+                            <div>
+                              <p className="text-sm text-gray-500">총 비용</p>
+                              <p className="text-xl font-bold text-gray-900 mt-1">
+                                {totalAmount.toLocaleString()}원
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-500">파트너 지급</p>
+                              <p className="text-xl font-bold text-orange-600 mt-1">
+                                {totalPartner.toLocaleString()}원
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-500">매니저 지급</p>
+                              <p className="text-xl font-bold text-orange-600 mt-1">
+                                {totalManagement.toLocaleString()}원
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-500">유보금</p>
+                              <p className="text-xl font-bold text-green-600 mt-1">
+                                {(totalAmount - totalPartner - totalManagement).toLocaleString()}원
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* 2행: 입금 예정일 | 입금 상태 | 세금계산서 발행일 | 발행 상태 */}
+                          <div className="grid grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-200">
+                            <div>
+                              <p className="text-xs text-gray-400 mb-1.5">입금 예정일</p>
+                              <DatePicker
+                                value={editedEpisode.paymentDueDate || ''}
+                                onChange={(val) => setEditedEpisode(prev => prev ? { ...prev, paymentDueDate: val || undefined } : prev)}
+                                placeholder="날짜 선택"
+                              />
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-400 mb-1.5">입금 상태</p>
+                              <div ref={paymentStatusRef} className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() => setPaymentStatusOpen(!paymentStatusOpen)}
+                                  className={`w-full h-12 px-4 border-2 rounded-xl text-left flex items-center justify-between transition-all ${
+                                    paymentStatusOpen
+                                      ? 'border-orange-500 ring-2 ring-orange-100'
+                                      : editedEpisode.paymentStatus === 'completed'
+                                      ? 'border-green-200 bg-green-50'
+                                      : 'border-gray-200 hover:border-gray-300'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${editedEpisode.paymentStatus === 'completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                                    <span className={`text-sm font-medium ${editedEpisode.paymentStatus === 'completed' ? 'text-green-700' : 'text-gray-900'}`}>
+                                      {editedEpisode.paymentStatus === 'completed' ? '입금 완료' : '입금 전'}
+                                    </span>
+                                  </div>
+                                  <ChevronDown size={14} className={`text-gray-400 transition-transform ${paymentStatusOpen ? 'rotate-180' : ''}`} />
+                                </button>
+                                <AnimatePresence>
+                                  {paymentStatusOpen && (
+                                    <motion.div
+                                      initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                                      exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                                      transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
+                                      className="absolute z-50 mt-2 w-full bg-white rounded-xl shadow-2xl border border-gray-100 py-1.5 overflow-hidden"
+                                    >
+                                      {[
+                                        { value: 'pending' as const, label: '입금 전', color: 'orange' },
+                                        { value: 'completed' as const, label: '입금 완료', color: 'green' },
+                                      ].map((opt) => {
+                                        const isSelected = (editedEpisode.paymentStatus || 'pending') === opt.value;
+                                        return (
+                                          <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => {
+                                              setEditedEpisode(prev => prev ? { ...prev, paymentStatus: opt.value } : prev);
+                                              setPaymentStatusOpen(false);
+                                            }}
+                                            className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-sm transition-colors ${
+                                              isSelected
+                                                ? opt.color === 'green' ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'
+                                                : 'text-gray-700 hover:bg-gray-50'
+                                            }`}
+                                          >
+                                            <span className={`w-2 h-2 rounded-full ${opt.color === 'green' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                                            <span className="font-medium">{opt.label}</span>
+                                            {isSelected && (
+                                              <svg className="w-4 h-4 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                              </svg>
+                                            )}
+                                          </button>
+                                        );
+                                      })}
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-400 mb-1.5">세금계산서 발행일</p>
+                              <DatePicker
+                                value={editedEpisode.invoiceDate || ''}
+                                onChange={(val) => setEditedEpisode(prev => prev ? { ...prev, invoiceDate: val || undefined } : prev)}
+                                placeholder="날짜 선택"
+                              />
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-400 mb-1.5">발행 상태</p>
+                              <div ref={invoiceStatusRef} className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() => setInvoiceStatusOpen(!invoiceStatusOpen)}
+                                  className={`w-full h-12 px-4 border-2 rounded-xl text-left flex items-center justify-between transition-all ${
+                                    invoiceStatusOpen
+                                      ? 'border-orange-500 ring-2 ring-orange-100'
+                                      : editedEpisode.invoiceStatus === 'completed'
+                                      ? 'border-green-200 bg-green-50'
+                                      : 'border-gray-200 hover:border-gray-300'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${editedEpisode.invoiceStatus === 'completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                                    <span className={`text-sm font-medium ${editedEpisode.invoiceStatus === 'completed' ? 'text-green-700' : 'text-gray-900'}`}>
+                                      {editedEpisode.invoiceStatus === 'completed' ? '발행 완료' : '미발행'}
+                                    </span>
+                                  </div>
+                                  <ChevronDown size={14} className={`text-gray-400 transition-transform ${invoiceStatusOpen ? 'rotate-180' : ''}`} />
+                                </button>
+                                <AnimatePresence>
+                                  {invoiceStatusOpen && (
+                                    <motion.div
+                                      initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                                      exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                                      transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
+                                      className="absolute z-50 mt-2 w-full bg-white rounded-xl shadow-2xl border border-gray-100 py-1.5 overflow-hidden"
+                                    >
+                                      {[
+                                        { value: 'pending' as const, label: '미발행', color: 'orange' },
+                                        { value: 'completed' as const, label: '발행 완료', color: 'green' },
+                                      ].map((opt) => {
+                                        const isSelected = (editedEpisode.invoiceStatus || 'pending') === opt.value;
+                                        return (
+                                          <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => {
+                                              setEditedEpisode(prev => prev ? { ...prev, invoiceStatus: opt.value } : prev);
+                                              setInvoiceStatusOpen(false);
+                                            }}
+                                            className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-sm transition-colors ${
+                                              isSelected
+                                                ? opt.color === 'green' ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'
+                                                : 'text-gray-700 hover:bg-gray-50'
+                                            }`}
+                                          >
+                                            <span className={`w-2 h-2 rounded-full ${opt.color === 'green' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                                            <span className="font-medium">{opt.label}</span>
+                                            {isSelected && (
+                                              <svg className="w-4 h-4 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                              </svg>
+                                            )}
+                                          </button>
+                                        );
+                                      })}
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                  {/* 작업별 비용 수정 */}
+                  <div className="mt-4">
+                    <button
+                      onClick={() => setExpandedBudgets(prev => {
+                        const anyOpen = activeWorkTypes.some(wt => prev[wt]);
+                        const next = { ...prev };
+                        activeWorkTypes.forEach(wt => { next[wt] = !anyOpen; });
+                        return next;
+                      })}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:text-gray-700 transition-all"
+                      type="button"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      비용 수정
+                    </button>
+
+                    {activeWorkTypes.some(wt => expandedBudgets[wt]) && (
+                      <div className="mt-3 space-y-2">
+                        {/* 총 제작비 */}
+                        <div className="bg-white rounded-xl border border-gray-100 p-4">
+                          <label className="text-xs text-gray-400 block mb-1">총 제작비</label>
+                          <div className="flex items-center">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={formatCurrency(editedEpisode.budget?.totalAmount)}
+                              onChange={(e) => setEditedEpisode(prev => prev ? {
+                                ...prev,
+                                budget: {
+                                  totalAmount: parseCurrency(e.target.value),
+                                  partnerPayment: prev.budget?.partnerPayment || 0,
+                                  managementFee: prev.budget?.managementFee || 0,
+                                },
+                              } : prev)}
+                              placeholder="0"
+                              className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white"
+                            />
+                            <span className="ml-1.5 text-xs text-gray-400">원</span>
+                          </div>
+                        </div>
+
+                        {activeWorkTypes.map(workType => (
+                          <div key={workType} className="bg-white rounded-xl border border-gray-100 p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-sm font-medium text-gray-900">{workType}</span>
+                              <span className="text-xs font-medium text-gray-500">
+                                합계 {getTotalBudget(workType).toLocaleString()}원
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs text-gray-400 block mb-1">파트너 지급</label>
+                                <div className="flex items-center">
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={formatCurrency(workBudgets[workType].partnerPayment)}
+                                    onChange={(e) => handleUpdateBudget(workType, 'partnerPayment', parseCurrency(e.target.value))}
+                                    placeholder="0"
+                                    className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white"
+                                  />
+                                  <span className="ml-1.5 text-xs text-gray-400">원</span>
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-400 block mb-1">매니징 비용</label>
+                                <div className="flex items-center">
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={formatCurrency(workBudgets[workType].managementFee)}
+                                    onChange={(e) => handleUpdateBudget(workType, 'managementFee', parseCurrency(e.target.value))}
+                                    placeholder="0"
+                                    className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white"
+                                  />
+                                  <span className="ml-1.5 text-xs text-gray-400">원</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 비용 정보 추가 버튼 (budget이 없을 때) */}
+          {!editedEpisode.budget && (
+            <button
+              onClick={() => {
+                setEditedEpisode(prev => prev ? {
+                  ...prev,
+                  budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0 }
+                } : prev);
+              }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-4 bg-white rounded-xl border border-dashed border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors text-gray-500 hover:text-gray-700"
+              type="button"
+            >
+              <DollarSign size={16} />
+              <span className="text-sm font-medium">비용 정보 추가</span>
+            </button>
+          )}
+
           {/* 작업 체크리스트 */}
-          <div className="bg-white/40 backdrop-blur-xl rounded-2xl shadow-xl border border-white/60 p-6">
+          <div data-tour="tour-episode-checklist" className="bg-white rounded-xl border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-gray-900">작업 체크리스트</h3>
             </div>
@@ -641,8 +1118,46 @@ export default function EpisodeDetailPage() {
             </div>
 
             {/* 작업 진행도 타임라인 */}
-            {activeWorkTypes.length > 0 && (
-              <div className="mb-6 p-6 bg-gradient-to-br from-blue-50/20 to-purple-50/20 rounded-xl border border-gray-200/40 overflow-x-auto">
+            {activeWorkTypes.length === 0 ? (
+              <div className="mb-6 p-6 bg-gray-50 rounded-xl border border-gray-100">
+                <style jsx global>{`
+                  @keyframes waiting-pulse-empty {
+                    0%, 100% { opacity: 0.4; }
+                    50% { opacity: 0.8; }
+                  }
+                  .waiting-pulse-empty {
+                    animation: waiting-pulse-empty 3s ease-in-out infinite;
+                  }
+                `}</style>
+                <div className="flex items-center gap-3">
+                  {/* 대기 박스 */}
+                  <div className="flex items-center gap-2 rounded-xl border-2 bg-white/50 border-gray-200/60 px-4 py-2 min-w-[140px] backdrop-blur-md">
+                    <span className="font-semibold text-sm text-gray-600">대기</span>
+                  </div>
+
+                  {/* 진행 표시 (3개의 점) */}
+                  <div className="flex items-center gap-2 px-2">
+                    {[0, 1, 2].map((dotIndex) => (
+                      <div
+                        key={dotIndex}
+                        className="w-2 h-2 rounded-full bg-gray-300 waiting-pulse-empty"
+                        style={{ animationDelay: `${dotIndex * 0.3}s` }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* 마감 */}
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-8 h-8 rounded-full border-2 bg-white border-gray-300 flex items-center justify-center" />
+                    <div className="flex flex-col text-xs">
+                      <span className="text-gray-500 font-medium">마감</span>
+                      <span className="text-gray-400 text-xs">미정</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-6 p-6 bg-gray-50 rounded-xl border border-gray-100 overflow-x-auto">
                 <style jsx global>{`
                   @keyframes pulse-dot {
                     0%, 100% { opacity: 0.3; transform: scale(0.8); }
@@ -764,7 +1279,7 @@ export default function EpisodeDetailPage() {
                             ? 'bg-green-100/50 border-green-300/60 px-4 py-2 min-w-[140px] opacity-60 hover:opacity-100'
                             : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
                             ? 'bg-yellow-100/60 border-yellow-300/70 px-5 py-3 min-w-[160px] shadow-xl scale-110 hover:scale-[1.15]'
-                            : 'bg-white/50 border-gray-200/60 px-4 py-2 min-w-[140px] hover:border-blue-300/70 hover:bg-blue-50/60'
+                            : 'bg-white/50 border-gray-200/60 px-4 py-2 min-w-[140px] hover:border-gray-300 hover:bg-gray-50'
                         }`}>
                           <span className={`font-semibold text-sm ${
                             status === 'completed'
@@ -881,16 +1396,28 @@ export default function EpisodeDetailPage() {
             )}
 
             {/* 활성화된 작업 */}
-            {activeWorkTypes.length > 0 ? (
-              <div className="space-y-3 mb-6">
-                {activeWorkTypes.map((workType) => {
+            {activeWorkTypes.length > 0 ? (<div data-tour="tour-episode-tasks">
+              <AnimatePresence mode="popLayout">
+                {(() => {
+                  const allCompleted = activeWorkTypes.every(wt => getWorkTypeStatus(wt) === 'completed');
+                  return activeWorkTypes.map((workType) => {
                   return (
-                    <div
+                    <motion.div
                       key={workType}
-                      className="border border-gray-200/50 rounded-xl animate-in fade-in slide-in-from-top-2 duration-500"
-                      style={{
-                        animationDelay: `${activeWorkTypes.indexOf(workType) * 80}ms`
-                      }}
+                      layout
+                      initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                      exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                      transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                      className={`rounded-xl transition-all mb-3 ${
+                        getWorkTypeStatus(workType) === 'completed'
+                          ? allCompleted
+                            ? 'border border-gray-100'
+                            : 'border border-gray-100 opacity-50 hover:opacity-100'
+                          : getWorkTypeStatus(workType) === 'in_progress'
+                          ? 'border-l-[3px] border-l-orange-400 border border-gray-200/50 bg-orange-50/10'
+                          : 'border border-gray-200/50'
+                      }`}
                     >
                       <div className="flex-1">
                         {/* 제목 & 상태 배지 & 비용 & 접기/펼치기 & 제거 버튼 */}
@@ -918,26 +1445,13 @@ export default function EpisodeDetailPage() {
                               </span>
                             )}
 
-                            {/* 비용 표시 */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleBudget(workType);
-                              }}
-                              className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                              title="비용 상세"
-                              type="button"
-                            >
-                              <span>💰</span>
-                              <span>{getTotalBudget(workType).toLocaleString()}원</span>
-                            </button>
                           </div>
 
                           {/* 제거 버튼 */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleRemoveWorkType(workType);
+                              setConfirmRemove(workType);
                             }}
                             className="p-1 hover:bg-red-50 rounded transition-colors group"
                             title="작업 제거"
@@ -948,78 +1462,41 @@ export default function EpisodeDetailPage() {
                         </div>
 
                         {/* 펼쳐진 상태일 때만 내용 표시 */}
-                        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                          expandedWorkTypes[workType] ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+                        <div className={`transition-all duration-300 ease-in-out ${
+                          expandedWorkTypes[workType] ? 'max-h-[2000px] opacity-100 overflow-visible' : 'max-h-0 opacity-0 overflow-hidden'
                         }`}>
                           <div className="px-4 pb-4">
                             {/* 빠른 액션 버튼 */}
                             <div className="flex items-center gap-2 mb-4">
-                              <button
-                                onClick={() => handleApplyTemplate(workType)}
-                                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50/40 hover:bg-blue-50 rounded-md transition-colors"
-                                type="button"
-                              >
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                템플릿 적용
-                              </button>
                               {workSteps[workType]?.length > 0 && (
-                                <button
-                                  onClick={() => handleMarkAllComplete(workType)}
-                                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-600 bg-green-50/40 hover:bg-green-50 rounded-md transition-colors"
-                                  type="button"
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  모두 완료로 표시
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => handleMarkAllComplete(workType)}
+                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-600 bg-green-50/40 hover:bg-green-50 rounded-md transition-colors"
+                                    type="button"
+                                  >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    모두 완료로 표시
+                                  </button>
+                                  {prevWorkSteps[workType] && (
+                                    <button
+                                      onClick={() => handleUndoMarkAll(workType)}
+                                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-100/60 hover:bg-gray-100 rounded-md transition-colors"
+                                      type="button"
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v2M3 10l4-4M3 10l4 4" />
+                                      </svg>
+                                      되돌리기
+                                    </button>
+                                  )}
+                                </>
                               )}
                             </div>
 
-                            {/* 비용 상세 입력 폼 */}
-                            {expandedBudgets[workType] && (
-                              <div className="mb-3 p-3 bg-blue-50/30 rounded-lg border border-blue-200/30">
-                                <h4 className="text-xs font-semibold text-gray-700 mb-2">비용 상세</h4>
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="text-xs text-gray-600 block mb-1">파트너 지급</label>
-                                    <div className="flex items-center">
-                                      <input
-                                        type="number"
-                                        value={workBudgets[workType].partnerPayment || ''}
-                                        onChange={(e) => handleUpdateBudget(workType, 'partnerPayment', Number(e.target.value))}
-                                        placeholder="0"
-                                        className="w-full text-sm px-2 py-1 border border-gray-300 rounded focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                                      />
-                                      <span className="ml-1 text-xs text-gray-600">원</span>
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <label className="text-xs text-gray-600 block mb-1">매니징 비용</label>
-                                    <div className="flex items-center">
-                                      <input
-                                        type="number"
-                                        value={workBudgets[workType].managementFee || ''}
-                                        onChange={(e) => handleUpdateBudget(workType, 'managementFee', Number(e.target.value))}
-                                        placeholder="0"
-                                        className="w-full text-sm px-2 py-1 border border-gray-300 rounded focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                                      />
-                                      <span className="ml-1 text-xs text-gray-600">원</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="mt-2 pt-2 border-t border-blue-200">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-xs font-medium text-gray-700">합계</span>
-                                    <span className="text-sm font-bold text-blue-600">
-                                      {getTotalBudget(workType).toLocaleString()}원
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
+                            {/* 비용 상세는 회차별 비용 섹션으로 이동 */}
 
                             {/* 작업 단계 목록 */}
                             <div className="space-y-3">
@@ -1042,51 +1519,120 @@ export default function EpisodeDetailPage() {
                                 workSteps[workType].map((step, index) => (
                                   <div
                                     key={step.id}
-                                    className="relative pb-3 border-b border-gray-100 last:border-b-0 last:pb-0 -mx-2 px-2 rounded-lg hover:bg-gray-50/80 hover:border-transparent transition-all duration-200 group task-item-enter"
+                                    className={`relative pb-3 border-b border-gray-100 last:border-b-0 last:pb-0 -mx-2 px-2 rounded-lg hover:bg-gray-50/80 hover:border-transparent transition-all duration-200 group task-item-enter ${
+                                      step.status === 'completed'
+                                        ? (workSteps[workType].every(s => s.status === 'completed') ? '' : 'opacity-40 hover:opacity-100')
+                                        : step.status === 'in_progress'
+                                        ? 'bg-orange-50/30'
+                                        : ''
+                                    }`}
                                     style={{
                                       animationDelay: `${index * 50}ms`
                                     }}
                                   >
-                                    {/* 한 줄: 작업 단계 + 담당 파트너 + 진행 사항 + 시작일 + 마감일 */}
-                                    <div className="grid grid-cols-12 gap-2">
-                                      {/* 작업 단계/메모 - 3칸 */}
-                                      <div className="col-span-3">
+                                    {/* 한 줄: 카테고리 + 작업 단계 + 담당 파트너 + 진행 사항 + 시작일 + 마감일 */}
+                                    <div className="grid grid-cols-[2fr_3fr_3fr_2fr_6fr] gap-2">
+                                      {/* 카테고리 */}
+                                      <div>
+                                        {index === 0 ? (
+                                          <div className="w-full text-xs px-2 py-2 bg-gray-100 border border-gray-200 rounded-md text-gray-600 font-medium text-center">
+                                            원본 전달
+                                          </div>
+                                        ) : editingField === `${workType}-${step.id}-category` ? (
+                                          <div className="relative">
+                                            <div className="absolute z-10 w-full bg-white/95 backdrop-blur-xl border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
+                                              {['가편', '종편'].map(cat => {
+                                                const catStyle = cat === '가편'
+                                                  ? { active: 'bg-yellow-50', text: 'text-yellow-700' }
+                                                  : { active: 'bg-blue-50', text: 'text-blue-700' };
+                                                return (
+                                                  <button
+                                                    key={cat}
+                                                    onClick={() => {
+                                                      handleUpdateWorkStep(workType, step.id, 'category', cat);
+                                                      setEditingField(null);
+                                                    }}
+                                                    className={`w-full flex items-center px-3 py-2 hover:bg-gray-50 transition-colors text-left ${(step.category || '가편') === cat ? catStyle.active : ''}`}
+                                                    type="button"
+                                                  >
+                                                    <span className={`text-xs font-medium ${(step.category || '가편') === cat ? catStyle.text : 'text-gray-700'}`}>{cat}</span>
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
+                                            <div
+                                              className="fixed inset-0 z-0"
+                                              onClick={() => setEditingField(null)}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <div
+                                            onClick={() => setEditingField(`${workType}-${step.id}-category`)}
+                                            className={`w-full flex items-center justify-center px-2 py-2 border rounded-md cursor-pointer transition-colors ${
+                                              (step.category || '가편') === '가편'
+                                                ? 'bg-yellow-50 border-yellow-200 hover:border-yellow-300'
+                                                : 'bg-blue-50 border-blue-200 hover:border-blue-300'
+                                            }`}
+                                          >
+                                            <span className={`text-xs font-medium ${
+                                              (step.category || '가편') === '가편' ? 'text-yellow-700' : 'text-blue-700'
+                                            }`}>{step.category || '가편'}</span>
+                                            <ChevronDown size={12} className="ml-1 text-gray-400" />
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* 작업 단계/메모 */}
+                                      <div>
                                         <input
                                           type="text"
                                           value={step.label}
                                           onChange={(e) => handleUpdateWorkStep(workType, step.id, 'label', e.target.value)}
                                           placeholder="작업 단계"
-                                          className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+                                          className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white"
                                         />
                                       </div>
 
-                                      {/* 담당 파트너 - 3칸 */}
-                                      <div className="col-span-3">
+                                      {/* 담당 파트너 */}
+                                      <div>
                                         {editingField === `${workType}-${step.id}-assignee` ? (
                                           <div className="relative">
-                                            <div className="absolute z-10 w-full bg-white/95 backdrop-blur-xl border border-blue-300/60 rounded-xl shadow-2xl max-h-48 overflow-hidden">
-                                              <div className="max-h-48 overflow-auto">
+                                            <div className="absolute z-10 w-full bg-white/95 backdrop-blur-xl border border-gray-200 rounded-xl shadow-2xl max-h-60 overflow-hidden">
+                                              <div className="sticky top-0 p-1.5 border-b border-gray-100 bg-white/95">
+                                                <input
+                                                  type="text"
+                                                  value={partnerSearch}
+                                                  onChange={(e) => setPartnerSearch(e.target.value)}
+                                                  placeholder="파트너 검색..."
+                                                  className="w-full text-sm px-2.5 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 bg-white"
+                                                  autoFocus
+                                                  onClick={(e) => e.stopPropagation()}
+                                                />
+                                              </div>
+                                              <div className="max-h-44 overflow-auto">
                                               <button
                                                 onClick={() => {
                                                   handleUpdateWorkStep(workType, step.id, 'assigneeId', '');
                                                   setEditingField(null);
+                                                  setPartnerSearch('');
                                                 }}
-                                                className="w-full flex items-center px-3 py-2 hover:bg-blue-50/50 transition-colors text-left border-b border-gray-100/60"
+                                                className="w-full flex items-center px-3 py-2 hover:bg-gray-50 transition-colors text-left border-b border-gray-100/60"
                                                 type="button"
                                               >
                                                 <span className="text-sm text-gray-500">선택 안함</span>
                                               </button>
-                                              {partners.map(p => (
+                                              {partners.filter(p => p.status === 'active' && (!p.position || p.position === 'partner') && p.name.toLowerCase().includes(partnerSearch.toLowerCase())).map(p => (
                                                 <button
                                                   key={p.id}
                                                   onClick={() => {
                                                     handleUpdateWorkStep(workType, step.id, 'assigneeId', p.id);
                                                     setEditingField(null);
+                                                    setPartnerSearch('');
                                                   }}
-                                                  className="w-full flex items-center px-3 py-2 hover:bg-blue-50/60 transition-colors text-left"
+                                                  className="w-full flex items-center px-3 py-2 hover:bg-gray-50 transition-colors text-left"
                                                   type="button"
                                                 >
-                                                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
+                                                  <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
                                                     {p.name.charAt(0)}
                                                   </div>
                                                   <span className="text-sm text-gray-900 truncate">{p.name}</span>
@@ -1096,60 +1642,77 @@ export default function EpisodeDetailPage() {
                                             </div>
                                             <div
                                               className="fixed inset-0 z-0"
-                                              onClick={() => setEditingField(null)}
+                                              onClick={() => { setEditingField(null); setPartnerSearch(''); }}
                                             />
                                           </div>
                                         ) : (
                                           <div
-                                            onClick={() => setEditingField(`${workType}-${step.id}-assignee`)}
-                                            className="w-full flex items-center px-3 py-2 border border-gray-200 rounded-md cursor-pointer hover:border-blue-400 hover:bg-blue-50/20 transition-colors bg-white"
+                                            onClick={() => { setEditingField(`${workType}-${step.id}-assignee`); setPartnerSearch(''); }}
+                                            className="w-full flex items-center px-3 py-2 border border-gray-200 rounded-md cursor-pointer hover:border-gray-300 hover:bg-gray-50 transition-colors bg-white"
                                           >
                                             {step.assigneeId ? (
                                               <>
-                                                <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
-                                                  {partners.find(p => p.id === step.assigneeId)?.name.charAt(0)}
+                                                <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mr-2">
+                                                  <User size={10} className="text-orange-500" />
                                                 </div>
                                                 <span className="text-sm text-gray-900 truncate">
                                                   {partners.find(p => p.id === step.assigneeId)?.name}
                                                 </span>
                                               </>
                                             ) : (
-                                              <span className="text-sm text-gray-400">담당자</span>
+                                              <span className="text-sm text-gray-400">파트너</span>
                                             )}
                                           </div>
                                         )}
                                       </div>
 
-                                      {/* 진행 사항 - 2칸 */}
-                                      <div className="col-span-2">
-                                        <select
-                                          value={step.status}
-                                          onChange={(e) => handleUpdateWorkStep(workType, step.id, 'status', e.target.value)}
-                                          className={`w-full text-xs px-2 py-2 rounded-md border focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer font-medium ${getStatusColor(step.status)}`}
-                                        >
-                                          <option value="waiting">대기</option>
-                                          <option value="in_progress">진행중</option>
-                                          <option value="completed">완료</option>
-                                        </select>
+                                      {/* 진행 사항 */}
+                                      <div>
+                                        {editingField === `${workType}-${step.id}-status` ? (
+                                          <div className="relative">
+                                            <div className="absolute z-10 w-full bg-white/95 backdrop-blur-xl border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
+                                              {([
+                                                { value: 'waiting', label: '대기', color: 'bg-gray-100 text-gray-800' },
+                                                { value: 'in_progress', label: '진행중', color: 'bg-yellow-100 text-yellow-800' },
+                                                { value: 'completed', label: '완료', color: 'bg-green-100 text-green-800' },
+                                              ] as const).map(opt => (
+                                                <button
+                                                  key={opt.value}
+                                                  onClick={() => {
+                                                    handleUpdateWorkStep(workType, step.id, 'status', opt.value);
+                                                    setEditingField(null);
+                                                  }}
+                                                  className={`w-full flex items-center px-3 py-2 hover:bg-gray-50 transition-colors text-left ${step.status === opt.value ? 'bg-gray-100' : ''}`}
+                                                  type="button"
+                                                >
+                                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${opt.color}`}>{opt.label}</span>
+                                                </button>
+                                              ))}
+                                            </div>
+                                            <div
+                                              className="fixed inset-0 z-0"
+                                              onClick={() => setEditingField(null)}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <div
+                                            onClick={() => setEditingField(`${workType}-${step.id}-status`)}
+                                            className={`w-full flex items-center justify-center px-2 py-2 rounded-md cursor-pointer border border-transparent hover:border-gray-300 transition-colors font-medium text-xs ${getStatusColor(step.status)}`}
+                                          >
+                                            <span>{getStatusLabel(step.status)}</span>
+                                            <ChevronDown size={12} className="ml-1 opacity-50" />
+                                          </div>
+                                        )}
                                       </div>
 
-                                      {/* 시작일 - 2칸 */}
-                                      <div className="col-span-2">
-                                        <input
-                                          type="date"
-                                          value={step.startDate}
-                                          onChange={(e) => handleUpdateWorkStep(workType, step.id, 'startDate', e.target.value)}
-                                          className="w-full text-sm px-2 py-2 border border-gray-200 rounded-md focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
-                                        />
-                                      </div>
-
-                                      {/* 마감일 - 2칸 */}
-                                      <div className="col-span-2">
-                                        <input
-                                          type="date"
-                                          value={step.dueDate}
-                                          onChange={(e) => handleUpdateWorkStep(workType, step.id, 'dueDate', e.target.value)}
-                                          className="w-full text-sm px-2 py-2 border border-gray-200 rounded-md focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+                                      {/* 시작일 · 마감일 */}
+                                      <div>
+                                        <DateRangePicker
+                                          compact
+                                          startDate={step.startDate}
+                                          endDate={step.dueDate}
+                                          onStartChange={(v) => handleUpdateWorkStep(workType, step.id, 'startDate', v)}
+                                          onEndChange={(v) => handleUpdateWorkStep(workType, step.id, 'dueDate', v === 'tbd' ? '' : v)}
                                         />
                                       </div>
                                     </div>
@@ -1174,22 +1737,23 @@ export default function EpisodeDetailPage() {
                               {/* 작업 단계 추가 버튼 */}
                               <button
                                 onClick={() => handleAddWorkStep(workType)}
-                                className="w-full flex items-center justify-center px-3 py-2 mt-2 border border-dashed border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50/30 transition-colors group text-sm"
+                                className="w-full flex items-center justify-center px-3 py-2 mt-2 border border-dashed border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-colors group text-sm"
                                 type="button"
                               >
-                                <Plus size={14} className="mr-1 text-gray-400 group-hover:text-blue-500" />
-                                <span className="text-gray-500 group-hover:text-blue-600">작업 단계 추가</span>
+                                <Plus size={14} className="mr-1 text-gray-400 group-hover:text-gray-600" />
+                                <span className="text-gray-500 group-hover:text-gray-700">작업 단계 추가</span>
                               </button>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
+                });
+                })()}
+              </AnimatePresence>
+            </div>) : (
+              <div data-tour="tour-episode-tasks" className="text-center py-8 text-gray-500">
                 <p className="text-sm">아직 작업이 추가되지 않았습니다.</p>
                 <p className="text-xs mt-1">아래에서 작업을 추가해보세요.</p>
               </div>
@@ -1198,177 +1762,82 @@ export default function EpisodeDetailPage() {
             {/* 비활성화된 작업 (작업 추가 영역) */}
             {inactiveWorkTypes.length > 0 && (
               <div className="border-t border-gray-200 pt-4">
-                <h4 className="text-sm font-medium text-gray-500 mb-3">추가 가능한 작업</h4>
-                <div className="space-y-2">
-                  {inactiveWorkTypes.map((workType) => (
-                    <button
-                      key={workType}
-                      onClick={() => handleAddWorkType(workType)}
-                      className="w-full flex items-center justify-between px-4 py-3 border border-dashed border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50/30 transition-all group"
-                      type="button"
-                    >
-                      <span className="text-sm text-gray-500 group-hover:text-blue-600">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-gray-400">콘텐츠 추가</span>
+                  <AnimatePresence mode="popLayout">
+                    {inactiveWorkTypes.map((workType) => (
+                      <motion.button
+                        key={workType}
+                        layout
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+                        onClick={() => handleAddWorkType(workType)}
+                        className="flex items-center gap-2 px-5 py-3.5 text-base font-medium text-gray-500 border border-dashed border-gray-200 rounded-xl hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 hover:shadow-sm transition-all"
+                        type="button"
+                      >
+                        <Plus size={16} />
                         {workType}
-                      </span>
-                      <div className="flex items-center space-x-1 text-xs text-gray-400 group-hover:text-blue-500">
-                        <Plus size={14} />
-                        <span>작업 추가</span>
-                      </div>
-                    </button>
-                  ))}
+                      </motion.button>
+                    ))}
+                  </AnimatePresence>
                 </div>
               </div>
             )}
           </div>
 
-          {/* 기본 정보 */}
-          <div className="bg-white/40 backdrop-blur-xl rounded-2xl shadow-xl border border-white/60">
-            <div
-              className={`flex items-center justify-between p-6 cursor-pointer hover:bg-white/50 transition-colors ${collapsedSections.basicInfo ? 'rounded-2xl' : 'rounded-t-2xl'}`}
-              onClick={() => toggleSection('basicInfo')}
-            >
-              <h3 className="text-lg font-semibold text-gray-900">기본 정보</h3>
-              {collapsedSections.basicInfo ? (
-                <ChevronRight size={20} className="text-gray-400" />
-              ) : (
-                <ChevronDown size={20} className="text-gray-400" />
-              )}
-            </div>
-            {!collapsedSections.basicInfo && (
-              <div className="px-6 pb-6 space-y-3">
-              <div>
-                <label className="text-sm text-gray-500">제목</label>
-                {editingField === 'title' ? (
-                  <input
-                    type="text"
-                    autoFocus
-                    value={editedEpisode.title}
-                    onChange={(e) => handleFieldChange('title', e.target.value)}
-                    onBlur={handleFieldBlur}
-                    className="text-base font-medium text-gray-900 w-full border border-blue-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                ) : (
-                  <p
-                    onClick={() => handleFieldClick('title')}
-                    className="text-base font-medium text-gray-900 cursor-pointer hover:bg-gray-50 rounded px-2 py-1 -mx-2"
-                  >
-                    {editedEpisode.title}
-                  </p>
-                )}
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm text-gray-500">시작일</label>
-                  {editingField === 'startDate' ? (
-                    <input
-                      type="date"
-                      autoFocus
-                      value={editedEpisode.startDate}
-                      onChange={(e) => handleFieldChange('startDate', e.target.value)}
-                      onBlur={handleFieldBlur}
-                      className="w-full border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  ) : (
-                    <p
-                      onClick={() => handleFieldClick('startDate')}
-                      className="text-base text-gray-900 cursor-pointer hover:bg-gray-50 rounded px-2 py-1 -mx-2"
-                    >
-                      {new Date(editedEpisode.startDate).toLocaleDateString('ko-KR')}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-sm text-gray-500">예정 종료일</label>
-                  {editingField === 'dueDate' ? (
-                    <input
-                      type="date"
-                      autoFocus
-                      value={editedEpisode.dueDate || ''}
-                      onChange={(e) => handleFieldChange('dueDate', e.target.value)}
-                      onBlur={handleFieldBlur}
-                      className="w-full border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  ) : (
-                    <p
-                      onClick={() => handleFieldClick('dueDate')}
-                      className="text-base text-gray-900 cursor-pointer hover:bg-gray-50 rounded px-2 py-1 -mx-2 min-h-[28px]"
-                    >
-                      {editedEpisode.dueDate ? new Date(editedEpisode.dueDate).toLocaleDateString('ko-KR') : '날짜 추가'}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-sm text-gray-500 flex items-center gap-1">
-                    실제 종료일
-                    <span className="text-xs text-gray-400">(자동 계산)</span>
-                  </label>
-                  <p className="text-base text-gray-900 px-2 py-1 bg-gray-50 rounded min-h-[28px]">
-                    {(() => {
-                      const actualEndDate = calculateActualEndDate();
-                      return actualEndDate
-                        ? new Date(actualEndDate).toLocaleDateString('ko-KR')
-                        : '작업 마감일 필요';
-                    })()}
-                  </p>
-                </div>
-              </div>
-            </div>
-            )}
-          </div>
-
-          {/* 비용 정보 */}
-          {episode.budget && (
-            <div className="bg-white/40 backdrop-blur-xl rounded-2xl shadow-xl border border-white/60">
-              <div
-                className={`flex items-center justify-between p-6 cursor-pointer hover:bg-white/50 transition-colors ${collapsedSections.budget ? 'rounded-2xl' : 'rounded-t-2xl'}`}
-                onClick={() => toggleSection('budget')}
-              >
-                <h3 className="text-lg font-semibold text-gray-900">회차별 비용</h3>
-                {collapsedSections.budget ? (
-                  <ChevronRight size={20} className="text-gray-400" />
-                ) : (
-                  <ChevronDown size={20} className="text-gray-400" />
-                )}
-              </div>
-              {!collapsedSections.budget && (
-                <div className="px-6 pb-6">
-                  <div className="bg-gradient-to-br from-gray-50/60 to-white/60 backdrop-blur-sm rounded-xl p-4 border border-white/40 shadow-sm">
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">총 비용</p>
-                    <p className="text-xl font-bold text-gray-900 mt-1">
-                      {episode.budget.totalAmount.toLocaleString()}원
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">파트너 지급</p>
-                    <p className="text-xl font-bold text-blue-600 mt-1">
-                      {episode.budget.partnerPayment.toLocaleString()}원
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">매니징 비용</p>
-                    <p className="text-xl font-bold text-purple-600 mt-1">
-                      {episode.budget.managementFee.toLocaleString()}원
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-3 pt-3 border-t border-gray-200">
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm text-gray-500">유보금</p>
-                    <p className="text-lg font-bold text-green-600">
-                      {(episode.budget.totalAmount - episode.budget.partnerPayment - episode.budget.managementFee).toLocaleString()}원
-                    </p>
-                  </div>
-                </div>
-              </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
       </div>
+
+      {/* 작업 삭제 확인 모달 */}
+      <AnimatePresence>
+        {confirmRemove && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-[10000] bg-black/30 backdrop-blur-[2px]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              onClick={() => setConfirmRemove(null)}
+            />
+            <motion.div
+              className="fixed z-[10001] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl border border-gray-100 p-6 w-[360px] max-w-[90vw]"
+              initial={{ opacity: 0, scale: 0.93, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+            >
+              <h3 className="text-base font-semibold text-gray-900 mb-2">작업 삭제</h3>
+              <p className="text-sm text-gray-500 mb-5">
+                <span className="font-medium text-gray-700">{confirmRemove}</span> 작업을 삭제하시겠습니까?<br />
+                <span className="text-xs text-gray-400">포함된 작업 단계와 비용 정보가 모두 초기화됩니다.</span>
+              </p>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setConfirmRemove(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-500 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                  type="button"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={() => {
+                    handleRemoveWorkType(confirmRemove);
+                    setConfirmRemove(null);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-xl hover:bg-red-600 transition-colors"
+                  type="button"
+                >
+                  삭제
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* 작업 목록 모달 */}
       {selectedWorkTypeModal && (
@@ -1435,7 +1904,7 @@ export default function EpisodeDetailPage() {
                       animation: tabPulse 2s ease-in-out infinite;
                     }
                   `}</style>
-                  <div className="p-4 bg-gradient-to-br from-blue-50/30 to-purple-50/30 rounded-xl border border-gray-200/40 overflow-x-auto">
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 overflow-x-auto">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         {/* 작업들 */}
@@ -1457,12 +1926,12 @@ export default function EpisodeDetailPage() {
                                     ? 'bg-green-100/70 border-green-400/80 px-5 py-3 min-w-[140px] shadow-xl ring-2 ring-green-300/50'
                                     : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
                                     ? 'bg-yellow-100/80 border-yellow-400/90 px-5 py-3 min-w-[160px] shadow-2xl scale-110 ring-2 ring-yellow-300/50 tab-pulse'
-                                    : 'bg-blue-100/70 border-blue-400/80 px-5 py-3 min-w-[140px] shadow-xl ring-2 ring-blue-300/50'
+                                    : 'bg-orange-100/70 border-orange-400/80 px-5 py-3 min-w-[140px] shadow-xl ring-2 ring-orange-300/50'
                                   : status === 'completed'
                                   ? 'bg-green-100/40 border-green-300/50 px-3 py-1.5 min-w-[120px] opacity-70 hover:opacity-100 hover:shadow-lg'
                                   : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
                                   ? 'bg-yellow-100/50 border-yellow-300/60 px-4 py-2 min-w-[140px] shadow-md hover:shadow-xl scale-105'
-                                  : 'bg-white/50 border-gray-200/60 px-3 py-1.5 min-w-[120px] hover:border-blue-300/70 hover:bg-blue-50/60 hover:shadow-md'
+                                  : 'bg-white/50 border-gray-200/60 px-3 py-1.5 min-w-[120px] hover:border-gray-300 hover:bg-gray-50 hover:shadow-md'
                               }`}>
                                 <span className={`font-semibold text-sm ${
                                   isSelected
@@ -1470,7 +1939,7 @@ export default function EpisodeDetailPage() {
                                       ? 'text-green-900'
                                       : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
                                       ? 'text-yellow-900'
-                                      : 'text-blue-900'
+                                      : 'text-orange-900'
                                     : status === 'completed'
                                     ? 'text-green-800'
                                     : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
@@ -1486,7 +1955,7 @@ export default function EpisodeDetailPage() {
                                         ? 'bg-green-200/60 text-green-900'
                                         : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
                                         ? 'bg-yellow-200/60 text-yellow-900'
-                                        : 'bg-blue-200/60 text-blue-900'
+                                        : 'bg-orange-200/60 text-orange-900'
                                       : status === 'completed'
                                       ? 'bg-green-100 text-green-700'
                                       : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
@@ -1602,7 +2071,7 @@ export default function EpisodeDetailPage() {
                           });
                           showToast(`새 작업이 추가되었습니다.`);
                         }}
-                        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all font-medium text-sm shadow-md flex items-center gap-1 flex-shrink-0"
+                        className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all font-medium text-sm shadow-md flex items-center gap-1 flex-shrink-0"
                       >
                         <Plus size={16} />
                         새 작업
@@ -1629,7 +2098,7 @@ export default function EpisodeDetailPage() {
                           <p className="text-gray-500 mb-4">작업 단계가 없습니다.</p>
                           <button
                             onClick={closeModal}
-                            className="px-4 py-2 bg-blue-500/90 backdrop-blur-sm text-white rounded-xl hover:bg-blue-600 transition-colors shadow-md"
+                            className="px-4 py-2 bg-orange-500/90 backdrop-blur-sm text-white rounded-xl hover:bg-orange-600 transition-colors shadow-md"
                           >
                             작업 단계 추가하기
                           </button>
@@ -1708,8 +2177,8 @@ export default function EpisodeDetailPage() {
                                   <div className="flex items-center gap-4 text-sm text-gray-600">
                                     {partner && (
                                       <div className="flex items-center gap-1">
-                                        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-[10px] font-semibold">
-                                          {partner.name.charAt(0)}
+                                        <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                          <User size={10} className="text-orange-500" />
                                         </div>
                                         <span>{partner.name}</span>
                                       </div>
