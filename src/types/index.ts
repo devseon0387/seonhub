@@ -10,6 +10,9 @@ export interface Partner {
   company?: string;
   partnerType?: 'freelancer' | 'business'; // 프리랜서 / 사업자
   role: UserRole;
+  position?: 'executive' | 'manager' | 'partner'; // 직급 분류 (임원진/매니저/파트너)
+  jobTitle?: string; // 직책 (대표이사, 팀장 등)
+  jobRank?: string; // 직급 (이사, 부장, 과장 등)
   status: 'active' | 'inactive';
   generation?: number; // 파트너 기수 (1기, 2기, 3기...)
   bank?: string; // 은행명
@@ -39,6 +42,7 @@ export interface Project {
   partnerIds: string[]; // 담당 파트너 목록 (복수)
   managerIds: string[]; // 매니저 목록
   category?: string; // 프로젝트 카테고리
+  channels?: string[]; // 상영 채널 (복수 선택)
   status: ProjectStatus;
   budget: ProjectBudget; // 비용 정보
   workContent?: WorkContentType[]; // 작업 내용 (복수 선택 가능)
@@ -78,6 +82,7 @@ export interface EpisodeBudget {
 export interface WorkStep {
   id: string;
   label: string;
+  category?: string;
   status: 'waiting' | 'in_progress' | 'completed';
   startDate: string;
   dueDate: string;
@@ -108,6 +113,10 @@ export interface Episode {
   budget?: EpisodeBudget; // 회차별 비용 정보
   workSteps?: Record<WorkContentType, WorkStep[]>; // 작업 타입별 상세 작업 단계
   workBudgets?: Record<WorkContentType, WorkTypeBudget>; // 작업 타입별 비용 정보
+  paymentDueDate?: string; // 입금 예정일
+  paymentStatus?: 'pending' | 'completed'; // 입금 상태 (pending: 입금 전, completed: 입금 완료)
+  invoiceDate?: string; // 세금계산서 발행일
+  invoiceStatus?: 'pending' | 'completed'; // 발행 상태 (pending: 미발행, completed: 발행 완료)
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -141,6 +150,17 @@ export interface PortfolioItem {
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+// 개선사항(피드백) 타입
+export type FeedbackStatus = 'pending' | 'reviewed' | 'done';
+
+export interface Feedback {
+  id: string;
+  content: string;
+  pagePath: string;
+  status: FeedbackStatus;
+  createdAt: string;
 }
 
 // 휴지통 항목 타입

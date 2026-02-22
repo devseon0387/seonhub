@@ -12,6 +12,8 @@ import type {
   TrashItemType,
   WorkContentType,
   PortfolioItem,
+  Feedback,
+  FeedbackStatus,
 } from '@/types';
 
 // ─── Row Types (Supabase snake_case) ─────────────────────────
@@ -62,6 +64,9 @@ interface PartnerRow {
   company: string | null;
   partner_type: string | null;
   role: string;
+  position: string | null;
+  job_title: string | null;
+  job_rank: string | null;
   status: string;
   generation: number | null;
   bank: string | null;
@@ -90,6 +95,10 @@ interface EpisodeRow {
   budget_management: number;
   work_steps: unknown | null;
   work_budgets: unknown | null;
+  payment_due_date: string | null;
+  payment_status: string | null;
+  invoice_date: string | null;
+  invoice_status: string | null;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -238,6 +247,9 @@ function partnerFromRow(row: PartnerRow): Partner {
     company: row.company ?? undefined,
     partnerType: row.partner_type as Partner['partnerType'],
     role: row.role as Partner['role'],
+    position: (row.position as Partner['position']) ?? 'partner',
+    jobTitle: row.job_title ?? undefined,
+    jobRank: row.job_rank ?? undefined,
     status: row.status as Partner['status'],
     generation: row.generation ?? undefined,
     bank: row.bank ?? undefined,
@@ -255,6 +267,9 @@ function partnerToInsert(partner: Omit<Partner, 'id' | 'createdAt'>) {
     company: partner.company ?? null,
     partner_type: partner.partnerType ?? null,
     role: partner.role,
+    position: partner.position ?? 'partner',
+    job_title: partner.jobTitle ?? null,
+    job_rank: partner.jobRank ?? null,
     status: partner.status,
     generation: partner.generation ?? null,
     bank: partner.bank ?? null,
@@ -271,6 +286,9 @@ function partnerToUpdate(partner: Partial<Partner>) {
   if (partner.company !== undefined) row.company = partner.company;
   if (partner.partnerType !== undefined) row.partner_type = partner.partnerType;
   if (partner.role !== undefined) row.role = partner.role;
+  if (partner.position !== undefined) row.position = partner.position;
+  if (partner.jobTitle !== undefined) row.job_title = partner.jobTitle;
+  if (partner.jobRank !== undefined) row.job_rank = partner.jobRank;
   if (partner.status !== undefined) row.status = partner.status;
   if (partner.generation !== undefined) row.generation = partner.generation;
   if (partner.bank !== undefined) row.bank = partner.bank;
@@ -302,6 +320,10 @@ function episodeFromRow(row: EpisodeRow): Episode & { projectId: string } {
     },
     workSteps: row.work_steps as Episode['workSteps'],
     workBudgets: row.work_budgets as Episode['workBudgets'],
+    paymentDueDate: row.payment_due_date ?? undefined,
+    paymentStatus: (row.payment_status as Episode['paymentStatus']) ?? 'pending',
+    invoiceDate: row.invoice_date ?? undefined,
+    invoiceStatus: (row.invoice_status as Episode['invoiceStatus']) ?? 'pending',
     completedAt: row.completed_at ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -329,6 +351,10 @@ function episodeToInsert(episode: Episode & { projectId: string }) {
     budget_management: episode.budget?.managementFee ?? 0,
     work_steps: episode.workSteps ?? null,
     work_budgets: episode.workBudgets ?? null,
+    payment_due_date: episode.paymentDueDate ?? null,
+    payment_status: episode.paymentStatus ?? 'pending',
+    invoice_date: episode.invoiceDate ?? null,
+    invoice_status: episode.invoiceStatus ?? 'pending',
     completed_at: episode.completedAt ?? null,
   };
 }
@@ -375,7 +401,7 @@ export async function insertProject(
     .insert([projectToInsert(project)])
     .select()
     .single();
-  if (error || !data) { console.error('insertProject error:', error); return null; }
+  if (error || !data) { return null; }
   return projectFromRow(data as ProjectRow);
 }
 
@@ -385,14 +411,12 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
     .from('projects')
     .update(projectToUpdate(updates))
     .eq('id', id);
-  if (error) console.error('updateProject error:', error);
   return !error;
 }
 
 export async function deleteProject(id: string): Promise<boolean> {
   const supabase = createClient();
   const { error } = await supabase.from('projects').delete().eq('id', id);
-  if (error) console.error('deleteProject error:', error);
   return !error;
 }
 
@@ -417,7 +441,7 @@ export async function insertClient(
     .insert([clientToInsert(client)])
     .select()
     .single();
-  if (error || !data) { console.error('insertClient error:', error); return null; }
+  if (error || !data) { return null; }
   return clientFromRow(data as ClientRow);
 }
 
@@ -427,14 +451,12 @@ export async function updateClient(id: string, updates: Partial<Client>): Promis
     .from('clients')
     .update(clientToUpdate(updates))
     .eq('id', id);
-  if (error) console.error('updateClient error:', error);
   return !error;
 }
 
 export async function deleteClient(id: string): Promise<boolean> {
   const supabase = createClient();
   const { error } = await supabase.from('clients').delete().eq('id', id);
-  if (error) console.error('deleteClient error:', error);
   return !error;
 }
 
@@ -459,7 +481,7 @@ export async function insertPartner(
     .insert([partnerToInsert(partner)])
     .select()
     .single();
-  if (error || !data) { console.error('insertPartner error:', error); return null; }
+  if (error || !data) { return null; }
   return partnerFromRow(data as PartnerRow);
 }
 
@@ -469,14 +491,12 @@ export async function updatePartner(id: string, updates: Partial<Partner>): Prom
     .from('partners')
     .update(partnerToUpdate(updates))
     .eq('id', id);
-  if (error) console.error('updatePartner error:', error);
   return !error;
 }
 
 export async function deletePartner(id: string): Promise<boolean> {
   const supabase = createClient();
   const { error } = await supabase.from('partners').delete().eq('id', id);
-  if (error) console.error('deletePartner error:', error);
   return !error;
 }
 
@@ -513,7 +533,6 @@ export async function upsertEpisodes(
   const { error } = await supabase
     .from('episodes')
     .upsert(episodes.map(episodeToInsert), { onConflict: 'id' });
-  if (error) console.error('upsertEpisodes error:', error);
   return !error;
 }
 
@@ -526,7 +545,6 @@ export async function upsertEpisode(
 export async function deleteEpisode(id: string): Promise<boolean> {
   const supabase = createClient();
   const { error } = await supabase.from('episodes').delete().eq('id', id);
-  if (error) console.error('deleteEpisode error:', error);
   return !error;
 }
 
@@ -536,7 +554,6 @@ export async function deleteProjectEpisodes(projectId: string): Promise<boolean>
     .from('episodes')
     .delete()
     .eq('project_id', projectId);
-  if (error) console.error('deleteProjectEpisodes error:', error);
   return !error;
 }
 
@@ -567,7 +584,7 @@ export async function insertTrash(
     }])
     .select()
     .single();
-  if (error || !row) { console.error('insertTrash error:', error); return null; }
+  if (error || !row) { return null; }
   return trashFromRow(row as TrashRow);
 }
 
@@ -581,21 +598,19 @@ export async function deleteTrashItem(id: string): Promise<TrashItem | null> {
   if (fetchError || !data) return null;
 
   const { error: deleteError } = await supabase.from('trash').delete().eq('id', id);
-  if (deleteError) { console.error('deleteTrashItem error:', deleteError); return null; }
+  if (deleteError) { return null; }
   return trashFromRow(data as TrashRow);
 }
 
 export async function permanentDeleteTrash(id: string): Promise<boolean> {
   const supabase = createClient();
   const { error } = await supabase.from('trash').delete().eq('id', id);
-  if (error) console.error('permanentDeleteTrash error:', error);
   return !error;
 }
 
 export async function emptyTrashAll(): Promise<boolean> {
   const supabase = createClient();
   const { error } = await supabase.from('trash').delete().gte('deleted_at', '1970-01-01');
-  if (error) console.error('emptyTrashAll error:', error);
   return !error;
 }
 
@@ -610,7 +625,6 @@ export async function restoreProjectToTable(project: Project): Promise<boolean> 
     updated_at: project.updatedAt,
   };
   const { error } = await supabase.from('projects').upsert([row], { onConflict: 'id' });
-  if (error) console.error('restoreProject error:', error);
   return !error;
 }
 
@@ -623,7 +637,6 @@ export async function restoreClientToTable(client: Client): Promise<boolean> {
     updated_at: client.updatedAt,
   };
   const { error } = await supabase.from('clients').upsert([row], { onConflict: 'id' });
-  if (error) console.error('restoreClient error:', error);
   return !error;
 }
 
@@ -635,7 +648,6 @@ export async function restorePartnerToTable(partner: Partner): Promise<boolean> 
     created_at: partner.createdAt,
   };
   const { error } = await supabase.from('partners').upsert([row], { onConflict: 'id' });
-  if (error) console.error('restorePartner error:', error);
   return !error;
 }
 
@@ -660,13 +672,13 @@ export async function cleanupExpiredTrashItems(days = 30): Promise<number> {
     .delete()
     .lt('deleted_at', expiryDate.toISOString());
 
-  if (error) { console.error('cleanupExpiredTrash error:', error); return 0; }
+  if (error) { return 0; }
   return expired.length;
 }
 
 // ─── User Profiles ───────────────────────────────────────────
 
-export async function getMyProfile(): Promise<{ id: string; role: string; name: string | null } | null> {
+export async function getMyProfile(): Promise<{ id: string; role: string; name: string | null; approved?: boolean } | null> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -688,12 +700,21 @@ export async function upsertMyProfile(role: string, name: string): Promise<boole
 
   const { error } = await supabase
     .from('user_profiles')
-    .upsert({ id: user.id, role, name }, { onConflict: 'id' });
+    .upsert({ id: user.id, role, name, email: user.email ?? null }, { onConflict: 'id' });
 
   return !error;
 }
 
-export async function getAllUserProfiles(): Promise<{ id: string; role: string; name: string | null; email?: string }[]> {
+export async function updateUserApproval(userId: string, approved: boolean): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('user_profiles')
+    .update({ approved })
+    .eq('id', userId);
+  return !error;
+}
+
+export async function getAllUserProfiles(): Promise<{ id: string; role: string; name: string | null; email?: string; approved?: boolean }[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('user_profiles')
@@ -823,7 +844,7 @@ export async function insertPortfolioItem(
     .insert([portfolioItemToInsert(item)])
     .select()
     .single();
-  if (error || !data) { console.error('insertPortfolioItem error:', error); return null; }
+  if (error || !data) { return null; }
   return portfolioItemFromRow(data as PortfolioItemRow);
 }
 
@@ -833,14 +854,12 @@ export async function updatePortfolioItem(id: string, updates: Partial<Portfolio
     .from('portfolio_items')
     .update(portfolioItemToUpdate(updates))
     .eq('id', id);
-  if (error) console.error('updatePortfolioItem error:', error);
   return !error;
 }
 
 export async function deletePortfolioItem(id: string): Promise<boolean> {
   const supabase = createClient();
   const { error } = await supabase.from('portfolio_items').delete().eq('id', id);
-  if (error) console.error('deletePortfolioItem error:', error);
   return !error;
 }
 
@@ -850,7 +869,6 @@ export async function togglePortfolioPublished(id: string, isPublished: boolean)
     .from('portfolio_items')
     .update({ is_published: isPublished, updated_at: new Date().toISOString() })
     .eq('id', id);
-  if (error) console.error('togglePortfolioPublished error:', error);
   return !error;
 }
 
@@ -923,5 +941,55 @@ export async function clearCompletedChecklists(): Promise<boolean> {
     .from('checklists')
     .delete()
     .eq('completed', true);
+  return !error;
+}
+
+// ─── Feedback (개선사항) ──────────────────────────────────────
+
+interface FeedbackRow {
+  id: string;
+  content: string;
+  page_path: string | null;
+  status: string;
+  created_at: string;
+}
+
+function feedbackFromRow(row: FeedbackRow): Feedback {
+  return {
+    id: row.id,
+    content: row.content,
+    pagePath: row.page_path ?? '',
+    status: row.status as FeedbackStatus,
+    createdAt: row.created_at,
+  };
+}
+
+export async function getFeedbacks(): Promise<Feedback[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('feedback')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return (data as FeedbackRow[]).map(feedbackFromRow);
+}
+
+export async function insertFeedback(content: string, pagePath: string): Promise<Feedback | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('feedback')
+    .insert([{ content, page_path: pagePath }])
+    .select()
+    .single();
+  if (error || !data) return null;
+  return feedbackFromRow(data as FeedbackRow);
+}
+
+export async function updateFeedbackStatus(id: string, status: FeedbackStatus): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('feedback')
+    .update({ status })
+    .eq('id', id);
   return !error;
 }

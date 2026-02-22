@@ -1,339 +1,844 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, FolderOpen, Settings, Briefcase, Trash2, Megaphone, LogOut, Menu, X, ClipboardCheck, ChevronDown, Building2, Wallet, Receipt, FileText, Target, Shield } from 'lucide-react';
+import {
+  LayoutDashboard, Users, FolderOpen, Settings, Briefcase, Trash2,
+  Megaphone, LogOut, ClipboardCheck, Building2,
+  Wallet, Receipt, FileText, Target, Shield, Layers, Menu, X, Calendar,
+  MessageSquarePlus,
+} from 'lucide-react';
 import DashboardContent from '@/components/DashboardContent';
-import NavItem from '@/components/NavItem';
+import GlobalFAB from '@/components/GlobalFAB';
 import GlobalSearch from '@/components/GlobalSearch';
+import TutorialProvider from '@/components/tutorial/TutorialProvider';
+import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import NotificationDropdown from '@/components/NotificationDropdown';
 import CustomCursor from '@/components/CustomCursor';
+import FeedbackModal from '@/components/FeedbackModal';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
-import { getMyProfile } from '@/lib/supabase/db';
+import { getMyProfile, getProjectById, getProjectEpisodes } from '@/lib/supabase/db';
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const router = useRouter();
+// ── 타입 정의
+type NavLink    = { type: 'link';    href: string; label: string; icon: React.ElementType; badge?: string; sub?: SubLink[] };
+type NavDivider = { type: 'divider' };
+type NavItem    = NavLink | NavDivider;
+type SubLink    = { href: string; label: string; icon: React.ElementType; badge?: string };
+type Section    = { key: string; icon: React.ElementType; label: string; items: NavItem[] };
+
+const isLink = (i: NavItem): i is NavLink => i.type === 'link';
+
+// ── 섹션 정의 (레일 탭 기준)
+const SECTIONS: Section[] = [
+  {
+    key: 'main',
+    icon: LayoutDashboard,
+    label: '메인',
+    items: [
+      { type: 'link', href: '/management', label: '매니지먼트', icon: ClipboardCheck  },
+      { type: 'link', href: '/projects',   label: '프로젝트',   icon: FolderOpen      },
+      { type: 'divider' },
+      { type: 'link', href: '/clients',    label: '클라이언트', icon: Briefcase       },
+      { type: 'link', href: '/partners',   label: '파트너',     icon: Users           },
+      { type: 'divider' },
+      { type: 'link', href: '/feedback',   label: '개선사항',   icon: MessageSquarePlus },
+    ],
+  },
+  {
+    key: 'manage',
+    icon: Building2,
+    label: '경영',
+    items: [
+      { type: 'link', href: '/finance',    label: '재무',       icon: Wallet,   badge: '준비중' },
+      { type: 'link', href: '/settlement', label: '정산',       icon: Receipt,  badge: '준비중', sub: [
+        { href: '/settlement/history', label: '월별 내역', icon: Calendar },
+      ] },
+      { type: 'link', href: '/contracts',    label: '계약',       icon: FileText, badge: '준비중' },
+      { type: 'link', href: '/strategy',   label: '전략',       icon: Target,   badge: '준비중' },
+      { type: 'link', href: '/operations', label: '운영',       icon: Layers,   badge: '준비중' },
+      { type: 'divider' },
+      { type: 'link', href: '/marketing',  label: '마케팅',     icon: Megaphone, badge: '준비중' },
+    ],
+  },
+];
+
+// ── 시스템 항목 (레일 하단에 직접 배치)
+const SYSTEM_ITEMS: NavLink[] = [
+  { type: 'link', href: '/settings', label: '설정',   icon: Settings },
+  { type: 'link', href: '/trash',    label: '휴지통', icon: Trash2   },
+];
+
+const RAIL_W  = 52;   // 아이콘 레일 너비
+const PANEL_W = 200;  // 슬라이드 패널 너비
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const router   = useRouter();
   const pathname = usePathname();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [userEmail, setUserEmail] = useState<string>('');
-  const [myRole, setMyRole] = useState<string>('manager');
-  const isCustomerActive = pathname.startsWith('/partners') || pathname.startsWith('/clients');
-  const isOperationsActive = pathname.startsWith('/finance') || pathname.startsWith('/settlement') || pathname.startsWith('/contract') || pathname.startsWith('/strategy');
-  const [isCustomerOpen, setIsCustomerOpen] = useState(isCustomerActive);
-  const [isOperationsOpen, setIsOperationsOpen] = useState(isOperationsActive);
+
+  const [activeSection, setActiveSection] = useState<string | null>('main');
+  const [userEmail,     setUserEmail    ] = useState('');
+  const [myRole,        setMyRole       ] = useState('manager');
+  const [expanded,      setExpanded     ] = useState<string | null>(null);
+  const [mobileMenu,    setMobileMenu  ] = useState(false);
+  const [feedbackOpen,  setFeedbackOpen] = useState(false);
+
+  // breadcrumb 동적 이름
+  const [breadcrumbProject, setBreadcrumbProject] = useState<string | null>(null);
+  const [breadcrumbEpisode, setBreadcrumbEpisode] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isCustomerActive) setIsCustomerOpen(true);
-  }, [isCustomerActive]);
+    const projectMatch = pathname.match(/^\/projects\/([^/]+)/);
+    if (!projectMatch) {
+      setBreadcrumbProject(null);
+      setBreadcrumbEpisode(null);
+      return;
+    }
+    const projectId = projectMatch[1];
+    if (projectId === 'new') { setBreadcrumbProject(null); setBreadcrumbEpisode(null); return; }
 
+    getProjectById(projectId).then(p => setBreadcrumbProject(p?.title ?? null));
+
+    const episodeMatch = pathname.match(/^\/projects\/[^/]+\/episodes\/([^/]+)/);
+    if (episodeMatch) {
+      const epId = episodeMatch[1];
+      getProjectEpisodes(projectId).then(episodes => {
+        const ep = episodes.find(e => e.id === epId);
+        setBreadcrumbEpisode(ep ? `${ep.episodeNumber}편 ${ep.title}` : null);
+      });
+    } else {
+      setBreadcrumbEpisode(null);
+    }
+  }, [pathname]);
+
+  // fab:action → feedback 이벤트 리스닝
   useEffect(() => {
-    if (isOperationsActive) setIsOperationsOpen(true);
-  }, [isOperationsActive]);
+    const handler = (e: Event) => {
+      if ((e as CustomEvent).detail === 'feedback') setFeedbackOpen(true);
+    };
+    window.addEventListener('fab:action', handler);
+    return () => window.removeEventListener('fab:action', handler);
+  }, []);
+
+  const panelOpen = activeSection !== null;
+  const totalW    = RAIL_W + (panelOpen ? PANEL_W : 0);
+
+  // 패널 상태를 CSS 변수로 노출 → 하위 페이지에서 maxWidth 조절에 사용
+  useEffect(() => {
+    document.documentElement.style.setProperty('--doc-max-w', panelOpen ? '960px' : '1200px');
+  }, [panelOpen]);
+
+  // 현재 경로에 맞는 섹션 자동 선택
+  useEffect(() => {
+    for (const sec of SECTIONS) {
+      const links = sec.items.filter(isLink);
+      const allHrefs = links.flatMap(i => [i.href, ...(i.sub ? i.sub.map(s => s.href) : [])]);
+      if (allHrefs.some(h => pathname === h || pathname.startsWith(h + '/'))) {
+        setActiveSection(sec.key);
+        return;
+      }
+    }
+    // 시스템 항목 경로면 섹션 패널 닫기
+    if (SYSTEM_ITEMS.some(i => pathname === i.href || pathname.startsWith(i.href + '/'))) {
+      setActiveSection(null);
+    }
+    // 모바일 메뉴 자동 닫기
+    setMobileMenu(false);
+  }, [pathname]);
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (process.env.NODE_ENV === 'development') {
+        setUserEmail('dev@local.com'); setMyRole('admin'); return;
+      }
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/login');
-      } else {
-        setUserEmail(user.email ?? '');
-        getMyProfile().then(p => { if (p) setMyRole(p.role); });
-      }
+      if (!user) { router.push('/login'); return; }
+      const stay    = localStorage.getItem('vm_stay_logged_in');
+      const session = sessionStorage.getItem('vm_active_session');
+      if (!stay && !session) { await supabase.auth.signOut(); router.push('/login'); return; }
+      setUserEmail(user.email ?? '');
+      getMyProfile().then(p => {
+        if (p) {
+          // 승인되지 않은 사용자 차단 (admin은 항상 허용)
+          if (p.role !== 'admin' && p.approved !== true) {
+            supabase.auth.signOut();
+            router.push('/login');
+            return;
+          }
+          setMyRole(p.role);
+        }
+      });
     };
     checkAuth();
   }, [router]);
 
-  // 키보드 단축키
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey) {
-        switch (e.key) {
-          case '1':
-            e.preventDefault();
-            router.push('/dashboard');
-            break;
-          case '2':
-            e.preventDefault();
-            router.push('/management');
-            break;
-          case '3':
-            e.preventDefault();
-            router.push('/projects');
-            break;
-          case '4':
-            e.preventDefault();
-            router.push('/marketing');
-            break;
-          case '5':
-            e.preventDefault();
-            router.push('/partners');
-            break;
-          case '6':
-            e.preventDefault();
-            router.push('/clients');
-            break;
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [router]);
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh();
+    localStorage.removeItem('vm_stay_logged_in');
+    sessionStorage.removeItem('vm_active_session');
+    await createClient().auth.signOut();
+    window.location.href = '/login';
   };
 
-  // 사용자 이니셜 (이메일 첫 글자)
   const userInitial = userEmail ? userEmail.charAt(0).toUpperCase() : '관';
+  const currentSection = SECTIONS.find(s => s.key === activeSection) ?? null;
 
   return (
-    <div className="flex h-screen bg-gray-50 cursor-none">
+    <TutorialProvider>
+    <div style={{ cursor: 'none', minHeight: '100vh', background: '#f5f4f2' }}>
+      {/* 글로벌 검색 (Cmd+K / FAB로 열림, 버튼 UI는 숨기고 모달 리스너만 유지) */}
+      <div style={{ position: 'fixed', width: 0, height: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 0 }}>
+        <div style={{ pointerEvents: 'auto' }}><GlobalSearch /></div>
+      </div>
+      {/* 커스텀 툴팁 + 모바일 반응형 CSS */}
+      <style>{`
+        [data-rail-tip] { position: relative; }
+        [data-rail-tip]::after {
+          content: attr(data-rail-tip);
+          position: absolute;
+          left: calc(100% + 10px);
+          top: 50%;
+          transform: translateY(-50%);
+          background: #1c1917;
+          color: #fff;
+          font-size: 12px;
+          font-weight: 500;
+          padding: 4px 10px;
+          border-radius: 6px;
+          white-space: nowrap;
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 0.15s;
+          z-index: 100;
+        }
+        [data-rail-tip]:hover::after { opacity: 1; }
+        @media (max-width: 768px) {
+          .vm-rail, .vm-panel { display: none !important; }
+          .vm-header { left: 0 !important; }
+          .vm-main { margin-left: 0 !important; }
+          .vm-hamburger { display: flex !important; }
+        }
+      `}</style>
       <CustomCursor />
-      {/* 모바일 햄버거 메뉴 버튼 */}
-      <button
-        onClick={() => setIsMobileMenuOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-        aria-label="메뉴 열기"
+
+      {/* ══════════════════════════════════════════
+          아이콘 레일 — 항상 보이는 왼쪽 세로 바
+      ══════════════════════════════════════════ */}
+      <div
+        className="vm-rail"
+        style={{
+          position:      'fixed',
+          top:           0,
+          left:          0,
+          bottom:        0,
+          width:         RAIL_W,
+          zIndex:        50,
+          display:       'flex',
+          flexDirection: 'column',
+          alignItems:    'center',
+          background:    '#1c1917',
+          paddingTop:    '0',
+          paddingBottom: '0',
+        }}
       >
-        <Menu size={24} className="text-gray-700" />
-      </button>
+        {/* 로고 */}
+        <Link
+          href="/management"
+          style={{
+            width:          '100%',
+            height:         '56px',
+            display:        'flex',
+            alignItems:     'center',
+            justifyContent: 'center',
+            flexShrink:     0,
+            textDecoration: 'none',
+            borderBottom:   '1px solid rgba(255,255,255,0.07)',
+          }}
+        >
+          <img
+            src="/logo-white.png"
+            alt="VIMO"
+            style={{
+              width:  '28px',
+              height: '28px',
+              objectFit: 'contain',
+            }}
+          />
+        </Link>
 
-      {/* 모바일 오버레이 */}
-      {isMobileMenuOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40 animate-in fade-in duration-200"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+        {/* 섹션 아이콘들 */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '2px', width: '100%' }}>
+          {SECTIONS.map(sec => {
+            const Icon      = sec.icon;
+            const isSel     = activeSection === sec.key;
+            // 이 섹션에 활성 경로가 있는지
+            const hasActive = sec.items.filter(isLink).some(i => {
+              if (pathname === i.href || pathname.startsWith(i.href + '/')) return true;
+              if (i.sub) return i.sub.some(s => pathname.startsWith(s.href));
+              return false;
+            });
 
-      {/* 사이드바 */}
-      <aside className={`
-        w-64 bg-white border-r border-gray-200
-        fixed lg:static inset-y-0 left-0 z-50
-        transform transition-transform duration-300 ease-in-out
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        <div className="flex flex-col h-full overflow-visible">
-          {/* 로고 */}
-          <div className="p-6 border-b border-gray-200 flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">VIDEO MOMENT</h1>
-              <p className="text-sm text-gray-500 mt-1">관리자 대시보드</p>
-            </div>
-            {/* 모바일 닫기 버튼 */}
-            <button
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              aria-label="메뉴 닫기"
-            >
-              <X size={20} className="text-gray-600" />
-            </button>
-          </div>
-
-          {/* 검색 & 알림 */}
-          <div className="p-4 border-b border-gray-200 overflow-visible">
-            <div className="flex items-center gap-2 overflow-visible">
-              <div className="flex-1">
-                <GlobalSearch />
-              </div>
-              <NotificationDropdown />
-            </div>
-          </div>
-
-          {/* 네비게이션 */}
-          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-            <NavItem href="/dashboard" icon={<LayoutDashboard size={20} />} onClick={() => setIsMobileMenuOpen(false)}>
-              대시보드
-            </NavItem>
-            <NavItem href="/management" icon={<ClipboardCheck size={20} />} onClick={() => setIsMobileMenuOpen(false)}>
-              매니지먼트
-            </NavItem>
-            <NavItem href="/projects" icon={<FolderOpen size={20} />} onClick={() => setIsMobileMenuOpen(false)}>
-              프로젝트
-            </NavItem>
-            <div className="h-px bg-gray-100 mx-2 my-1" />
-            <NavItem href="/marketing" icon={<Megaphone size={20} />} onClick={() => setIsMobileMenuOpen(false)}>
-              <div className="flex items-center gap-2">
-                <span>마케팅</span>
-                <span className="text-xs text-gray-400">(준비 중)</span>
-              </div>
-            </NavItem>
-            {/* 고객 관리 그룹 */}
-            <div>
+            return (
               <button
-                onClick={() => setIsCustomerOpen(o => !o)}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
-                  isCustomerActive ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-gray-700 hover:bg-gray-100'
-                }`}
+                key={sec.key}
+                onClick={() => setActiveSection(isSel ? null : sec.key)}
+                data-rail-tip={sec.label}
+                style={{
+                  position:       'relative',
+                  width:          '36px',
+                  height:         '36px',
+                  borderRadius:   '10px',
+                  border:         'none',
+                  display:        'flex',
+                  alignItems:     'center',
+                  justifyContent: 'center',
+                  cursor:         'pointer',
+                  background:     isSel ? 'rgba(234,88,12,0.18)' : 'transparent',
+                  color:          isSel ? '#ea580c' : hasActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)',
+                  transition:     'background 0.15s, color 0.15s',
+                }}
+                onMouseEnter={e => { if (!isSel) { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; } }}
+                onMouseLeave={e => { if (!isSel) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = hasActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)'; } }}
               >
-                <div className="flex items-center space-x-3">
-                  <Users size={20} />
-                  <span className="font-medium">고객 관리</span>
-                </div>
-                <ChevronDown size={16} className={`transition-transform duration-200 ${isCustomerOpen ? 'rotate-180' : ''}`} />
-              </button>
-              <AnimatePresence initial={false}>
-                {isCustomerOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
-                    style={{ overflow: 'hidden' }}
-                  >
-                    <div className="mt-1 ml-4 pl-4 border-l-2 border-gray-100 space-y-1 pb-1">
-                      <Link
-                        href="/partners"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all ${
-                          pathname.startsWith('/partners') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        <Users size={17} />
-                        <span className="font-medium text-sm">파트너</span>
-                      </Link>
-                      <Link
-                        href="/clients"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all ${
-                          pathname.startsWith('/clients') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        <Briefcase size={17} />
-                        <span className="font-medium text-sm">클라이언트</span>
-                      </Link>
-                    </div>
-                  </motion.div>
+                <Icon size={19} />
+                {/* 활성 경로 있으면 오렌지 점 */}
+                {hasActive && !isSel && (
+                  <span style={{ position: 'absolute', top: '5px', right: '5px', width: '5px', height: '5px', borderRadius: '50%', background: '#ea580c' }} />
                 )}
-              </AnimatePresence>
-            </div>
-            <div className="h-px bg-gray-100 mx-2 my-1" />
-            {/* 경영·운영 그룹 */}
-            <div>
-              <button
-                onClick={() => setIsOperationsOpen(o => !o)}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
-                  isOperationsActive ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <Building2 size={20} />
-                  <span className="font-medium">경영·운영</span>
-                </div>
-                <ChevronDown size={16} className={`transition-transform duration-200 ${isOperationsOpen ? 'rotate-180' : ''}`} />
               </button>
-              <AnimatePresence initial={false}>
-                {isOperationsOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
-                    style={{ overflow: 'hidden' }}
-                  >
-                    <div className="mt-1 ml-4 pl-4 border-l-2 border-gray-100 space-y-1 pb-1">
-                      <Link
-                        href="/finance"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all ${
-                          pathname.startsWith('/finance') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        <Wallet size={17} />
-                        <span className="font-medium text-sm">재무</span>
-                      </Link>
-                      <Link
-                        href="/settlement"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all ${
-                          pathname.startsWith('/settlement') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        <Receipt size={17} />
-                        <span className="font-medium text-sm">정산</span>
-                      </Link>
-                      <Link
-                        href="/contract"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all ${
-                          pathname.startsWith('/contract') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        <FileText size={17} />
-                        <span className="font-medium text-sm">계약</span>
-                        <span className="text-xs text-gray-400">(준비 중)</span>
-                      </Link>
-                      <Link
-                        href="/strategy"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all ${
-                          pathname.startsWith('/strategy') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        <Target size={17} />
-                        <span className="font-medium text-sm">전략</span>
-                        <span className="text-xs text-gray-400">(준비 중)</span>
-                      </Link>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-            <div className="h-px bg-gray-100 mx-2 my-1" />
-            <NavItem href="/trash" icon={<Trash2 size={20} />} onClick={() => setIsMobileMenuOpen(false)}>
-              휴지통
-            </NavItem>
-            <NavItem href="/settings" icon={<Settings size={20} />} onClick={() => setIsMobileMenuOpen(false)}>
-              설정
-            </NavItem>
-            {myRole === 'admin' && (
-              <NavItem href="/settings/users" icon={<Shield size={20} />} onClick={() => setIsMobileMenuOpen(false)}>
-                계정 관리
-              </NavItem>
-            )}
-          </nav>
+            );
+          })}
 
-          {/* 사용자 정보 */}
-          <div className="p-4 border-t border-gray-200">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                  {userInitial}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">관리자</p>
-                  <p className="text-xs text-gray-500 truncate max-w-[120px]">{userEmail}</p>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
+          {/* 관리자 전용 */}
+          {myRole === 'admin' && (
+            <Link
+              href="/settings/users"
+              data-rail-tip="계정 관리"
+              style={{
+                position:       'relative',
+                width:          '36px',
+                height:         '36px',
+                borderRadius:   '10px',
+                display:        'flex',
+                alignItems:     'center',
+                justifyContent: 'center',
+                textDecoration: 'none',
+                color:          'rgba(255,255,255,0.3)',
+                transition:     'background 0.15s, color 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
             >
-              <LogOut size={16} />
-              로그아웃
-            </button>
+              <Shield size={18} />
+            </Link>
+          )}
+        </div>
+
+        {/* 하단 — 시스템 + 로그아웃 + 유저 아바타 */}
+        <div style={{ flexShrink: 0, borderTop: '1px solid rgba(255,255,255,0.07)', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '2px' }}>
+          {/* 설정 / 휴지통 */}
+          {SYSTEM_ITEMS.map(item => {
+            const SysIcon = item.icon;
+            const sysActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                data-rail-tip={item.label}
+                style={{
+                  position:       'relative',
+                  width:          '36px',
+                  height:         '36px',
+                  borderRadius:   '10px',
+                  display:        'flex',
+                  alignItems:     'center',
+                  justifyContent: 'center',
+                  textDecoration: 'none',
+                  background:     sysActive ? 'rgba(234,88,12,0.18)' : 'transparent',
+                  color:          sysActive ? '#ea580c' : 'rgba(255,255,255,0.35)',
+                  transition:     'background 0.15s, color 0.15s',
+                }}
+                onMouseEnter={e => { if (!sysActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; } }}
+                onMouseLeave={e => { if (!sysActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.35)'; } }}
+              >
+                <SysIcon size={18} />
+              </Link>
+            );
+          })}
+
+          <div style={{ height: '4px' }} />
+
+          <button
+            onClick={handleLogout}
+            data-rail-tip="로그아웃"
+            style={{
+              position:       'relative',
+              width:          '36px',
+              height:         '36px',
+              borderRadius:   '10px',
+              border:         'none',
+              display:        'flex',
+              alignItems:     'center',
+              justifyContent: 'center',
+              cursor:         'pointer',
+              background:     'transparent',
+              color:          'rgba(255,255,255,0.25)',
+              transition:     'background 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; e.currentTarget.style.color = '#f87171'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.25)'; }}
+          >
+            <LogOut size={17} />
+          </button>
+
+          <div
+            data-rail-tip={userEmail}
+            style={{
+              position:       'relative',
+              width:          '30px',
+              height:         '30px',
+              borderRadius:   '9px',
+              background:     '#ea580c',
+              display:        'flex',
+              alignItems:     'center',
+              justifyContent: 'center',
+              fontSize:       '11px',
+              fontWeight:     700,
+              color:          '#fff',
+              flexShrink:     0,
+            }}
+          >
+            {userInitial}
           </div>
         </div>
-      </aside>
+      </div>
 
-      {/* 메인 컨텐츠 */}
-      <main className="flex-1 overflow-auto w-full lg:w-auto">
-        <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+      {/* ══════════════════════════════════════════
+          슬라이드 패널 — 섹션 선택 시 열림
+      ══════════════════════════════════════════ */}
+      <AnimatePresence>
+        {panelOpen && currentSection && (
+          <motion.div
+            className="vm-panel"
+            key={activeSection}
+            initial={{ x: -PANEL_W, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -PANEL_W, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            style={{
+              position:      'fixed',
+              top:           0,
+              left:          RAIL_W,
+              bottom:        0,
+              width:         PANEL_W,
+              zIndex:        45,
+              display:       'flex',
+              flexDirection: 'column',
+              background:    '#ffffff',
+              borderRight:   '1px solid #ede9e6',
+              boxShadow:     '4px 0 16px rgba(0,0,0,0.06)',
+            }}
+          >
+            {/* 패널 헤더 */}
+            <div
+              style={{
+                height:      '56px',
+                flexShrink:  0,
+                display:     'flex',
+                alignItems:  'flex-end',
+                padding:     '0 16px 12px',
+                borderBottom:'1px solid #f0ece9',
+              }}
+            >
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#ea580c', lineHeight: 1 }}>
+                  {currentSection.label}
+                </p>
+              </div>
+            </div>
+
+            {/* 패널 네비게이션 */}
+            <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 8px' }}>
+              {currentSection.items.map((item, idx) => {
+                if (item.type === 'divider') {
+                  return <div key={`div-${idx}`} style={{ height: '1px', background: '#f0ece9', margin: '6px 10px' }} />;
+                }
+
+                const Icon     = item.icon;
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/') ||
+                  (item.sub?.some(s => pathname.startsWith(s.href)) ?? false);
+                const hasSub   = !!item.sub?.length;
+                const isExp    = expanded === item.href;
+
+                return (
+                  <div key={item.href}>
+                    {hasSub ? (
+                      <button
+                        onClick={() => setExpanded(isExp ? null : item.href)}
+                        style={{
+                          width:          '100%',
+                          display:        'flex',
+                          alignItems:     'center',
+                          gap:            '9px',
+                          padding:        '8px 10px',
+                          borderRadius:   '9px',
+                          border:         'none',
+                          cursor:         'pointer',
+                          marginBottom:   '1px',
+                          transition:     'background 0.12s, color 0.12s',
+                          background:     isActive ? '#ea580c' : 'transparent',
+                          color:          isActive ? '#ffffff' : '#44403c',
+                        }}
+                        onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = '#f5f3f1'; } }}
+                        onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; } }}
+                      >
+                        <Icon size={16} style={{ flexShrink: 0, opacity: isActive ? 1 : 0.5 }} />
+                        <span style={{ fontSize: '15px', fontWeight: isActive ? 600 : 400, flex: 1, textAlign: 'left', whiteSpace: 'nowrap' }}>{item.label}</span>
+                        {item.badge && <PanelBadge label={item.badge} active={isActive} />}
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0, opacity: 0.4, transform: isExp ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s' }}>
+                          <path d="M3 2l4 3-4 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        style={{
+                          display:        'flex',
+                          alignItems:     'center',
+                          gap:            '9px',
+                          padding:        '8px 10px',
+                          borderRadius:   '9px',
+                          textDecoration: 'none',
+                          marginBottom:   '1px',
+                          transition:     'background 0.12s, color 0.12s',
+                          background:     isActive ? '#ea580c' : 'transparent',
+                          color:          isActive ? '#ffffff' : '#44403c',
+                        }}
+                        onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = '#f5f3f1'; } }}
+                        onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; } }}
+                      >
+                        <Icon size={16} style={{ flexShrink: 0, opacity: isActive ? 1 : 0.5 }} />
+                        <span style={{ fontSize: '15px', fontWeight: isActive ? 600 : 400, flex: 1, whiteSpace: 'nowrap' }}>{item.label}</span>
+                        {item.badge && <PanelBadge label={item.badge} active={isActive} />}
+                      </Link>
+                    )}
+
+                    {/* 서브메뉴 */}
+                    <AnimatePresence initial={false}>
+                      {hasSub && isExp && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.15 }}
+                          style={{ overflow: 'hidden' }}
+                        >
+                          <div style={{ paddingLeft: '10px', paddingBottom: '2px' }}>
+                            {item.sub!.map((s: SubLink) => {
+                              const SubIcon   = s.icon;
+                              const subActive = pathname.startsWith(s.href);
+                              return (
+                                <Link
+                                  key={s.href}
+                                  href={s.href}
+                                  style={{
+                                    display:        'flex',
+                                    alignItems:     'center',
+                                    gap:            '8px',
+                                    padding:        '7px 10px',
+                                    borderRadius:   '8px',
+                                    background:     subActive ? '#fef4ed' : 'transparent',
+                                    color:          subActive ? '#ea580c' : '#78716c',
+                                    textDecoration: 'none',
+                                    fontSize:       '14px',
+                                    fontWeight:     subActive ? 600 : 400,
+                                    marginBottom:   '1px',
+                                    transition:     'background 0.12s, color 0.12s',
+                                  }}
+                                  onMouseEnter={e => { if (!subActive) { e.currentTarget.style.background = '#f5f3f1'; e.currentTarget.style.color = '#44403c'; } }}
+                                  onMouseLeave={e => { if (!subActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#78716c'; } }}
+                                >
+                                  <SubIcon size={14} style={{ flexShrink: 0, opacity: subActive ? 1 : 0.6 }} />
+                                  <span style={{ whiteSpace: 'nowrap' }}>{s.label}</span>
+                                  {s.badge && <PanelBadge label={s.badge} active={false} />}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              })}
+            </nav>
+
+            {/* 패널 하단 — 브랜드 워드마크 */}
+            <div style={{ flexShrink: 0, padding: '12px 16px', borderTop: '1px solid #f0ece9' }}>
+              <p style={{ fontSize: '10px', fontWeight: 700, color: '#d6cec8', letterSpacing: '0.1em' }}>VIMO ERP <span style={{ fontWeight: 500, color: '#e0d9d3' }}>v0.1.0</span></p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ══════════════════════════════════════════
+          상단 헤더
+      ══════════════════════════════════════════ */}
+      <header
+        className="vm-header"
+        style={{
+          position:    'fixed',
+          top:         0,
+          left:        totalW,
+          right:       0,
+          height:      '56px',
+          zIndex:      30,
+          display:     'flex',
+          alignItems:  'center',
+          padding:     '0 24px',
+          gap:         '12px',
+          background:  '#ffffff',
+          borderBottom:'1px solid #ede9e6',
+          transition:  'left 0.2s cubic-bezier(0.4,0,0.2,1)',
+        }}
+      >
+        {/* 모바일 햄버거 */}
+        <button
+          className="vm-hamburger"
+          onClick={() => setMobileMenu(v => !v)}
+          style={{
+            display:    'none',
+            background: 'none',
+            border:     'none',
+            cursor:     'pointer',
+            color:      '#44403c',
+            padding:    '4px',
+          }}
+        >
+          <Menu size={20} />
+        </button>
+
+        {(() => {
+          // 시스템 항목 체크
+          const sysItem = SYSTEM_ITEMS.find(i => pathname === i.href || pathname.startsWith(i.href + '/'));
+          if (sysItem) {
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px' }}>
+                <span style={{ color: '#a8a29e', fontWeight: 500 }}>시스템</span>
+                <span style={{ color: '#d6cec8' }}>/</span>
+                <span style={{ fontWeight: 600, color: '#1c1917' }}>{sysItem.label}</span>
+              </div>
+            );
+          }
+          // 일반 섹션 체크
+          for (const sec of SECTIONS) {
+            const links = sec.items.filter(isLink);
+            for (const link of links) {
+              const allHrefs = [{ href: link.href, label: link.label }, ...(link.sub ?? [])];
+              const found = allHrefs.find(h => pathname === h.href || pathname.startsWith(h.href + '/'));
+              if (found) {
+                const isProjectSubpage = found.label === '프로젝트' && pathname !== '/projects';
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px' }}>
+                    <button
+                      onClick={() => setActiveSection(activeSection === sec.key ? null : sec.key)}
+                      style={{
+                        background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                        color: '#a8a29e', fontWeight: 500, fontSize: '14px',
+                        transition: 'color 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#ea580c'; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = '#a8a29e'; }}
+                    >
+                      {sec.label}
+                    </button>
+                    <span style={{ color: '#d6cec8' }}>/</span>
+                    {isProjectSubpage ? (
+                      <Link href="/projects" style={{ color: '#a8a29e', fontWeight: 500, textDecoration: 'none', transition: 'color 0.15s' }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#ea580c'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#a8a29e'; }}
+                      >
+                        {found.label}
+                      </Link>
+                    ) : (
+                      <span style={{ fontWeight: 600, color: '#1c1917' }}>{found.label}</span>
+                    )}
+                    {isProjectSubpage && breadcrumbProject && !breadcrumbEpisode && (
+                      <>
+                        <span style={{ color: '#d6cec8' }}>/</span>
+                        <span style={{ fontWeight: 600, color: '#1c1917' }}>{breadcrumbProject}</span>
+                      </>
+                    )}
+                    {isProjectSubpage && breadcrumbEpisode && (
+                      <>
+                        <span style={{ color: '#d6cec8' }}>/</span>
+                        {breadcrumbProject && (
+                          <Link href={`/projects/${pathname.match(/^\/projects\/([^/]+)/)?.[1]}`} style={{ color: '#a8a29e', fontWeight: 500, textDecoration: 'none', transition: 'color 0.15s' }}
+                            onMouseEnter={e => { e.currentTarget.style.color = '#ea580c'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = '#a8a29e'; }}
+                          >
+                            {breadcrumbProject}
+                          </Link>
+                        )}
+                        <span style={{ color: '#d6cec8' }}>/</span>
+                        <span style={{ fontWeight: 600, color: '#1c1917' }}>{breadcrumbEpisode}</span>
+                      </>
+                    )}
+                  </div>
+                );
+              }
+            }
+          }
+          return null;
+        })()}
+        <div style={{ flex: 1 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <NotificationDropdown />
+        </div>
+      </header>
+
+      {/* ══════════════════════════════════════════
+          모바일 오버레이 메뉴
+      ══════════════════════════════════════════ */}
+      <AnimatePresence>
+        {mobileMenu && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              position:   'fixed',
+              inset:      0,
+              zIndex:     60,
+              background: '#ffffff',
+              overflowY:  'auto',
+              padding:    '0',
+            }}
+          >
+            {/* 닫기 헤더 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid #f0ece9' }}>
+              <span style={{ fontSize: '15px', fontWeight: 700, color: '#1c1917' }}>메뉴</span>
+              <button onClick={() => setMobileMenu(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#78716c', padding: '4px' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* 섹션들 */}
+            <div style={{ padding: '12px 16px' }}>
+              {SECTIONS.map(sec => (
+                <div key={sec.key} style={{ marginBottom: '16px' }}>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: '#a8a29e', letterSpacing: '0.08em', padding: '4px 8px', textTransform: 'uppercase' }}>{sec.label}</p>
+                  {sec.items.filter(isLink).map(item => {
+                    const Icon = item.icon;
+                    const active = pathname === item.href || pathname.startsWith(item.href + '/');
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '10px',
+                          padding: '10px 8px', borderRadius: '10px', textDecoration: 'none',
+                          background: active ? '#ea580c' : 'transparent',
+                          color: active ? '#fff' : '#44403c',
+                          fontSize: '14px', fontWeight: active ? 600 : 400,
+                          marginBottom: '2px',
+                        }}
+                      >
+                        <Icon size={16} style={{ opacity: active ? 1 : 0.5 }} />
+                        <span>{item.label}</span>
+                        {item.badge && <PanelBadge label={item.badge} active={active} />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))}
+
+              {/* 시스템 */}
+              <div style={{ borderTop: '1px solid #f0ece9', paddingTop: '12px', marginTop: '4px' }}>
+                <p style={{ fontSize: '12px', fontWeight: 700, color: '#a8a29e', letterSpacing: '0.08em', padding: '4px 8px', textTransform: 'uppercase' }}>시스템</p>
+                {SYSTEM_ITEMS.map(item => {
+                  const Icon = item.icon;
+                  const active = pathname === item.href || pathname.startsWith(item.href + '/');
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '10px 8px', borderRadius: '10px', textDecoration: 'none',
+                        background: active ? '#ea580c' : 'transparent',
+                        color: active ? '#fff' : '#44403c',
+                        fontSize: '14px', fontWeight: active ? 600 : 400,
+                        marginBottom: '2px',
+                      }}
+                    >
+                      <Icon size={16} style={{ opacity: active ? 1 : 0.5 }} />
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              {/* 로그아웃 */}
+              <div style={{ borderTop: '1px solid #f0ece9', paddingTop: '12px', marginTop: '12px' }}>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '10px 8px', borderRadius: '10px',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: '#ef4444', fontSize: '14px', fontWeight: 500, width: '100%',
+                  }}
+                >
+                  <LogOut size={16} />
+                  <span>로그아웃</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ══════════════════════════════════════════
+          메인 컨텐츠
+      ══════════════════════════════════════════ */}
+      <main
+        className="vm-main"
+        style={{
+          marginLeft: totalW,
+          marginTop:  '56px',
+          minHeight:  'calc(100vh - 56px)',
+          transition: 'margin-left 0.2s cubic-bezier(0.4,0,0.2,1)',
+        }}
+      >
+        <div className="p-4 sm:p-6 lg:p-8">
           <DashboardContent>{children}</DashboardContent>
         </div>
       </main>
+      <GlobalFAB />
+      <TutorialOverlay />
+      <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
+    </TutorialProvider>
+  );
+}
+
+function PanelBadge({ label, active }: { label: string; active: boolean }) {
+  return (
+    <span style={{
+      fontSize:    '10px',
+      fontWeight:  600,
+      padding:     '2px 7px',
+      borderRadius:'999px',
+      whiteSpace:  'nowrap',
+      flexShrink:  0,
+      background:  active ? 'rgba(255,255,255,0.25)' : '#fef4ed',
+      color:       active ? '#ffffff' : '#ea580c',
+    }}>
+      {label}
+    </span>
   );
 }
