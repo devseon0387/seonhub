@@ -290,7 +290,7 @@ export default function EpisodeTable({ episodes: initialEpisodes, partners, mana
                   {(() => {
                     const isValidDate = (d: string) => d && !isNaN(new Date(d).getTime());
                     const fmt = (d: string) => new Date(d).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
-                    const hasDate = isValidDate(episode.startDate) || isValidDate(episode.endDate) || isValidDate(episode.dueDate ?? '');
+                    const hasDate = isValidDate(episode.startDate) || isValidDate(episode.endDate ?? '') || isValidDate(episode.dueDate ?? '');
                     if (!hasDate) {
                       return (
                         <span className="text-xs font-medium text-red-300">
