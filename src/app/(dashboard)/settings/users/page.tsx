@@ -147,7 +147,6 @@ export default function UsersSettingsPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        // 새 유저를 목록에 추가
         setProfiles(prev => [...prev, {
           id: data.userId,
           name: createName.trim(),
@@ -162,11 +161,17 @@ export default function UsersSettingsPage() {
         setCreateRole('manager');
         setCreatePassword('');
       } else {
-        const data = await res.json();
-        alert(data.error || '계정 생성에 실패했습니다.');
+        let errMsg = '계정 생성에 실패했습니다.';
+        try {
+          const data = await res.json();
+          errMsg = data.error || errMsg;
+        } catch {
+          errMsg = '서버 응답 오류 (HTTP ' + res.status + ')';
+        }
+        alert(errMsg);
       }
-    } catch {
-      alert('계정 생성 중 오류가 발생했습니다.');
+    } catch (err) {
+      alert('계정 생성 중 오류: ' + String(err));
     }
     setCreating(false);
   };

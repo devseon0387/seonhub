@@ -27,6 +27,22 @@ const STORAGE_KEY = 'video-moment-changelog';
 
 const defaultChangelogs: ChangelogItem[] = [
   {
+    id: '3',
+    version: 'v0.1.2',
+    date: '2026-02-24',
+    title: '회원가입 제거 → 관리자 계정 생성 방식 전환',
+    description: '사내 ERP 특성에 맞게 셀프 가입을 제거하고, 관리자가 직접 계정을 생성하는 방식으로 변경',
+    type: 'breaking',
+    details: [
+      '회원가입 페이지(/signup) 제거 — 접근 시 로그인으로 리다이렉트',
+      '계정 관리 페이지에 "새 계정 생성" 폼 추가 (이름, 이메일, 역할, 임시 비밀번호)',
+      '임시 비밀번호 자동 생성 버튼 및 생성 완료 시 비밀번호 확인 모달 추가',
+      '첫 로그인 시 비밀번호 변경 강제 (/change-password)',
+      '미들웨어에서 needs_password_change 체크 → 비밀번호 미변경 시 다른 페이지 접근 차단',
+      '설정 페이지에서 자유롭게 비밀번호 재변경 가능',
+    ],
+  },
+  {
     id: '2',
     version: 'v0.1.1',
     date: '2026-02-23',
