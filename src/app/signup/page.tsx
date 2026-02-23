@@ -57,7 +57,11 @@ export default function SignupPage() {
     });
 
     if (authError) {
-      setError(authError.message);
+      if (authError.message.includes('already registered') || authError.message.includes('already been registered')) {
+        setError('이미 가입된 이메일입니다. 로그인 페이지에서 로그인해주세요. 가입 신청 후 거부된 경우 관리자에게 문의하세요.');
+      } else {
+        setError(authError.message);
+      }
       setIsLoading(false);
     } else {
       // signUp 후 user 객체 확인

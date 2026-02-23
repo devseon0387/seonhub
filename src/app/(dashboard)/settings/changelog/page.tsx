@@ -27,6 +27,19 @@ const STORAGE_KEY = 'video-moment-changelog';
 
 const defaultChangelogs: ChangelogItem[] = [
   {
+    id: '2',
+    version: 'v0.1.1',
+    date: '2026-02-23',
+    title: '인증 보안 강화',
+    description: '미승인 사용자 접근 차단 및 회원가입 오류 메시지 개선',
+    type: 'fix',
+    details: [
+      '미들웨어에서 승인 여부 검증 추가 — 미승인 사용자 대시보드 접근 차단',
+      '회원가입 시 "User already registered" 오류를 한글 안내 메시지로 개선',
+      '로그인/회원가입 페이지 리다이렉트 시 승인 상태 확인 로직 추가',
+    ],
+  },
+  {
     id: '1',
     version: 'v0.1.0',
     date: '2026-02-18',

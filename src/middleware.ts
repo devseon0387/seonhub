@@ -34,7 +34,8 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/api/mcp');
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/api/mcp') || pathname.startsWith('/api/strategy');
+  const isApiRoute = pathname.startsWith('/api/');
 
   if (!user && !isAuthPage) {
     const loginUrl = request.nextUrl.clone();
@@ -42,10 +43,37 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // 인증된 사용자가 대시보드에 접근할 때 승인 여부 확인
+  if (user && !isAuthPage && !isApiRoute) {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('approved, role')
+      .eq('id', user.id)
+      .single();
+
+    // 프로필이 없거나 미승인 비관리자 → 로그인 페이지로
+    if (!profile || (profile.role !== 'admin' && profile.approved !== true)) {
+      // 세션 쿠키 제거
+      await supabase.auth.signOut();
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = '/login';
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
   if (user && isAuthPage) {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = '/management';
-    return NextResponse.redirect(dashboardUrl);
+    // 승인된 사용자만 대시보드로 리다이렉트
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('approved, role')
+      .eq('id', user.id)
+      .single();
+
+    if (profile && (profile.role === 'admin' || profile.approved === true)) {
+      const dashboardUrl = request.nextUrl.clone();
+      dashboardUrl.pathname = '/management';
+      return NextResponse.redirect(dashboardUrl);
+    }
   }
 
   return supabaseResponse;
