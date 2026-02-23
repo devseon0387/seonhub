@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/api/mcp') || pathname.startsWith('/api/strategy');
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/api/auth') || pathname.startsWith('/api/mcp') || pathname.startsWith('/api/strategy');
   const isApiRoute = pathname.startsWith('/api/');
 
   if (!user && !isAuthPage) {
