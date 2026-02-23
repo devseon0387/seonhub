@@ -745,6 +745,33 @@ export async function deleteUserProfile(userId: string): Promise<boolean> {
   return !error;
 }
 
+export async function getNeedsPasswordChange(): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('needs_password_change')
+    .eq('id', user.id)
+    .single();
+
+  return data?.needs_password_change === true;
+}
+
+export async function setPasswordChanged(): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase
+    .from('user_profiles')
+    .update({ needs_password_change: false })
+    .eq('id', user.id);
+
+  return !error;
+}
+
 // ─── Custom Roles ─────────────────────────────────────────────
 
 export async function getCustomRoles(): Promise<string[]> {

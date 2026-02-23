@@ -34,7 +34,14 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/api/auth') || pathname.startsWith('/api/mcp') || pathname.startsWith('/api/strategy');
+  // /signup 접근 시 /login으로 리다이렉트
+  if (pathname.startsWith('/signup')) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = '/login';
+    return NextResponse.redirect(loginUrl);
+  }
+
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/api/auth') || pathname.startsWith('/api/mcp') || pathname.startsWith('/api/strategy');
   const isApiRoute = pathname.startsWith('/api/');
 
   if (!user && !isAuthPage) {
@@ -43,11 +50,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // 인증된 사용자가 대시보드에 접근할 때 승인 여부 확인
+  // 인증된 사용자가 대시보드에 접근할 때 승인 여부 및 비밀번호 변경 확인
   if (user && !isAuthPage && !isApiRoute) {
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('approved, role')
+      .select('approved, role, needs_password_change')
       .eq('id', user.id)
       .single();
 
@@ -58,6 +65,13 @@ export async function middleware(request: NextRequest) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = '/login';
       return NextResponse.redirect(loginUrl);
+    }
+
+    // 비밀번호 변경이 필요한 경우 → /change-password로 강제 이동
+    if (profile.needs_password_change === true && !pathname.startsWith('/change-password')) {
+      const cpUrl = request.nextUrl.clone();
+      cpUrl.pathname = '/change-password';
+      return NextResponse.redirect(cpUrl);
     }
   }
 

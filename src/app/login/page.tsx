@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { createClient } from '@/lib/supabase/client';
@@ -39,7 +38,7 @@ export default function LoginPage() {
         // 관리자 승인 여부 확인
         const { data: profile } = await supabase
           .from('user_profiles')
-          .select('approved, role')
+          .select('approved, role, needs_password_change')
           .eq('email', email)
           .single();
 
@@ -55,7 +54,13 @@ export default function LoginPage() {
         else localStorage.removeItem('vm_stay_logged_in');
         sessionStorage.setItem('vm_active_session', '1');
         sessionStorage.setItem('vm_just_logged_in', '1');
-        window.location.href = '/management';
+
+        // 비밀번호 변경 필요 여부 확인
+        if (profile && profile.needs_password_change === true) {
+          window.location.href = '/change-password';
+        } else {
+          window.location.href = '/management';
+        }
       }
     } catch (err) {
       setError(String(err));
@@ -233,13 +238,6 @@ export default function LoginPage() {
           background: #f0ece9;
         }
 
-        .vm-signup-link {
-          color: #ea580c;
-          font-weight: 600;
-          text-decoration: none;
-          transition: opacity 0.2s;
-        }
-        .vm-signup-link:hover { opacity: 0.7; }
       `}</style>
 
       <div className="vm-login-root">
@@ -346,10 +344,7 @@ export default function LoginPage() {
           <div className="vm-divider" />
 
           <p style={{ textAlign: 'center', fontSize: '13px', color: '#a8a29e' }}>
-            아직 계정이 없으신가요?{' '}
-            <Link href="/signup" className="vm-signup-link">
-              회원가입
-            </Link>
+            계정이 필요하시면 관리자에게 문의하세요.
           </p>
         </div>
 

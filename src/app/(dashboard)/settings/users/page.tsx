@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getMyProfile, getAllUserProfiles, updateUserRole, updateUserApproval, getCustomRoles, addCustomRole, deleteCustomRole } from '@/lib/supabase/db';
-import { Shield, Users, Crown, Copy, Check, Plus, X, Tag, Trash2, UserCheck, Clock, Pencil, XCircle, Eye, EyeOff } from 'lucide-react';
+import { getMyProfile, getAllUserProfiles, updateUserRole, getCustomRoles, addCustomRole, deleteCustomRole } from '@/lib/supabase/db';
+import { Shield, Users, Crown, Plus, X, Tag, Trash2, UserCheck, Pencil, Eye, EyeOff, Copy, Check, UserPlus, RefreshCw } from 'lucide-react';
 
 type UserProfile = {
   id: string;
@@ -41,11 +41,21 @@ export default function UsersSettingsPage() {
   const [myId, setMyId] = useState<string>('');
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [customRoles, setCustomRoles] = useState<string[]>([]);
   const [newRoleName, setNewRoleName] = useState('');
   const [addingRole, setAddingRole] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // 새 계정 생성
+  const [createName, setCreateName] = useState('');
+  const [createEmail, setCreateEmail] = useState('');
+  const [createRole, setCreateRole] = useState('manager');
+  const [createPassword, setCreatePassword] = useState('');
+  const [showCreatePw, setShowCreatePw] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createdPassword, setCreatedPassword] = useState<string | null>(null);
+  const [createdEmail, setCreatedEmail] = useState('');
+  const [copiedPw, setCopiedPw] = useState(false);
 
   // 수정 모달
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -72,7 +82,6 @@ export default function UsersSettingsPage() {
     init();
   }, [router]);
 
-  const pendingProfiles = profiles.filter(p => p.approved !== true && p.role !== 'admin');
   const approvedProfiles = profiles.filter(p => p.approved === true || p.role === 'admin');
 
   const handleRoleChange = async (userId: string, newRole: string) => {
@@ -114,24 +123,62 @@ export default function UsersSettingsPage() {
     }
   };
 
-  const handleCopyInviteLink = async () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const signupUrl = `${origin}/signup`;
+  const generatePassword = () => {
+    const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let pw = '';
+    for (let i = 0; i < 10; i++) pw += chars.charAt(Math.floor(Math.random() * chars.length));
+    setCreatePassword(pw);
+    setShowCreatePw(true);
+  };
+
+  const handleCreateUser = async () => {
+    if (!createName.trim() || !createEmail.trim() || !createPassword) return;
+    setCreating(true);
     try {
-      await navigator.clipboard.writeText(signupUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      const res = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: createName.trim(),
+          email: createEmail.trim(),
+          role: createRole,
+          password: createPassword,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // 새 유저를 목록에 추가
+        setProfiles(prev => [...prev, {
+          id: data.userId,
+          name: createName.trim(),
+          email: createEmail.trim(),
+          role: createRole,
+          approved: true,
+        }]);
+        setCreatedEmail(createEmail.trim());
+        setCreatedPassword(createPassword);
+        setCreateName('');
+        setCreateEmail('');
+        setCreateRole('manager');
+        setCreatePassword('');
+      } else {
+        const data = await res.json();
+        alert(data.error || '계정 생성에 실패했습니다.');
+      }
     } catch {
-      const el = document.createElement('textarea');
-      el.value = signupUrl;
-      el.style.position = 'fixed';
-      el.style.opacity = '0';
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand('copy');
-      document.body.removeChild(el);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      alert('계정 생성 중 오류가 발생했습니다.');
+    }
+    setCreating(false);
+  };
+
+  const handleCopyPassword = async () => {
+    if (!createdPassword) return;
+    try {
+      await navigator.clipboard.writeText(createdPassword);
+      setCopiedPw(true);
+      setTimeout(() => setCopiedPw(false), 2000);
+    } catch {
+      /* fallback */
     }
   };
 
@@ -156,23 +203,6 @@ export default function UsersSettingsPage() {
       alert('삭제 중 오류가 발생했습니다.');
     }
     setDeletingId(null);
-  };
-
-  const handleApproval = async (userId: string, approved: boolean) => {
-    const ok = await updateUserApproval(userId, approved);
-    if (ok) {
-      setProfiles(prev =>
-        prev.map(p => (p.id === userId ? { ...p, approved } : p))
-      );
-    } else {
-      alert('승인 상태 변경에 실패했습니다.');
-    }
-  };
-
-  const handleReject = async (userId: string, name: string | null) => {
-    const label = name || '이 계정';
-    if (!confirm(`"${label}"의 가입 신청을 거절하시겠습니까?\n계정이 삭제됩니다.`)) return;
-    await handleDeleteUser(userId, name);
   };
 
   const openEditModal = (profile: UserProfile) => {
@@ -242,62 +272,89 @@ export default function UsersSettingsPage() {
         </div>
       </div>
 
-      {/* 가입 신청 */}
+      {/* 새 계정 생성 */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-          <Clock size={18} className="text-amber-500" />
-          <h2 className="text-base font-semibold text-gray-800">가입 신청</h2>
-          {pendingProfiles.length > 0 && (
-            <span className="ml-auto text-xs font-semibold text-white bg-amber-500 px-2.5 py-1 rounded-full">
-              {pendingProfiles.length}
-            </span>
-          )}
+          <UserPlus size={18} className="text-orange-500" />
+          <h2 className="text-base font-semibold text-gray-800">새 계정 생성</h2>
         </div>
-
-        <div className="divide-y divide-gray-100">
-          {pendingProfiles.length === 0 ? (
-            <div className="px-6 py-10 text-center text-gray-400 text-sm">
-              대기 중인 가입 신청이 없습니다.
+        <div className="px-6 py-5 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">이름</label>
+              <input
+                type="text"
+                value={createName}
+                onChange={e => setCreateName(e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                placeholder="홍길동"
+              />
             </div>
-          ) : (
-            pendingProfiles.map(profile => (
-              <div key={profile.id} className="px-6 py-4 flex items-center gap-4">
-                {/* 아바타 */}
-                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 font-semibold text-sm flex-shrink-0">
-                  {(profile.name ?? profile.email ?? '?').charAt(0).toUpperCase()}
-                </div>
-
-                {/* 이름/이메일 */}
-                <div className="flex-1 min-w-0">
-                  <span className="font-medium text-gray-900 text-sm truncate block">
-                    {profile.name ?? '(이름 없음)'}
-                  </span>
-                  {profile.email && (
-                    <p className="text-xs text-gray-400 truncate mt-0.5">{profile.email}</p>
-                  )}
-                </div>
-
-                {/* 승인/거절 버튼 */}
-                <div className="flex items-center gap-2 flex-shrink-0">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">이메일</label>
+              <input
+                type="email"
+                value={createEmail}
+                onChange={e => setCreateEmail(e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                placeholder="user@example.com"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">역할</label>
+              <select
+                value={createRole}
+                onChange={e => setCreateRole(e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white"
+              >
+                {allRoleOptions.map(r => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">임시 비밀번호</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type={showCreatePw ? 'text' : 'password'}
+                    value={createPassword}
+                    onChange={e => setCreatePassword(e.target.value)}
+                    className="w-full px-4 py-2.5 pr-10 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                    placeholder="6자 이상"
+                  />
                   <button
-                    onClick={() => handleApproval(profile.id, true)}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-green-500 hover:bg-green-600 transition-colors shadow-sm"
+                    type="button"
+                    onClick={() => setShowCreatePw(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    <UserCheck size={14} />
-                    승인
-                  </button>
-                  <button
-                    onClick={() => handleReject(profile.id, profile.name)}
-                    disabled={deletingId === profile.id}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm disabled:opacity-50"
-                  >
-                    <XCircle size={14} />
-                    거절
+                    {showCreatePw ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={generatePassword}
+                  className="flex items-center gap-1 px-3 py-2 bg-gray-100 text-gray-600 text-xs font-medium rounded-xl hover:bg-gray-200 transition-colors flex-shrink-0"
+                  title="자동 생성"
+                >
+                  <RefreshCw size={13} />
+                  자동
+                </button>
               </div>
-            ))
-          )}
+            </div>
+          </div>
+          <div className="flex justify-end pt-1">
+            <button
+              onClick={handleCreateUser}
+              disabled={creating || !createName.trim() || !createEmail.trim() || !createPassword}
+              className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white text-sm font-semibold rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <UserPlus size={15} />
+              {creating ? '생성 중...' : '계정 생성'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -444,13 +501,6 @@ export default function UsersSettingsPage() {
                           <Pencil size={14} />
                         </button>
                         <button
-                          onClick={() => handleApproval(profile.id, false)}
-                          className="p-1.5 rounded-lg text-gray-300 hover:text-amber-500 hover:bg-amber-50 transition-all"
-                          title="승인 취소"
-                        >
-                          <UserCheck size={14} />
-                        </button>
-                        <button
                           onClick={() => handleDeleteUser(profile.id, profile.name)}
                           disabled={deletingId === profile.id}
                           className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
@@ -468,44 +518,61 @@ export default function UsersSettingsPage() {
         </div>
       </div>
 
-      {/* 새 계정 초대 */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-800">새 계정 초대</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            아래 회원가입 링크를 복사해서 초대할 팀원에게 공유하세요.
-          </p>
-        </div>
-        <div className="px-6 py-5">
-          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
-            <code className="flex-1 text-sm text-gray-600 truncate font-mono">
-              {typeof window !== 'undefined' ? `${window.location.origin}/signup` : '/signup'}
-            </code>
-            <button
-              onClick={handleCopyInviteLink}
-              className={`
-                flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
-                ${copied
-                  ? 'bg-green-100 text-green-700 border border-green-200'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
-                }
-              `}
+      {/* 임시 비밀번호 확인 모달 */}
+      <AnimatePresence>
+        {createdPassword && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setCreatedPassword(null); setCopiedPw(false); }}
+            />
+            <motion.div
+              className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden"
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ duration: 0.2 }}
+              onClick={e => e.stopPropagation()}
             >
-              {copied ? (
-                <>
-                  <Check size={15} />
-                  복사됨
-                </>
-              ) : (
-                <>
-                  <Copy size={15} />
-                  링크 복사
-                </>
-              )}
-            </button>
+              <div className="px-6 py-6 text-center space-y-4">
+                <div className="inline-flex p-3 bg-green-100 rounded-xl">
+                  <UserCheck size={28} className="text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">계정 생성 완료</h3>
+                  <p className="text-sm text-gray-500 mt-1">{createdEmail}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+                  <p className="text-xs text-gray-400 font-medium mb-2">임시 비밀번호</p>
+                  <div className="flex items-center justify-center gap-3">
+                    <code className="text-lg font-mono font-bold text-gray-900 tracking-wider">
+                      {createdPassword}
+                    </code>
+                    <button
+                      onClick={handleCopyPassword}
+                      className={`p-2 rounded-lg transition-colors ${copiedPw ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}
+                    >
+                      {copiedPw ? <Check size={14} /> : <Copy size={14} />}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  이 비밀번호를 사용자에게 전달해주세요. 첫 로그인 시 비밀번호 변경이 강제됩니다.
+                </p>
+                <button
+                  onClick={() => { setCreatedPassword(null); setCopiedPw(false); }}
+                  className="w-full py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors"
+                >
+                  확인
+                </button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      </div>
+        )}
+      </AnimatePresence>
 
       {/* 계정 수정 모달 */}
       <AnimatePresence>
