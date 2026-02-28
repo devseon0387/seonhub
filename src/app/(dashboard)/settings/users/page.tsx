@@ -94,25 +94,24 @@ export default function UsersSettingsPage() {
       }
       setMyId(profile.id);
 
-      const [all, roles] = await Promise.all([getAllUserProfiles(), getCustomRoles()]);
+      const [all, roles, activityRes] = await Promise.all([
+        getAllUserProfiles(),
+        getCustomRoles(),
+        fetch('/api/admin/users-activity').then(r => r.ok ? r.json() : null).catch(() => null),
+      ]);
       setProfiles(all);
       setCustomRoles(roles);
 
-      // 마지막 접속 시간 조회
-      try {
-        const res = await fetch('/api/admin/users-activity');
-        if (res.ok) {
-          const data = await res.json();
-          const fetchedAt = Date.now();
-          const map: Record<string, { lastSignInAt: string | null; isOnline: boolean }> = {};
-          for (const u of data.users) {
-            const lastAt = u.lastSignInAt as string | null;
-            const isOnline = lastAt ? (fetchedAt - new Date(lastAt).getTime()) < 5 * 60 * 1000 : false;
-            map[u.id] = { lastSignInAt: lastAt, isOnline };
-          }
-          setActivityMap(map);
+      if (activityRes?.users) {
+        const fetchedAt = Date.now();
+        const map: Record<string, { lastSignInAt: string | null; isOnline: boolean }> = {};
+        for (const u of activityRes.users) {
+          const lastAt = u.lastSignInAt as string | null;
+          const isOnline = lastAt ? (fetchedAt - new Date(lastAt).getTime()) < 5 * 60 * 1000 : false;
+          map[u.id] = { lastSignInAt: lastAt, isOnline };
         }
-      } catch { /* 접속 시간 조회 실패 시 무시 */ }
+        setActivityMap(map);
+      }
 
       setLoading(false);
     };

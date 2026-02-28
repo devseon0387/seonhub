@@ -28,18 +28,23 @@ export async function GET() {
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
 
-    const { data: { users }, error } = await adminSupabase.auth.admin.listUsers();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    // 전체 사용자 조회 (페이지네이션 처리)
+    const allUsers: { id: string; lastSignInAt: string | null }[] = [];
+    let page = 1;
+    const perPage = 100;
+    while (true) {
+      const { data: { users }, error } = await adminSupabase.auth.admin.listUsers({ page, perPage });
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      for (const u of users) {
+        allUsers.push({ id: u.id, lastSignInAt: u.last_sign_in_at ?? null });
+      }
+      if (users.length < perPage) break;
+      page++;
     }
 
-    const result = users.map(u => ({
-      id: u.id,
-      lastSignInAt: u.last_sign_in_at ?? null,
-    }));
-
-    return NextResponse.json({ users: result });
+    return NextResponse.json({ users: allUsers });
   } catch (err) {
     return NextResponse.json({ error: '서버 내부 오류: ' + String(err) }, { status: 500 });
   }
