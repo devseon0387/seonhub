@@ -15,7 +15,8 @@ import {
   CheckCircle,
   Plus,
   X,
-  ChevronDown
+  ChevronDown,
+  Pencil
 } from 'lucide-react';
 import { PortfolioItem, Partner } from '@/types';
 import { FloatingLabelInput, FloatingLabelTextarea } from '@/components/FloatingLabelInput';
@@ -67,6 +68,7 @@ export default function PortfolioPage() {
     description: '',
     client: '',
     partnerId: '',
+    category: '기타',
     completedAt: '',
     tags: [],
     youtubeUrl: '',
@@ -81,6 +83,106 @@ export default function PortfolioPage() {
   const [editTagInput, setEditTagInput] = useState('');
   const [isEditPartnerDropdownOpen, setIsEditPartnerDropdownOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // 일괄 추가 관련 상태
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [bulkItems, setBulkItems] = useState<Array<{ title: string; client: string; category: string; youtubeUrl: string }>>(
+    Array.from({ length: 5 }, () => ({ title: '', client: '', category: '기타', youtubeUrl: '' }))
+  );
+  const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
+
+  // 카테고리 관련 상태
+  const [categoryFilter, setCategoryFilter] = useState<string>('전체');
+  const [categories, setCategories] = useState<string[]>([]);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState('');
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editCategoryInput, setEditCategoryInput] = useState('');
+  const [inlineCatItemId, setInlineCatItemId] = useState<string | null>(null);
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
+  const [editingTitleInput, setEditingTitleInput] = useState('');
+
+  const INITIAL_CATEGORIES = ['광고', '뮤직비디오', '기업홍보', '숏폼', '기타'];
+
+  // 로컬스토리지에서 카테고리 목록 불러오기
+  useEffect(() => {
+    const saved = localStorage.getItem('vm_portfolio_categories_v2');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as string[];
+        // "기타"는 항상 포함
+        if (!parsed.includes('기타')) parsed.push('기타');
+        setCategories(parsed);
+      } catch {
+        setCategories([...INITIAL_CATEGORIES]);
+      }
+    } else {
+      setCategories([...INITIAL_CATEGORIES]);
+    }
+  }, []);
+
+  // 아이템에서 사용된 카테고리도 합치기 (DB에는 있지만 목록에 없는 경우)
+  const allCategories = Array.from(new Set([
+    ...categories,
+    ...portfolioItems.map(i => i.category).filter(Boolean) as string[],
+  ]));
+
+  const saveCategoryList = (list: string[]) => {
+    // "기타"는 항상 포함
+    if (!list.includes('기타')) list.push('기타');
+    setCategories(list);
+    localStorage.setItem('vm_portfolio_categories_v2', JSON.stringify(list));
+  };
+
+  const handleAddCategory = () => {
+    const name = newCategoryInput.trim();
+    if (!name || allCategories.includes(name)) return;
+    saveCategoryList([...categories, name]);
+    setNewCategoryInput('');
+  };
+
+  // 카테고리 이름 변경 — 해당 카테고리의 포트폴리오 아이템도 일괄 업데이트
+  const handleRenameCategory = async (oldName: string) => {
+    const newName = editCategoryInput.trim();
+    if (!newName || newName === oldName || allCategories.includes(newName)) {
+      setEditingCategory(null);
+      return;
+    }
+
+    // DB의 포트폴리오 아이템 카테고리 일괄 변경
+    const itemsToUpdate = portfolioItems.filter(i => i.category === oldName);
+    const results = await Promise.all(
+      itemsToUpdate.map(i => updatePortfolioItem(i.id, { category: newName }))
+    );
+    if (results.some(ok => !ok)) {
+      toast.error('일부 항목의 카테고리 변경에 실패했습니다.');
+    }
+
+    // 로컬 상태 반영
+    setPortfolioItems(prev => prev.map(i => i.category === oldName ? { ...i, category: newName } : i));
+
+    // 카테고리 목록에서 이름 변경
+    saveCategoryList(categories.map(c => c === oldName ? newName : c));
+
+    if (categoryFilter === oldName) setCategoryFilter(newName);
+    setEditingCategory(null);
+    toast.success(`"${oldName}" → "${newName}" 변경 완료`);
+  };
+
+  // 카테고리 삭제 — 해당 아이템은 "기타"로 변경
+  const handleRemoveCategory = async (cat: string) => {
+    const itemsToUpdate = portfolioItems.filter(i => i.category === cat);
+    if (itemsToUpdate.length > 0) {
+      if (!confirm(`"${cat}" 카테고리에 ${itemsToUpdate.length}개의 포트폴리오가 있습니다.\n삭제하면 "기타"로 변경됩니다. 계속할까요?`)) return;
+      await Promise.all(itemsToUpdate.map(i => updatePortfolioItem(i.id, { category: '기타' })));
+      setPortfolioItems(prev => prev.map(i => i.category === cat ? { ...i, category: '기타' } : i));
+    }
+
+    // 목록에서 제거
+    saveCategoryList(categories.filter(c => c !== cat));
+    if (categoryFilter === cat) setCategoryFilter('전체');
+    toast.success(`"${cat}" 카테고리가 삭제되었습니다.`);
+  };
 
   useEffect(() => {
     async function load() {
@@ -99,9 +201,18 @@ export default function PortfolioPage() {
     load();
   }, []);
 
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!inlineCatItemId) return;
+    const handler = () => setInlineCatItemId(null);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [inlineCatItemId]);
+
   const filteredItems = portfolioItems.filter(item => {
     if (filter === 'published' && !item.isPublished) return false;
     if (filter === 'unpublished' && item.isPublished) return false;
+    if (categoryFilter !== '전체' && item.category !== categoryFilter) return false;
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
@@ -140,6 +251,7 @@ export default function PortfolioPage() {
       description: editingItem.description,
       client: editingItem.client,
       partnerId: editingItem.partnerId,
+      category: editingItem.category,
       completedAt: editingItem.completedAt,
       tags: editingItem.tags,
       youtubeUrl: editingItem.youtubeUrl,
@@ -198,6 +310,7 @@ export default function PortfolioPage() {
       description: newItem.description || '',
       client: newItem.client!,
       partnerId: newItem.partnerId || undefined,
+      category: newItem.category || '기타',
       completedAt: newItem.completedAt || new Date().toISOString().split('T')[0],
       tags: newItem.tags || [],
       youtubeUrl: newItem.youtubeUrl!,
@@ -217,6 +330,7 @@ export default function PortfolioPage() {
       description: '',
       client: '',
       partnerId: '',
+      category: '기타',
       completedAt: new Date().toISOString().split('T')[0],
       tags: [],
       youtubeUrl: '',
@@ -246,6 +360,66 @@ export default function PortfolioPage() {
         toast.error('삭제에 실패했습니다. 다시 시도해주세요.');
       }
     }
+  };
+
+  const handleBulkAdd = async () => {
+    const validItems = bulkItems.filter(item => item.title.trim() && item.client.trim() && item.youtubeUrl.trim());
+    if (validItems.length === 0) {
+      toast.error('최소 1건 이상의 유효한 데이터를 입력해주세요.');
+      return;
+    }
+
+    // URL 유효성 검증
+    const invalidUrls = validItems.filter(item => !extractYouTubeId(item.youtubeUrl));
+    if (invalidUrls.length > 0) {
+      toast.error('유효하지 않은 유튜브 URL이 ' + invalidUrls.length + '건 있습니다. 확인해주세요.');
+      return;
+    }
+
+    setIsBulkSubmitting(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const item of validItems) {
+      const inserted = await insertPortfolioItem({
+        title: item.title.trim(),
+        description: '',
+        client: item.client.trim(),
+        category: item.category || '기타',
+        completedAt: new Date().toISOString().split('T')[0],
+        tags: [],
+        youtubeUrl: item.youtubeUrl.trim(),
+        isPublished: false,
+      });
+      if (inserted) {
+        setPortfolioItems(prev => [inserted, ...prev]);
+        successCount++;
+      } else {
+        failCount++;
+      }
+    }
+
+    setIsBulkSubmitting(false);
+    setIsBulkModalOpen(false);
+
+    if (failCount === 0) {
+      toast.success(successCount + '건이 등록되었습니다.');
+    } else {
+      toast.error('성공 ' + successCount + '건, 실패 ' + failCount + '건');
+    }
+  };
+
+  const updateBulkItem = (index: number, field: string, value: string) => {
+    setBulkItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
+  };
+
+  const removeBulkRow = (index: number) => {
+    if (bulkItems.length <= 1) return;
+    setBulkItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addBulkRow = () => {
+    setBulkItems(prev => [...prev, { title: '', client: '', category: '기타', youtubeUrl: '' }]);
   };
 
   const stats = {
@@ -286,6 +460,17 @@ export default function PortfolioPage() {
           >
             <Share2 size={18} />
             공유하기
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setBulkItems(Array.from({ length: 5 }, () => ({ title: '', client: '', category: '기타', youtubeUrl: '' })));
+              setIsBulkModalOpen(true);
+            }}
+            className="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors active:scale-[0.97] font-medium flex items-center gap-2"
+          >
+            <List size={18} />
+            일괄 추가
           </button>
           <button
             type="button"
@@ -336,7 +521,7 @@ export default function PortfolioPage() {
       </div>
 
       {/* 컨트롤 바 */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-white rounded-lg shadow p-4 space-y-3">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1">
             <div className="flex-1 max-w-md relative">
@@ -381,6 +566,39 @@ export default function PortfolioPage() {
             </button>
           </div>
         </div>
+
+        {/* 카테고리 필터 */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-medium text-gray-500 mr-1">카테고리</span>
+          {['전체', ...allCategories].map(cat => {
+            const count = cat === '전체' ? portfolioItems.length : portfolioItems.filter(i => i.category === cat).length;
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setCategoryFilter(cat)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  categoryFilter === cat
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {cat}
+                <span className={`ml-1 ${categoryFilter === cat ? 'text-orange-200' : 'text-gray-400'}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setIsCategoryModalOpen(true)}
+            className="px-2 py-1 rounded-full text-xs text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors flex items-center gap-1"
+          >
+            <Plus size={12} />
+            관리
+          </button>
+        </div>
       </div>
 
       {/* 포트폴리오 목록 */}
@@ -413,7 +631,7 @@ export default function PortfolioPage() {
           )}
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {filteredItems.map((item) => {
             const partner = partners.find(p => p.id === item.partnerId);
             return (
@@ -421,7 +639,7 @@ export default function PortfolioPage() {
                 key={item.id}
                 className="bg-white rounded-lg shadow hover:shadow-xl transition-all duration-200 overflow-hidden group"
               >
-                <div className="h-48 bg-gray-900 relative overflow-hidden">
+                <div className="aspect-video bg-gray-900 relative overflow-hidden">
                   {getYouTubeThumbnail(item.youtubeUrl) && (
                     <img
                       src={getYouTubeThumbnail(item.youtubeUrl)!}
@@ -470,7 +688,14 @@ export default function PortfolioPage() {
                 </div>
                 <div className="p-5">
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-lg font-semibold text-gray-900 line-clamp-1 flex-1">{item.title}</h3>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">{item.title}</h3>
+                      {item.category && (
+                        <span className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded text-[11px] font-medium flex-shrink-0">
+                          {item.category}
+                        </span>
+                      )}
+                    </div>
                     {item.isPublished && (
                       <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium flex-shrink-0">
                         공개
@@ -526,9 +751,9 @@ export default function PortfolioPage() {
           {filteredItems.map((item) => {
             const partner = partners.find(p => p.id === item.partnerId);
             return (
-              <div key={item.id} className="p-6 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start gap-6">
-                  <div className="w-48 h-32 flex-shrink-0 bg-gray-900 rounded-lg relative overflow-hidden group/thumb">
+              <div key={item.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                <div className="flex items-start gap-5">
+                  <div className="w-44 h-28 flex-shrink-0 bg-gray-900 rounded-lg relative overflow-hidden group/thumb">
                     {getYouTubeThumbnail(item.youtubeUrl) && (
                       <img
                         src={getYouTubeThumbnail(item.youtubeUrl)!}
@@ -544,23 +769,92 @@ export default function PortfolioPage() {
                         href={item.youtubeUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white hover:bg-red-700 transition-colors"
+                        className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-white hover:bg-red-700 transition-colors"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <svg className="w-6 h-6 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M8 5v14l11-7z"/>
                         </svg>
                       </a>
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <h3 className="text-xl font-semibold text-gray-900">{item.title}</h3>
+                    <div className="flex items-start justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        {editingTitleId === item.id ? (
+                          <input
+                            type="text"
+                            value={editingTitleInput}
+                            onChange={(e) => setEditingTitleInput(e.target.value)}
+                            onKeyDown={async (e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const newTitle = editingTitleInput.trim();
+                                if (newTitle && newTitle !== item.title) {
+                                  await updatePortfolioItem(item.id, { title: newTitle });
+                                  setPortfolioItems(prev => prev.map(i => i.id === item.id ? { ...i, title: newTitle } : i));
+                                  toast.success('제목이 변경되었습니다.');
+                                }
+                                setEditingTitleId(null);
+                              }
+                              if (e.key === 'Escape') setEditingTitleId(null);
+                            }}
+                            onBlur={async () => {
+                              const newTitle = editingTitleInput.trim();
+                              if (newTitle && newTitle !== item.title) {
+                                await updatePortfolioItem(item.id, { title: newTitle });
+                                setPortfolioItems(prev => prev.map(i => i.id === item.id ? { ...i, title: newTitle } : i));
+                                toast.success('제목이 변경되었습니다.');
+                              }
+                              setEditingTitleId(null);
+                            }}
+                            autoFocus
+                            className="text-base font-semibold text-gray-900 px-1 py-0 border border-orange-300 rounded focus:ring-1 focus:ring-orange-500 focus:border-transparent outline-none"
+                          />
+                        ) : (
+                          <h3
+                            className="text-base font-semibold text-gray-900 cursor-pointer hover:text-orange-600 transition-colors"
+                            onClick={() => { setEditingTitleId(item.id); setEditingTitleInput(item.title); }}
+                            title="클릭하여 제목 수정"
+                          >
+                            {item.title}
+                          </h3>
+                        )}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setInlineCatItemId(inlineCatItemId === item.id ? null : item.id); }}
+                            className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded text-xs font-medium hover:bg-orange-100 transition-colors cursor-pointer"
+                          >
+                            {item.category || '기타'} <ChevronDown size={10} className="inline" />
+                          </button>
+                          {inlineCatItemId === item.id && (
+                            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[120px]">
+                              {allCategories.map(cat => (
+                                <button
+                                  key={cat}
+                                  type="button"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (cat !== item.category) {
+                                      await updatePortfolioItem(item.id, { category: cat });
+                                      setPortfolioItems(prev => prev.map(i => i.id === item.id ? { ...i, category: cat } : i));
+                                      toast.success(`카테고리를 "${cat}"(으)로 변경했습니다.`);
+                                    }
+                                    setInlineCatItemId(null);
+                                  }}
+                                  className={`w-full text-left px-3 py-1.5 text-sm hover:bg-orange-50 transition-colors ${cat === item.category ? 'text-orange-600 font-medium bg-orange-50/50' : 'text-gray-700'}`}
+                                >
+                                  {cat}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         {item.isPublished && (
-                          <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium flex items-center gap-1">
-                            <CheckCircle size={12} />
-                            공개됨
+                          <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-medium flex items-center gap-1">
+                            <CheckCircle size={10} />
+                            공개
                           </span>
                         )}
                       </div>
@@ -568,50 +862,52 @@ export default function PortfolioPage() {
                         <button
                           type="button"
                           onClick={() => togglePublish(item.id)}
-                          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
                             item.isPublished
                               ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                               : 'bg-orange-500 text-white hover:bg-orange-600'
                           }`}
                         >
                           {item.isPublished ? (
-                            <><EyeOff size={16} />비공개로 전환</>
+                            <><EyeOff size={14} />비공개</>
                           ) : (
-                            <><Eye size={16} />공개하기</>
+                            <><Eye size={14} />공개</>
                           )}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(item.id)}
-                          className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium"
+                          className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
                         >
                           삭제
                         </button>
                       </div>
                     </div>
-                    <p className="text-gray-600 mb-4 line-clamp-2">{item.description}</p>
-                    <div className="flex items-center gap-6 mb-4 text-sm text-gray-500">
-                      <div className="flex items-center gap-1.5">
-                        <User size={14} />
+                    <div className="flex items-center gap-4 mb-1.5 text-sm text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <User size={13} />
                         <span>{item.client}</span>
                       </div>
                       {partner && (
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <User size={10} className="text-orange-500" />
+                        <div className="flex items-center gap-1">
+                          <div className="w-4 h-4 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <User size={8} className="text-orange-500" />
                           </div>
                           <span>{partner.name}</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-1.5">
-                        <Calendar size={14} />
+                      <div className="flex items-center gap-1">
+                        <Calendar size={13} />
                         <span>{item.completedAt ? new Date(item.completedAt).toLocaleDateString('ko-KR') : '-'}</span>
                       </div>
                     </div>
+                    {item.description && (
+                      <p className="text-sm text-gray-500 mb-1.5 line-clamp-1">{item.description}</p>
+                    )}
                     {item.tags && item.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-1.5">
                         {item.tags.map((tag, index) => (
-                          <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                          <span key={index} className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
                             #{tag}
                           </span>
                         ))}
@@ -653,6 +949,14 @@ export default function PortfolioPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">설명</label>
                   <textarea value={editingItem.description} onChange={e => setEditingItem({ ...editingItem, description: e.target.value })} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">카테고리</label>
+                  <select value={editingItem.category || '기타'} onChange={e => setEditingItem({ ...editingItem, category: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white">
+                    {allCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">완료일</label>
@@ -732,6 +1036,20 @@ export default function PortfolioPage() {
                     value={newItem.client}
                     onChange={(e) => setNewItem({ ...newItem, client: e.target.value })}
                   />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">카테고리</label>
+                    <select
+                      value={newItem.category || '기타'}
+                      onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                    >
+                      {allCategories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">담당 파트너</label>
                     <div className="relative">
@@ -877,6 +1195,213 @@ export default function PortfolioPage() {
                 >
                   추가
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 일괄 추가 모달 */}
+      {isBulkModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" onClick={() => !isBulkSubmitting && setIsBulkModalOpen(false)} />
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="relative bg-white rounded-lg shadow-xl max-w-5xl w-full animate-portfolio-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">포트폴리오 일괄 추가</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">여러 포트폴리오를 한 번에 등록합니다. 빈 행은 자동으로 제외됩니다.</p>
+                </div>
+                <button type="button" onClick={() => !isBulkSubmitting && setIsBulkModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                  <X size={20} className="text-gray-500" />
+                </button>
+              </div>
+              <div className="p-6 max-h-[65vh] overflow-y-auto">
+                {/* 헤더 */}
+                <div className="grid grid-cols-[1fr_1fr_140px_1fr_36px] gap-2 mb-2 px-1">
+                  <span className="text-xs font-medium text-gray-500">제목 *</span>
+                  <span className="text-xs font-medium text-gray-500">클라이언트 *</span>
+                  <span className="text-xs font-medium text-gray-500">카테고리</span>
+                  <span className="text-xs font-medium text-gray-500">유튜브 URL *</span>
+                  <span />
+                </div>
+                {/* 행 목록 */}
+                <div className="space-y-2">
+                  {bulkItems.map((item, index) => (
+                    <div key={index} className="grid grid-cols-[1fr_1fr_140px_1fr_36px] gap-2 items-center">
+                      <input
+                        type="text"
+                        value={item.title}
+                        onChange={(e) => updateBulkItem(index, 'title', e.target.value)}
+                        placeholder="제목"
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={item.client}
+                        onChange={(e) => updateBulkItem(index, 'client', e.target.value)}
+                        placeholder="클라이언트"
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      />
+                      <select
+                        value={item.category}
+                        onChange={(e) => updateBulkItem(index, 'category', e.target.value)}
+                        className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                      >
+                        {allCategories.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={item.youtubeUrl}
+                        onChange={(e) => updateBulkItem(index, 'youtubeUrl', e.target.value)}
+                        placeholder="https://youtube.com/watch?v=..."
+                        className={`px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
+                          item.youtubeUrl && !extractYouTubeId(item.youtubeUrl) ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeBulkRow(index)}
+                        disabled={bulkItems.length <= 1}
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {/* 행 추가 버튼 */}
+                <button
+                  type="button"
+                  onClick={addBulkRow}
+                  className="mt-3 px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <Plus size={16} />
+                  행 추가
+                </button>
+              </div>
+              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <span className="text-sm text-gray-500">
+                  유효한 항목: {bulkItems.filter(item => item.title.trim() && item.client.trim() && item.youtubeUrl.trim() && extractYouTubeId(item.youtubeUrl)).length}건
+                </span>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsBulkModalOpen(false)}
+                    disabled={isBulkSubmitting}
+                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBulkAdd}
+                    disabled={isBulkSubmitting || bulkItems.filter(item => item.title.trim() && item.client.trim() && item.youtubeUrl.trim()).length === 0}
+                    className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isBulkSubmitting ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                        등록 중...
+                      </>
+                    ) : '일괄 등록'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 카테고리 관리 모달 */}
+      {isCategoryModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" onClick={() => setIsCategoryModalOpen(false)} />
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full animate-portfolio-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900">카테고리 관리</h2>
+                <button type="button" onClick={() => setIsCategoryModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                {/* 새 카테고리 추가 */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newCategoryInput}
+                    onChange={(e) => setNewCategoryInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCategory(); } }}
+                    placeholder="새 카테고리 이름"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCategory}
+                    disabled={!newCategoryInput.trim() || allCategories.includes(newCategoryInput.trim())}
+                    className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    추가
+                  </button>
+                </div>
+
+                {/* 카테고리 목록 */}
+                <div className="space-y-1">
+                  {allCategories.map(cat => {
+                    const count = portfolioItems.filter(i => i.category === cat).length;
+                    const isEditing = editingCategory === cat;
+                    const isProtected = cat === '기타'; // 기타는 삭제/수정 불가
+                    return (
+                      <div key={cat} className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-gray-50 group">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <Tag size={14} className="text-gray-400 shrink-0" />
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={editCategoryInput}
+                              onChange={(e) => setEditCategoryInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') { e.preventDefault(); handleRenameCategory(cat); }
+                                if (e.key === 'Escape') setEditingCategory(null);
+                              }}
+                              onBlur={() => handleRenameCategory(cat)}
+                              autoFocus
+                              className="flex-1 px-2 py-0.5 border border-orange-300 rounded text-sm focus:ring-1 focus:ring-orange-500 focus:border-transparent"
+                            />
+                          ) : (
+                            <>
+                              <span className="text-sm text-gray-900">{cat}</span>
+                              <span className="text-xs text-gray-400">{count}개</span>
+                            </>
+                          )}
+                        </div>
+                        {!isProtected && !isEditing && (
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button
+                              type="button"
+                              onClick={() => { setEditingCategory(cat); setEditCategoryInput(cat); }}
+                              className="p-1 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded"
+                              title="이름 변경"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCategory(cat)}
+                              className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                              title="삭제"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>

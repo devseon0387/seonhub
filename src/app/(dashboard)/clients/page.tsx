@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Phone, Building2, MapPin, X, Trash2, ChevronDown, Search, Folder, Plus, Users, CheckCircle } from 'lucide-react';
+import { Mail, Phone, Building2, MapPin, X, Trash2, ChevronDown, Search, Folder, Plus, Users, CheckCircle, Pencil } from 'lucide-react';
 import { Client, Project } from '@/types';
 import { addToTrash } from '@/lib/trash';
 import { FloatingLabelInput, FloatingLabelTextarea } from '@/components/FloatingLabelInput';
@@ -38,6 +38,8 @@ export default function ClientsPage() {
   }, []);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<{ id: string; name: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -98,6 +100,33 @@ export default function ClientsPage() {
       notes: '',
       status: 'active',
     });
+  };
+
+  const handleEditClient = (client: Client) => {
+    setEditingClient({ ...client });
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingClient) return;
+    const ok = await updateClient(editingClient.id, {
+      name: editingClient.name,
+      contactPerson: editingClient.contactPerson,
+      email: editingClient.email,
+      phone: editingClient.phone,
+      company: editingClient.company,
+      address: editingClient.address,
+      notes: editingClient.notes,
+      status: editingClient.status,
+    });
+    if (ok) {
+      setClients(prev => prev.map(c => c.id === editingClient.id ? { ...c, ...editingClient, updatedAt: new Date().toISOString() } : c));
+      setIsEditModalOpen(false);
+      setEditingClient(null);
+      toast.success('클라이언트 정보가 수정되었습니다.');
+    } else {
+      toast.error('수정에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const handleDeleteClient = (clientId: string, clientName: string) => {
@@ -377,16 +406,28 @@ export default function ClientsPage() {
                     {new Date(client.createdAt).toLocaleDateString('ko-KR')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteClient(client.id, client.name);
-                      }}
-                      className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
-                      title="삭제"
-                    >
-                      <Trash2 size={16} className="text-gray-400 group-hover:text-red-500" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditClient(client);
+                        }}
+                        className="p-2 hover:bg-orange-50 rounded-lg transition-colors group"
+                        title="수정"
+                      >
+                        <Pencil size={16} className="text-gray-400 group-hover:text-orange-500" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClient(client.id, client.name);
+                        }}
+                        className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
+                        title="삭제"
+                      >
+                        <Trash2 size={16} className="text-gray-400 group-hover:text-red-500" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )))}
@@ -479,10 +520,20 @@ export default function ClientsPage() {
                     {allProjects.filter(p => p.client === client.name).length}개 프로젝트
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="text-xs text-gray-500">
+                <div className="flex items-center gap-1">
+                  <div className="text-xs text-gray-500 mr-1">
                     {new Date(client.createdAt).toLocaleDateString('ko-KR')}
                   </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditClient(client);
+                    }}
+                    className="p-2 hover:bg-orange-50 rounded-lg transition-colors"
+                    title="수정"
+                  >
+                    <Pencil size={16} className="text-gray-400" />
+                  </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -491,7 +542,7 @@ export default function ClientsPage() {
                     className="p-2 hover:bg-red-50 rounded-lg transition-colors"
                     title="삭제"
                   >
-                    <Trash2 size={18} className="text-gray-400" />
+                    <Trash2 size={16} className="text-gray-400" />
                   </button>
                 </div>
               </div>
@@ -635,6 +686,112 @@ export default function ClientsPage() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 클라이언트 수정 모달 */}
+      {isEditModalOpen && editingClient && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => { setIsEditModalOpen(false); setEditingClient(null); }}
+          />
+          <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
+            <div
+              className="relative bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl max-w-2xl w-full animate-clients-sheet"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-6 sm:px-8 pt-8 pb-6">
+                <button
+                  onClick={() => { setIsEditModalOpen(false); setEditingClient(null); }}
+                  className="absolute right-6 top-6 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X size={24} className="text-gray-400" />
+                </button>
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">클라이언트 수정</h2>
+                <p className="text-sm text-gray-500">클라이언트 정보를 수정합니다</p>
+              </div>
+
+              <div className="px-6 sm:px-8 pb-8 space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-900">기본 정보</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FloatingLabelInput
+                      label="클라이언트 이름"
+                      required
+                      type="text"
+                      value={editingClient.name}
+                      onChange={(e) => setEditingClient({ ...editingClient, name: e.target.value })}
+                    />
+                    <FloatingLabelInput
+                      label="담당자 이름"
+                      type="text"
+                      value={editingClient.contactPerson || ''}
+                      onChange={(e) => setEditingClient({ ...editingClient, contactPerson: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-900">연락처 정보</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FloatingLabelInput
+                      label="이메일"
+                      type="email"
+                      value={editingClient.email || ''}
+                      onChange={(e) => setEditingClient({ ...editingClient, email: e.target.value })}
+                    />
+                    <FloatingLabelInput
+                      label="전화번호"
+                      type="tel"
+                      value={editingClient.phone || ''}
+                      onChange={(e) => setEditingClient({ ...editingClient, phone: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-900">추가 정보</h3>
+                  <FloatingLabelInput
+                    label="회사명"
+                    type="text"
+                    value={editingClient.company || ''}
+                    onChange={(e) => setEditingClient({ ...editingClient, company: e.target.value })}
+                  />
+                  <FloatingLabelInput
+                    label="주소"
+                    type="text"
+                    value={editingClient.address || ''}
+                    onChange={(e) => setEditingClient({ ...editingClient, address: e.target.value })}
+                  />
+                  <FloatingLabelTextarea
+                    label="메모"
+                    value={editingClient.notes || ''}
+                    onChange={(e) => setEditingClient({ ...editingClient, notes: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="sticky bottom-0 bg-white px-6 sm:px-8 py-6 border-t border-gray-100 rounded-b-[28px]">
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setIsEditModalOpen(false); setEditingClient(null); }}
+                    className="flex-1 h-14 text-gray-700 font-semibold bg-gray-100 hover:bg-gray-200 rounded-xl transition-all active:scale-[0.98]"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={!editingClient.name}
+                    className="flex-1 h-14 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed active:scale-[0.98] shadow-lg shadow-orange-500/30"
+                  >
+                    저장하기
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

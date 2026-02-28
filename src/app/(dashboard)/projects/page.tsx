@@ -313,7 +313,7 @@ export default function ProjectsPage() {
 
       {/* 필터 탭 + 정렬 */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div data-tour="tour-proj-filters" className="bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-2 shadow-sm border border-gray-200 inline-flex gap-1 sm:gap-2 overflow-x-auto scrollbar-hide">
+        <div data-tour="tour-proj-filters" className="bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-2 shadow-sm border border-gray-200 flex gap-1 sm:gap-2 overflow-x-auto scrollbar-hide w-fit max-w-full">
           {([
             { key: 'all',        label: '전체',   count: projects.length },
             { key: 'planning',   label: '시작 전', count: projects.filter(p => p.status === 'planning').length },
@@ -415,7 +415,7 @@ export default function ProjectsPage() {
                 >
                   {/* 클라이언트 + 상태 */}
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-gray-400 truncate">{project.client}</span>
+                    <span className="text-xs font-medium text-gray-500 truncate">{project.client}</span>
                     <StatusBadge status={project.status} />
                   </div>
 

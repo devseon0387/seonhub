@@ -11,27 +11,31 @@ import {
   User,
   Calendar,
   Users,
+  MessageSquare,
 } from 'lucide-react';
 import Link from 'next/link';
-import { Project, PortfolioItem, Client } from '@/types';
-import { getProjects, getPortfolioItems, getClients } from '@/lib/supabase/db';
+import { Project, PortfolioItem, Client, Inquiry } from '@/types';
+import { getProjects, getPortfolioItems, getClients, getInquiries } from '@/lib/supabase/db';
 
 export default function MarketingPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const [p, pf, c] = await Promise.all([
+      const [p, pf, c, inq] = await Promise.all([
         getProjects(),
         getPortfolioItems(),
         getClients(),
+        getInquiries(),
       ]);
       setProjects(p);
       setPortfolioItems(pf);
       setClients(c);
+      setInquiries(inq);
       setLoading(false);
     }
     load();
@@ -59,17 +63,26 @@ export default function MarketingPage() {
           <h1 className="text-3xl font-bold text-gray-900">마케팅</h1>
           <p className="text-gray-500 mt-2">포트폴리오 관리 및 마케팅 자료</p>
         </div>
-        <Link
-          href="/marketing/portfolio"
-          className="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium flex items-center gap-2"
-        >
-          <Plus size={20} />
-          포트폴리오 추가
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/marketing/inquiries"
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium flex items-center gap-2"
+          >
+            <MessageSquare size={18} />
+            문의 관리
+          </Link>
+          <Link
+            href="/marketing/portfolio"
+            className="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium flex items-center gap-2"
+          >
+            <Plus size={20} />
+            포트폴리오 추가
+          </Link>
+        </div>
       </div>
 
       {/* 통계 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-gray-600">완료 프로젝트</p>
@@ -113,6 +126,24 @@ export default function MarketingPage() {
             <span className="text-lg font-normal text-gray-600 ml-1">개</span>
           </p>
         </div>
+
+        <Link href="/marketing/inquiries" className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-gray-600">문의</p>
+            <div className="p-2 bg-blue-100 rounded-full">
+              <MessageSquare className="text-blue-500" size={20} />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">
+            {loading ? '-' : inquiries.length}
+            <span className="text-lg font-normal text-gray-600 ml-1">건</span>
+          </p>
+          {!loading && (
+            <p className="text-xs text-gray-500 mt-1">
+              새 문의 {inquiries.filter(i => i.status === 'new').length}건
+            </p>
+          )}
+        </Link>
       </div>
 
       {/* 포트폴리오 섹션 */}

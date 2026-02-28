@@ -144,10 +144,33 @@ export interface PortfolioItem {
   description: string;
   client: string;
   partnerId?: string;
+  category?: string;
+  displayOrder?: number;
   completedAt: string;
   tags: string[];
   youtubeUrl: string;
   isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 문의 상태
+export type InquiryStatus = 'new' | 'contacted' | 'in_progress' | 'completed' | 'rejected';
+
+// 문의 타입
+export interface Inquiry {
+  id: string;
+  name: string;
+  email?: string;
+  phone: string;
+  projectType: string;
+  budget?: string;
+  message: string;
+  referencesLinks: string[];
+  portfolioReferences: { id: string; title: string; category: string; client: string }[];
+  referralSource?: string;
+  status: InquiryStatus;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
 }

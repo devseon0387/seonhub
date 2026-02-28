@@ -111,11 +111,10 @@ export default function SettingsPage() {
         <p className="text-gray-500 mt-2">시스템 설정 및 계정 관리</p>
       </div>
 
-      {/* 설정 섹션 */}
-      <div className="space-y-6">
-        {/* 디자인 시스템 */}
+      {/* 바로가기 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link href="/settings/design/components">
-          <div className="bg-gradient-to-br from-orange-50 to-orange-50 border-2 border-orange-200/50 rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer">
+          <div className="bg-gradient-to-br from-orange-50 to-orange-50 border-2 border-orange-200/50 rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer h-full">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-orange-500 rounded-lg">
                 <Palette className="text-white" size={24} />
@@ -125,9 +124,8 @@ export default function SettingsPage() {
             <p className="text-gray-600">컴포넌트, 토스트, 모달 등 디자인 요소 보기</p>
           </div>
         </Link>
-        {/* 업데이트 기록 */}
         <Link href="/settings/changelog">
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200/50 rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer">
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200/50 rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer h-full">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-green-500 rounded-lg">
                 <ClipboardList className="text-white" size={24} />
@@ -137,7 +135,10 @@ export default function SettingsPage() {
             <p className="text-gray-600">기능 추가, 수정 사항 등 변경 이력 확인</p>
           </div>
         </Link>
+      </div>
 
+      {/* 계정 설정 */}
+      <div className="space-y-6">
         {/* 계정 정보 */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">계정 정보</h2>

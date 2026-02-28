@@ -14,6 +14,8 @@ import type {
   PortfolioItem,
   Feedback,
   FeedbackStatus,
+  Inquiry,
+  InquiryStatus,
 } from '@/types';
 
 // ─── Row Types (Supabase snake_case) ─────────────────────────
@@ -803,6 +805,8 @@ interface PortfolioItemRow {
   description: string | null;
   client: string | null;
   partner_id: string | null;
+  category: string | null;
+  display_order: number | null;
   completed_at: string | null;
   tags: string[] | null;
   youtube_url: string | null;
@@ -818,6 +822,8 @@ function portfolioItemFromRow(row: PortfolioItemRow): PortfolioItem {
     description: row.description ?? '',
     client: row.client ?? '',
     partnerId: row.partner_id ?? undefined,
+    category: row.category ?? '기타',
+    displayOrder: row.display_order ?? 0,
     completedAt: row.completed_at ?? '',
     tags: row.tags ?? [],
     youtubeUrl: row.youtube_url ?? '',
@@ -833,6 +839,8 @@ function portfolioItemToInsert(item: Omit<PortfolioItem, 'id' | 'createdAt' | 'u
     description: item.description,
     client: item.client,
     partner_id: item.partnerId ?? null,
+    category: item.category ?? '기타',
+    display_order: item.displayOrder ?? 0,
     completed_at: item.completedAt || null,
     tags: item.tags ?? [],
     youtube_url: item.youtubeUrl,
@@ -846,11 +854,51 @@ function portfolioItemToUpdate(item: Partial<PortfolioItem>) {
   if (item.description !== undefined) row.description = item.description;
   if (item.client !== undefined) row.client = item.client;
   if (item.partnerId !== undefined) row.partner_id = item.partnerId;
+  if (item.category !== undefined) row.category = item.category;
+  if (item.displayOrder !== undefined) row.display_order = item.displayOrder;
   if (item.completedAt !== undefined) row.completed_at = item.completedAt;
   if (item.tags !== undefined) row.tags = item.tags;
   if (item.youtubeUrl !== undefined) row.youtube_url = item.youtubeUrl;
   if (item.isPublished !== undefined) row.is_published = item.isPublished;
   return row;
+}
+
+// ─── Inquiry Row / Mappers ───────────────────────────────────
+
+interface InquiryRow {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string;
+  project_type: string;
+  budget: string | null;
+  message: string;
+  references_links: string[] | null;
+  portfolio_references: unknown;
+  referral_source: string | null;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function inquiryFromRow(row: InquiryRow): Inquiry {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email ?? undefined,
+    phone: row.phone,
+    projectType: row.project_type,
+    budget: row.budget ?? undefined,
+    message: row.message,
+    referencesLinks: row.references_links ?? [],
+    portfolioReferences: (row.portfolio_references as Inquiry['portfolioReferences']) ?? [],
+    referralSource: row.referral_source ?? undefined,
+    status: row.status as InquiryStatus,
+    notes: row.notes ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
 }
 
 export async function getPortfolioItems(publishedOnly?: boolean): Promise<PortfolioItem[]> {
@@ -1018,5 +1066,41 @@ export async function updateFeedbackStatus(id: string, status: FeedbackStatus): 
     .from('feedback')
     .update({ status })
     .eq('id', id);
+  return !error;
+}
+
+// ─── Inquiries CRUD ──────────────────────────────────────────
+
+export async function getInquiries(): Promise<Inquiry[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('inquiries')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return (data as InquiryRow[]).map(inquiryFromRow);
+}
+
+export async function updateInquiryStatus(id: string, status: InquiryStatus): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('inquiries')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  return !error;
+}
+
+export async function updateInquiryNotes(id: string, notes: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('inquiries')
+    .update({ notes, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  return !error;
+}
+
+export async function deleteInquiry(id: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase.from('inquiries').delete().eq('id', id);
   return !error;
 }

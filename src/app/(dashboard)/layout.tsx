@@ -59,7 +59,10 @@ const SECTIONS: Section[] = [
       { type: 'link', href: '/strategy',   label: '전략',       icon: Target,   badge: '준비중' },
       { type: 'link', href: '/operations', label: '운영',       icon: Layers,   badge: '준비중' },
       { type: 'divider' },
-      { type: 'link', href: '/marketing',  label: '마케팅',     icon: Megaphone, badge: '준비중' },
+      { type: 'link', href: '/marketing',  label: '마케팅',     icon: Megaphone, sub: [
+        { href: '/marketing/portfolio', label: '포트폴리오', icon: Megaphone },
+        { href: '/marketing/inquiries', label: '문의', icon: MessageSquarePlus },
+      ] },
     ],
   },
 ];
