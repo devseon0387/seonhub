@@ -152,9 +152,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     const checkAuth = async () => {
-      if (process.env.NODE_ENV === 'development') {
-        setUserEmail('dev@local.com'); setMyRole('admin'); return;
-      }
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/login'); return; }

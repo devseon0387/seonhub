@@ -25,11 +25,6 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // 개발 환경에서는 인증 체크 스킵
-  if (process.env.NODE_ENV === 'development') {
-    return supabaseResponse;
-  }
-
   // 세션 토큰 자동 갱신 (IMPORTANT: getUser 호출 필수)
   const { data: { user } } = await supabase.auth.getUser();
 
