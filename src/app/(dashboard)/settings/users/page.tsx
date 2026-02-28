@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getMyProfile, getAllUserProfiles, updateUserRole, getCustomRoles, addCustomRole, deleteCustomRole } from '@/lib/supabase/db';
-import { Shield, Users, Crown, Plus, X, Tag, Trash2, UserCheck, Pencil, Eye, EyeOff, Copy, Check, UserPlus, RefreshCw } from 'lucide-react';
+import { Shield, Users, Crown, Plus, X, Tag, Trash2, UserCheck, Pencil, Eye, EyeOff, Copy, Check, UserPlus, RefreshCw, Clock } from 'lucide-react';
 
 type UserProfile = {
   id: string;
@@ -28,6 +28,23 @@ function getRoleBadgeClass(role: string) {
   return ROLE_BADGE_CLASSES[role] ?? 'bg-gray-100 text-gray-600 border border-gray-200';
 }
 
+function formatRelativeTime(dateStr: string): string {
+  const now = Date.now();
+  const diff = now - new Date(dateStr).getTime();
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (seconds < 60) return '방금 전';
+  if (minutes < 60) return minutes + '분 전';
+  if (hours < 24) return hours + '시간 전';
+  if (days < 30) return days + '일 전';
+  const months = Math.floor(days / 30);
+  if (months < 12) return months + '개월 전';
+  return Math.floor(months / 12) + '년 전';
+}
+
 function getRoleLabel(role: string, customRoles: string[]) {
   if (role === 'admin') return '대표';
   if (role === 'manager') return '총괄 매니저';
@@ -45,6 +62,9 @@ export default function UsersSettingsPage() {
   const [newRoleName, setNewRoleName] = useState('');
   const [addingRole, setAddingRole] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // 마지막 접속 시간
+  const [activityMap, setActivityMap] = useState<Record<string, string | null>>({});
 
   // 새 계정 생성
   const [createName, setCreateName] = useState('');
@@ -77,6 +97,20 @@ export default function UsersSettingsPage() {
       const [all, roles] = await Promise.all([getAllUserProfiles(), getCustomRoles()]);
       setProfiles(all);
       setCustomRoles(roles);
+
+      // 마지막 접속 시간 조회
+      try {
+        const res = await fetch('/api/admin/users-activity');
+        if (res.ok) {
+          const data = await res.json();
+          const map: Record<string, string | null> = {};
+          for (const u of data.users) {
+            map[u.id] = u.lastSignInAt;
+          }
+          setActivityMap(map);
+        }
+      } catch { /* 접속 시간 조회 실패 시 무시 */ }
+
       setLoading(false);
     };
     init();
@@ -458,7 +492,7 @@ export default function UsersSettingsPage() {
                     )}
                   </div>
 
-                  {/* 이름/이메일 */}
+                  {/* 이름/이메일/접속시간 */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-gray-900 text-sm truncate">
@@ -470,6 +504,25 @@ export default function UsersSettingsPage() {
                     </div>
                     {profile.email && (
                       <p className="text-xs text-gray-400 truncate mt-0.5">{profile.email}</p>
+                    )}
+                    {activityMap[profile.id] !== undefined && (
+                      <div className="flex items-center gap-1 mt-1">
+                        {activityMap[profile.id] && (Date.now() - new Date(activityMap[profile.id]!).getTime()) < 5 * 60 * 1000 ? (
+                          <>
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
+                            <span className="text-xs text-green-600">현재 온라인</span>
+                          </>
+                        ) : (
+                          <>
+                            <Clock size={11} className="text-gray-300 flex-shrink-0" />
+                            <span className="text-xs text-gray-400">
+                              {activityMap[profile.id]
+                                ? '마지막 접속: ' + formatRelativeTime(activityMap[profile.id]!)
+                                : '접속 기록 없음'}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
 
