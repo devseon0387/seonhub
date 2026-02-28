@@ -64,7 +64,7 @@ export default function UsersSettingsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // 마지막 접속 시간
-  const [activityMap, setActivityMap] = useState<Record<string, string | null>>({});
+  const [activityMap, setActivityMap] = useState<Record<string, { lastSignInAt: string | null; isOnline: boolean }>>({});
 
   // 새 계정 생성
   const [createName, setCreateName] = useState('');
@@ -103,9 +103,12 @@ export default function UsersSettingsPage() {
         const res = await fetch('/api/admin/users-activity');
         if (res.ok) {
           const data = await res.json();
-          const map: Record<string, string | null> = {};
+          const fetchedAt = Date.now();
+          const map: Record<string, { lastSignInAt: string | null; isOnline: boolean }> = {};
           for (const u of data.users) {
-            map[u.id] = u.lastSignInAt;
+            const lastAt = u.lastSignInAt as string | null;
+            const isOnline = lastAt ? (fetchedAt - new Date(lastAt).getTime()) < 5 * 60 * 1000 : false;
+            map[u.id] = { lastSignInAt: lastAt, isOnline };
           }
           setActivityMap(map);
         }
@@ -507,7 +510,7 @@ export default function UsersSettingsPage() {
                     )}
                     {activityMap[profile.id] !== undefined && (
                       <div className="flex items-center gap-1 mt-1">
-                        {activityMap[profile.id] && (Date.now() - new Date(activityMap[profile.id]!).getTime()) < 5 * 60 * 1000 ? (
+                        {activityMap[profile.id].isOnline ? (
                           <>
                             <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
                             <span className="text-xs text-green-600">현재 온라인</span>
@@ -516,8 +519,8 @@ export default function UsersSettingsPage() {
                           <>
                             <Clock size={11} className="text-gray-300 flex-shrink-0" />
                             <span className="text-xs text-gray-400">
-                              {activityMap[profile.id]
-                                ? '마지막 접속: ' + formatRelativeTime(activityMap[profile.id]!)
+                              {activityMap[profile.id].lastSignInAt
+                                ? '마지막 접속: ' + formatRelativeTime(activityMap[profile.id].lastSignInAt!)
                                 : '접속 기록 없음'}
                             </span>
                           </>
