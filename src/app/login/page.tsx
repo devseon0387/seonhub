@@ -357,7 +357,7 @@ export default function LoginPage() {
           opacity: mounted ? 1 : 0,
           transition: 'opacity 0.5s ease 0.4s',
         }}>
-          &copy; 2026 VIMO ERP
+          &copy; 2026 VIMO ERP · v0.1.2 · 2026.02.24
         </p>
       </div>
     </>
