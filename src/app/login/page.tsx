@@ -282,7 +282,8 @@ export default function LoginPage() {
               }}
             />
             <h1 style={{
-              fontSize: '52px', fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1, margin: '0 0 12px',
+              fontFamily: 'var(--font-space-grotesk), sans-serif',
+              fontSize: '52px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1, margin: '0 0 12px',
               background: 'linear-gradient(135deg, #ea580c 0%, #dc2626 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
