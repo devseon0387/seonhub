@@ -282,21 +282,14 @@ export default function LoginPage() {
               }}
             />
             <h1 style={{
-              fontSize: '56px', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1, margin: '0 0 12px',
+              fontSize: '52px', fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1, margin: '0 0 12px',
               background: 'linear-gradient(135deg, #ea580c 0%, #dc2626 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
             }}>
-              VIMO
+              VIMO ERP
             </h1>
-            <span style={{
-              display: 'inline-block', fontSize: '11px', fontWeight: 600, color: '#a8a29e',
-              letterSpacing: '0.12em', padding: '4px 14px',
-              border: '1.5px solid #e8e3de', borderRadius: '20px',
-            }}>
-              ERP
-            </span>
-            <p style={{ fontSize: '13px', color: '#b8b0a8', fontWeight: 500, margin: '14px 0 0' }}>
+            <p style={{ fontSize: '13px', color: '#b8b0a8', fontWeight: 500, margin: 0 }}>
               영상 제작 관리 시스템
             </p>
           </div>
