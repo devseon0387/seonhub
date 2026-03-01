@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { createClient } from '@/lib/supabase/client';
 
@@ -74,98 +74,126 @@ export default function LoginPage() {
         .vm-login-root {
           min-height: 100vh;
           display: flex;
-          flex-direction: column;
           align-items: center;
           justify-content: center;
           padding: 24px;
-          background: #f5f4f2;
+          background: #fafaf9;
+          position: relative;
+          overflow: hidden;
+        }
+        .vm-login-root::before {
+          content: '';
+          position: absolute;
+          top: -40%; right: -20%;
+          width: 600px; height: 600px;
+          background: radial-gradient(circle, rgba(234,88,12,0.04) 0%, transparent 70%);
+          border-radius: 50%;
+          pointer-events: none;
+        }
+        .vm-login-root::after {
+          content: '';
+          position: absolute;
+          bottom: -30%; left: -15%;
+          width: 500px; height: 500px;
+          background: radial-gradient(circle, rgba(234,88,12,0.03) 0%, transparent 70%);
+          border-radius: 50%;
+          pointer-events: none;
         }
         .vm-login-root * { cursor: default !important; }
         .vm-login-root input { cursor: text !important; }
         .vm-login-root button, .vm-login-root a, .vm-login-root label { cursor: pointer !important; }
 
-        @keyframes cardUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
         @keyframes logoIn {
           from { opacity: 0; transform: scale(0.85); }
           to   { opacity: 1; transform: scale(1); }
         }
 
+        .vm-login-wrapper {
+          position: relative;
+          z-index: 1;
+          width: 100%;
+          max-width: 420px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
         /* card */
         .vm-card {
           width: 100%;
-          max-width: 400px;
           background: #ffffff;
-          border: 1px solid #ede9e6;
-          border-radius: 16px;
-          padding: 40px;
+          border: 1px solid rgba(0,0,0,0.06);
+          border-radius: 24px;
+          padding: 44px 40px 40px;
           box-shadow:
-            0 1px 3px rgba(0,0,0,0.04),
-            0 4px 16px rgba(0,0,0,0.03);
+            0 0 0 1px rgba(0,0,0,0.02),
+            0 2px 8px rgba(0,0,0,0.04),
+            0 12px 40px rgba(0,0,0,0.06);
         }
 
         /* floating label input */
         .vm-field {
           position: relative;
-          margin-bottom: 16px;
+          margin-bottom: 14px;
         }
         .vm-field-input {
           width: 100%;
-          padding: 20px 16px 8px;
-          background: #fafaf9;
-          border: 1.5px solid #e8e3de;
-          border-radius: 12px;
+          padding: 22px 16px 10px;
+          background: #f8f7f6;
+          border: 1.5px solid transparent;
+          border-radius: 14px;
           font-size: 15px;
           color: #1c1917;
           font-family: inherit;
           outline: none;
-          transition: all 0.2s ease;
+          transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
           box-sizing: border-box;
         }
         .vm-field-input:focus {
           background: #ffffff;
           border-color: #ea580c;
-          box-shadow: 0 0 0 3px rgba(234,88,12,0.08);
+          box-shadow: 0 0 0 4px rgba(234,88,12,0.06);
         }
         .vm-field-label {
           position: absolute;
-          left: 16px; top: 50%;
+          left: 17px; top: 50%;
           transform: translateY(-50%);
           font-size: 14px;
           color: #a8a29e;
           pointer-events: none;
-          transition: all 0.2s ease;
+          transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
         }
         .vm-field-label.active {
-          top: 13px; transform: translateY(0);
-          font-size: 10.5px; font-weight: 600;
-          color: #ea580c; letter-spacing: 0.04em;
+          top: 14px; transform: translateY(0);
+          font-size: 10px; font-weight: 600;
+          color: #ea580c; letter-spacing: 0.06em;
         }
         .vm-field-label.filled {
-          top: 13px; transform: translateY(0);
-          font-size: 10.5px; font-weight: 600;
-          color: #a8a29e; letter-spacing: 0.04em;
+          top: 14px; transform: translateY(0);
+          font-size: 10px; font-weight: 600;
+          color: #a8a29e; letter-spacing: 0.06em;
         }
 
         /* submit */
         .vm-submit {
           width: 100%;
-          padding: 14px;
+          padding: 16px;
           border: none;
-          border-radius: 12px;
+          border-radius: 14px;
           font-size: 15px;
           font-weight: 600;
           font-family: inherit;
           color: #fff;
-          background: #1c1917;
-          transition: all 0.2s ease;
+          background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+          transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
         }
         .vm-submit:hover:not(:disabled) {
-          background: #292524;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(234,88,12,0.25);
         }
         .vm-submit:active:not(:disabled) {
           transform: translateY(0);
@@ -179,8 +207,8 @@ export default function LoginPage() {
         @keyframes spin { to { transform: rotate(360deg); } }
         .vm-spinner {
           display: inline-block;
-          width: 16px; height: 16px;
-          border: 2px solid rgba(255,255,255,0.3);
+          width: 18px; height: 18px;
+          border: 2.5px solid rgba(255,255,255,0.3);
           border-top-color: #fff;
           border-radius: 50%;
           animation: spin 0.6s linear infinite;
@@ -189,13 +217,13 @@ export default function LoginPage() {
         /* checkbox */
         .vm-check {
           width: 18px; height: 18px;
-          border-radius: 5px;
+          border-radius: 6px;
           flex-shrink: 0;
           display: flex;
           align-items: center; justify-content: center;
           transition: all 0.2s ease;
         }
-        .vm-check.on { background: #1c1917; }
+        .vm-check.on { background: #ea580c; }
         .vm-check.off { background: transparent; border: 1.5px solid #d6cec8; }
 
         /* error */
@@ -210,11 +238,11 @@ export default function LoginPage() {
           display: flex;
           align-items: flex-start;
           gap: 10px;
-          padding: 12px 16px;
-          border-radius: 12px;
+          padding: 14px 16px;
+          border-radius: 14px;
           margin-bottom: 16px;
-          background: rgba(239,68,68,0.05);
-          border: 1px solid rgba(239,68,68,0.12);
+          background: #fef2f2;
+          border: 1px solid #fecaca;
           font-size: 13px;
           color: #dc2626;
           animation: shake 0.4s ease;
@@ -231,134 +259,129 @@ export default function LoginPage() {
           transition: color 0.15s;
         }
         .vm-pw-toggle:hover { color: #78716c; }
-
-        .vm-divider {
-          height: 1px;
-          margin: 24px 0;
-          background: #f0ece9;
-        }
-
       `}</style>
 
       <div className="vm-login-root">
-        {/* 로고 + 타이틀 */}
-        <div style={{
-          textAlign: 'center',
-          marginBottom: '32px',
-          opacity: mounted ? 1 : 0,
-          transform: mounted ? 'none' : 'scale(0.9)',
-          transition: 'all 0.5s cubic-bezier(0.16,1,0.3,1)',
-        }}>
-          <img
-            src="/logo.png"
-            alt="비모 ERP"
-            style={{
-              width: '110px', height: 'auto',
-              display: 'block',
-              margin: '0 auto 16px',
-              animation: mounted ? 'logoIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both' : 'none',
-            }}
-          />
-          <p style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: '54px', fontWeight: 900, color: '#1c1917', letterSpacing: '-0.02em', lineHeight: 1 }}>VIMO ERP</span>
-          </p>
-        </div>
+        <div className="vm-login-wrapper">
+          {/* 브랜드 타이틀 */}
+          <div style={{
+            textAlign: 'center',
+            marginBottom: '40px',
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? 'none' : 'translateY(-8px)',
+            transition: 'all 0.6s cubic-bezier(0.16,1,0.3,1)',
+          }}>
+            <img
+              src="/logo.png"
+              alt="비모 ERP"
+              style={{
+                width: '64px', height: 'auto',
+                display: 'block',
+                margin: '0 auto 20px',
+                animation: mounted ? 'logoIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both' : 'none',
+              }}
+            />
+            <h1 style={{ fontSize: '48px', fontWeight: 900, color: '#1c1917', letterSpacing: '-0.03em', lineHeight: 1, margin: '0 0 8px' }}>
+              VIMO ERP
+            </h1>
+            <p style={{ fontSize: '14px', color: '#a8a29e', fontWeight: 500, margin: 0 }}>
+              영상 제작 관리 시스템
+            </p>
+          </div>
 
-        {/* 카드 */}
-        <div className="vm-card" style={{
-          opacity: mounted ? 1 : 0,
-          transform: mounted ? 'translateY(0)' : 'translateY(16px)',
-          transition: 'all 0.5s cubic-bezier(0.16,1,0.3,1) 0.15s',
-        }}>
-          <form onSubmit={handleSubmit}>
-            {/* 이메일 */}
-            <div className="vm-field">
-              <input
-                className="vm-field-input"
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                onFocus={() => setEmailFocus(true)}
-                onBlur={() => setEmailFocus(false)}
-                required
-                autoComplete="email"
-              />
-              <span className={`vm-field-label ${emailFocus ? 'active' : email ? 'filled' : ''}`}>
-                이메일 주소
-              </span>
-            </div>
-
-            {/* 비밀번호 */}
-            <div className="vm-field" style={{ marginBottom: '20px' }}>
-              <div style={{ position: 'relative' }}>
+          {/* 카드 */}
+          <div className="vm-card" style={{
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+            transition: 'all 0.6s cubic-bezier(0.16,1,0.3,1) 0.12s',
+          }}>
+            <form onSubmit={handleSubmit}>
+              {/* 이메일 */}
+              <div className="vm-field">
                 <input
                   className="vm-field-input"
-                  type={showPw ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  onFocus={() => setPwFocus(true)}
-                  onBlur={() => setPwFocus(false)}
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onFocus={() => setEmailFocus(true)}
+                  onBlur={() => setEmailFocus(false)}
                   required
-                  autoComplete="current-password"
-                  style={{ paddingRight: '46px' }}
+                  autoComplete="email"
                 />
-                <span className={`vm-field-label ${pwFocus ? 'active' : password ? 'filled' : ''}`}>
-                  비밀번호
+                <span className={`vm-field-label ${emailFocus ? 'active' : email ? 'filled' : ''}`}>
+                  이메일 주소
                 </span>
-                <button type="button" className="vm-pw-toggle" onClick={() => setShowPw(p => !p)} tabIndex={-1}>
-                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
               </div>
-            </div>
 
-            {/* 로그인 유지 */}
-            <label style={{
-              display: 'flex', alignItems: 'center', gap: '10px',
-              marginBottom: '24px', userSelect: 'none',
-            }}>
-              <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} style={{ display: 'none' }} />
-              <div className={`vm-check ${rememberMe ? 'on' : 'off'}`}>
-                {rememberMe && (
-                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                    <path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
+              {/* 비밀번호 */}
+              <div className="vm-field" style={{ marginBottom: '20px' }}>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className="vm-field-input"
+                    type={showPw ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    onFocus={() => setPwFocus(true)}
+                    onBlur={() => setPwFocus(false)}
+                    required
+                    autoComplete="current-password"
+                    style={{ paddingRight: '46px' }}
+                  />
+                  <span className={`vm-field-label ${pwFocus ? 'active' : password ? 'filled' : ''}`}>
+                    비밀번호
+                  </span>
+                  <button type="button" className="vm-pw-toggle" onClick={() => setShowPw(p => !p)} tabIndex={-1}>
+                    {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
-              <span style={{ fontSize: '13px', color: '#78716c', fontWeight: 500 }}>로그인 유지</span>
-            </label>
 
-            {/* 에러 */}
-            {error && (
-              <div className="vm-error">
-                <AlertCircle size={15} style={{ flexShrink: 0, marginTop: '1px' }} />
-                <span>{error}</span>
-              </div>
-            )}
+              {/* 로그인 유지 */}
+              <label style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                marginBottom: '24px', userSelect: 'none',
+              }}>
+                <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} style={{ display: 'none' }} />
+                <div className={`vm-check ${rememberMe ? 'on' : 'off'}`}>
+                  {rememberMe && (
+                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                      <path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
+                <span style={{ fontSize: '13px', color: '#78716c', fontWeight: 500 }}>로그인 유지</span>
+              </label>
 
-            {/* 버튼 */}
-            <button type="submit" disabled={isLoading} className="vm-submit">
-              {isLoading ? <span className="vm-spinner" /> : '로그인'}
-            </button>
-          </form>
+              {/* 에러 */}
+              {error && (
+                <div className="vm-error">
+                  <AlertCircle size={15} style={{ flexShrink: 0, marginTop: '1px' }} />
+                  <span>{error}</span>
+                </div>
+              )}
 
-          <div className="vm-divider" />
+              {/* 버튼 */}
+              <button type="submit" disabled={isLoading} className="vm-submit">
+                {isLoading ? <span className="vm-spinner" /> : <><span>로그인</span><ArrowRight size={16} /></>}
+              </button>
+            </form>
+          </div>
 
-          <p style={{ textAlign: 'center', fontSize: '13px', color: '#a8a29e' }}>
-            계정이 필요하시면 관리자에게 문의하세요.
-          </p>
+          {/* 하단 안내 + 버전 */}
+          <div style={{
+            marginTop: '28px',
+            textAlign: 'center',
+            opacity: mounted ? 1 : 0,
+            transition: 'opacity 0.5s ease 0.4s',
+          }}>
+            <p style={{ fontSize: '13px', color: '#a8a29e', margin: '0 0 6px' }}>
+              계정이 필요하시면 관리자에게 문의하세요.
+            </p>
+            <p style={{ fontSize: '11px', color: '#d6cec8', letterSpacing: '0.03em', margin: 0 }}>
+              v0.1.2 · 2026.02.24
+            </p>
+          </div>
         </div>
-
-        {/* 푸터 */}
-        <p style={{
-          marginTop: '28px',
-          fontSize: '11px',
-          color: '#d6cec8',
-          letterSpacing: '0.04em',
-          opacity: mounted ? 1 : 0,
-          transition: 'opacity 0.5s ease 0.4s',
-        }}>
-          &copy; 2026 VIMO ERP · v0.1.2 · 2026.02.24
-        </p>
       </div>
     </>
   );
