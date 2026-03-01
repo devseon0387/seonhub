@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { AlertCircle, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { createClient } from '@/lib/supabase/client';
+import { APP_VERSION_LABEL } from '@/config/version';
 
 export default function LoginPage() {
   const toast = useToast();
@@ -372,7 +373,7 @@ export default function LoginPage() {
               계정이 필요하시면 관리자에게 문의하세요.
             </p>
             <p style={{ fontSize: '11px', color: '#d6cec8', letterSpacing: '0.03em', margin: 0 }}>
-              v0.1.2 · 2026.02.24
+              {APP_VERSION_LABEL}
             </p>
           </div>
         </div>

@@ -65,6 +65,7 @@ export default function UsersSettingsPage() {
 
   // 마지막 접속 시간
   const [activityMap, setActivityMap] = useState<Record<string, { lastSignInAt: string | null; isOnline: boolean }>>({});
+  const [activityError, setActivityError] = useState(false);
 
   // 새 계정 생성
   const [createName, setCreateName] = useState('');
@@ -111,6 +112,8 @@ export default function UsersSettingsPage() {
           map[u.id] = { lastSignInAt: lastAt, isOnline };
         }
         setActivityMap(map);
+      } else {
+        setActivityError(true);
       }
 
       setLoading(false);
@@ -507,7 +510,13 @@ export default function UsersSettingsPage() {
                     {profile.email && (
                       <p className="text-xs text-gray-400 truncate mt-0.5">{profile.email}</p>
                     )}
-                    {activityMap[profile.id] !== undefined && (
+                    {activityError && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Clock size={11} className="text-gray-300 flex-shrink-0" />
+                        <span className="text-xs text-gray-300">접속 정보 불러오기 실패</span>
+                      </div>
+                    )}
+                    {!activityError && activityMap[profile.id] !== undefined && (
                       <div className="flex items-center gap-1 mt-1">
                         {activityMap[profile.id].isOnline ? (
                           <>

@@ -16,6 +16,7 @@ import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import NotificationDropdown from '@/components/NotificationDropdown';
 import CustomCursor from '@/components/CustomCursor';
 import FeedbackModal from '@/components/FeedbackModal';
+import { APP_VERSION, APP_LAST_UPDATED } from '@/config/version';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
@@ -577,7 +578,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* 패널 하단 — 브랜드 워드마크 */}
             <div style={{ flexShrink: 0, padding: '12px 16px', borderTop: '1px solid #f0ece9' }}>
-              <p style={{ fontSize: '10px', fontWeight: 700, color: '#d6cec8', letterSpacing: '0.1em' }}>VIMO ERP <span style={{ fontWeight: 500, color: '#e0d9d3' }}>v0.1.2</span> <span style={{ fontWeight: 400, color: '#e0d9d3', marginLeft: '4px' }}>· 2026.02.24</span></p>
+              <p style={{ fontSize: '10px', fontWeight: 700, color: '#d6cec8', letterSpacing: '0.1em' }}>VIMO ERP <span style={{ fontWeight: 500, color: '#e0d9d3' }}>{APP_VERSION}</span> <span style={{ fontWeight: 400, color: '#e0d9d3', marginLeft: '4px' }}>· {APP_LAST_UPDATED}</span></p>
             </div>
           </motion.div>
         )}

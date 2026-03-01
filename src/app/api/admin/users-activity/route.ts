@@ -46,6 +46,7 @@ export async function GET() {
 
     return NextResponse.json({ users: allUsers });
   } catch (err) {
-    return NextResponse.json({ error: '서버 내부 오류: ' + String(err) }, { status: 500 });
+    console.error('users-activity error:', err);
+    return NextResponse.json({ error: '서버 내부 오류가 발생했습니다' }, { status: 500 });
   }
 }
