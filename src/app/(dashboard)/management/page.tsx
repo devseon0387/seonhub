@@ -507,7 +507,10 @@ export default function ManagementPage() {
     <div className="space-y-5 sm:space-y-8">
       {/* 헤더 */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">매니지먼트</h1>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">매니지먼트</h1>
+          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full font-medium">v0.1.2 · 2026.02.24</span>
+        </div>
         <p className="text-gray-500 mt-1 sm:mt-2 text-sm sm:text-base">오늘과 이번 주의 업무를 한눈에 관리하세요</p>
       </div>
 
