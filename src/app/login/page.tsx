@@ -275,24 +275,12 @@ export default function LoginPage() {
               src="/logo.png"
               alt="비모 ERP"
               style={{
-                width: '64px', height: 'auto',
+                width: '120px', height: 'auto',
                 display: 'block',
-                margin: '0 auto 20px',
+                margin: '0 auto',
                 animation: mounted ? 'logoIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both' : 'none',
               }}
             />
-            <h1 style={{
-              fontFamily: "'Clash Display', sans-serif",
-              fontSize: '52px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1, margin: '0 0 12px',
-              background: 'linear-gradient(135deg, #ea580c 0%, #dc2626 100%)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}>
-              VIMO ERP
-            </h1>
-            <p style={{ fontSize: '13px', color: '#b8b0a8', fontWeight: 500, margin: 0 }}>
-              영상 제작 관리 시스템
-            </p>
           </div>
 
           {/* 카드 */}
