@@ -260,7 +260,7 @@ export default function LoginPage() {
             }}
           />
           <p style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: '11px', fontWeight: 600, color: '#ea580c', background: '#fff7ed', border: '1px solid #fed7aa', padding: '2px 10px', borderRadius: '6px', letterSpacing: '0.05em' }}>VIMO ERP</span>
+            <span style={{ fontSize: '18px', fontWeight: 800, color: '#1c1917', letterSpacing: '0.05em' }}>VIMO ERP</span>
           </p>
         </div>
 
