@@ -281,10 +281,22 @@ export default function LoginPage() {
                 animation: mounted ? 'logoIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both' : 'none',
               }}
             />
-            <h1 style={{ fontSize: '48px', fontWeight: 900, color: '#1c1917', letterSpacing: '-0.03em', lineHeight: 1, margin: '0 0 8px' }}>
-              VIMO ERP
+            <h1 style={{
+              fontSize: '56px', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1, margin: '0 0 12px',
+              background: 'linear-gradient(135deg, #ea580c 0%, #dc2626 100%)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}>
+              VIMO
             </h1>
-            <p style={{ fontSize: '14px', color: '#a8a29e', fontWeight: 500, margin: 0 }}>
+            <span style={{
+              display: 'inline-block', fontSize: '11px', fontWeight: 600, color: '#a8a29e',
+              letterSpacing: '0.12em', padding: '4px 14px',
+              border: '1.5px solid #e8e3de', borderRadius: '20px',
+            }}>
+              ERP
+            </span>
+            <p style={{ fontSize: '13px', color: '#b8b0a8', fontWeight: 500, margin: '14px 0 0' }}>
               영상 제작 관리 시스템
             </p>
           </div>
