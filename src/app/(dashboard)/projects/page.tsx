@@ -6,7 +6,7 @@ import { Calendar, User, X, ChevronDown, Search, ArrowRight, Plus, Building2 } f
 import { calculateReserve } from '@/lib/utils';
 import Link from 'next/link';
 import { Project, Client, Episode, WorkContentType, Partner } from '@/types';
-import { updateEpisodeInStorage } from '@/lib/storage';
+import { updateEpisodeFields } from '@/lib/supabase/db';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProjectWizardModal from '@/components/ProjectWizardModal';
@@ -583,7 +583,7 @@ export default function ProjectsPage() {
                                       setEpisodes(updatedEpisodes);
                                       const updatedEpisode = updatedEpisodes.find(e => e.id === selectedWorkTypeModal.episodeId);
                                       if (updatedEpisode) {
-                                        const ok = await updateEpisodeInStorage(updatedEpisode);
+                                        const ok = await updateEpisodeFields(updatedEpisode.id, { workSteps: updatedEpisode.workSteps });
                                         if (!ok) {
                                           setEpisodes(prevEpisodes);
                                           globalToast.error('저장에 실패했습니다. 다시 시도해주세요.');
@@ -615,7 +615,7 @@ export default function ProjectsPage() {
                                       setEpisodes(updatedEpisodes);
                                       const updatedEpisode = updatedEpisodes.find(e => e.id === selectedWorkTypeModal.episodeId);
                                       if (updatedEpisode) {
-                                        const ok = await updateEpisodeInStorage(updatedEpisode);
+                                        const ok = await updateEpisodeFields(updatedEpisode.id, { workSteps: updatedEpisode.workSteps });
                                         if (!ok) {
                                           setEpisodes(prevEpisodes);
                                           globalToast.error('저장에 실패했습니다. 다시 시도해주세요.');
