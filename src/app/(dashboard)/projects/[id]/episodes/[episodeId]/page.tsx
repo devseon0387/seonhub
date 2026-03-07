@@ -231,20 +231,7 @@ export default function EpisodeDetailPage() {
         setEditedEpisode(foundEpisode);
 
         if (foundEpisode.workSteps) {
-          // 기존 작업 단계들의 label을 카테고리 기반으로 자동 재생성
-          const relabeledSteps = { ...foundEpisode.workSteps };
-          for (const wt of Object.keys(relabeledSteps) as WorkContentType[]) {
-            const steps = relabeledSteps[wt];
-            if (!steps) continue;
-            const categoryCount: Record<string, number> = {};
-            relabeledSteps[wt] = steps.map(step => {
-              const cat = step.category || '가편';
-              if (cat === '원본 전달') return { ...step, label: '원본 전달' };
-              categoryCount[cat] = (categoryCount[cat] || 0) + 1;
-              return { ...step, label: `${categoryCount[cat]}차 ${cat}` };
-            });
-          }
-          setWorkSteps(relabeledSteps);
+          setWorkSteps(foundEpisode.workSteps);
         }
 
         if (foundEpisode.workBudgets) {
