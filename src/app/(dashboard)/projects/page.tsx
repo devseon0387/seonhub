@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { getProjects, insertProject, insertClient, getClients as fetchClients, getAllEpisodes, getPartners, upsertEpisodes } from '@/lib/supabase/db';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { Calendar, User, X, ChevronDown, Search, ArrowRight, Plus, Building2 } from 'lucide-react';
-import { calculateReserve } from '@/lib/utils';
+import { calculateReserve, getComputedProjectStatus, getProjectSortKey, ComputedProjectStatus } from '@/lib/utils';
 import Link from 'next/link';
 import { Project, Client, Episode, WorkContentType, Partner } from '@/types';
 import { updateEpisodeFields } from '@/lib/supabase/db';
@@ -60,7 +60,7 @@ export default function ProjectsPage() {
     window.addEventListener('fab:action', handler);
     return () => window.removeEventListener('fab:action', handler);
   }, []);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'in_progress' | 'completed' | 'planning'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | ComputedProjectStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'amount' | 'name'>('recent');
 
@@ -87,11 +87,18 @@ export default function ProjectsPage() {
     }, 200);
   };
 
+  // 프로젝트별 계산된 상태 맵
+  const projectStatusMap = new Map<string, ComputedProjectStatus>();
+  projects.forEach(project => {
+    const projectEpisodes = episodes.filter(e => e.projectId === project.id);
+    projectStatusMap.set(project.id, getComputedProjectStatus(projectEpisodes));
+  });
+
   // 필터링 및 정렬된 프로젝트 목록
   const filteredAndSortedProjects = projects
     .filter(project => {
       // 필터 적용
-      if (activeFilter !== 'all' && project.status !== activeFilter) return false;
+      if (activeFilter !== 'all' && projectStatusMap.get(project.id) !== activeFilter) return false;
 
       // 검색 적용
       if (searchQuery) {
@@ -107,7 +114,11 @@ export default function ProjectsPage() {
     .sort((a, b) => {
       // 정렬 적용
       if (sortBy === 'recent') {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        const statusA = projectStatusMap.get(a.id)!;
+        const statusB = projectStatusMap.get(b.id)!;
+        const epsA = episodes.filter(e => e.projectId === a.id);
+        const epsB = episodes.filter(e => e.projectId === b.id);
+        return getProjectSortKey(epsA, statusA) - getProjectSortKey(epsB, statusB);
       } else if (sortBy === 'amount') {
         return b.budget.totalAmount - a.budget.totalAmount;
       } else if (sortBy === 'name') {
@@ -260,11 +271,12 @@ export default function ProjectsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div data-tour="tour-proj-filters" className="bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-2 shadow-sm border border-gray-200 flex gap-1 sm:gap-2 overflow-x-auto scrollbar-hide w-fit max-w-full">
           {([
-            { key: 'all',        label: '전체',   count: projects.length },
-            { key: 'planning',   label: '시작 전', count: projects.filter(p => p.status === 'planning').length },
-            { key: 'in_progress', label: '진행 중', count: projects.filter(p => p.status === 'in_progress').length },
-            { key: 'completed',  label: '종료',   count: projects.filter(p => p.status === 'completed').length },
-          ] as const).map(({ key, label, count }) => (
+            { key: 'all' as const,      label: '전체',   count: projects.length },
+            { key: 'active' as const,   label: '진행 중', count: projects.filter(p => projectStatusMap.get(p.id) === 'active').length },
+            { key: 'standby' as const,  label: '대기',   count: projects.filter(p => projectStatusMap.get(p.id) === 'standby').length },
+            { key: 'dormant' as const,  label: '휴면',   count: projects.filter(p => projectStatusMap.get(p.id) === 'dormant').length },
+            { key: 'inactive' as const, label: '비활성', count: projects.filter(p => projectStatusMap.get(p.id) === 'inactive').length },
+          ]).map(({ key, label, count }) => (
             <button
               key={key}
               onClick={() => setActiveFilter(key)}
@@ -313,7 +325,7 @@ export default function ProjectsPage() {
             onChange={(e) => setSortBy(e.target.value as 'recent' | 'amount' | 'name')}
             className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none text-xs text-gray-600"
           >
-            <option value="recent">최신순</option>
+            <option value="recent">일정순</option>
             <option value="amount">금액순</option>
             <option value="name">이름순</option>
           </select>
@@ -361,7 +373,7 @@ export default function ProjectsPage() {
                   {/* 클라이언트 + 상태 */}
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-medium text-gray-500 truncate">{project.client}</span>
-                    <StatusBadge status={project.status} />
+                    <StatusBadge status={projectStatusMap.get(project.id) || 'inactive'} />
                   </div>
 
                   {/* 프로젝트명 */}
@@ -686,13 +698,13 @@ function TabButton({
 // 상태 배지 컴포넌트
 function StatusBadge({ status }: { status: string }) {
   const statusMap: Record<string, { label: string; color: string }> = {
-    planning: { label: '시작 전', color: 'bg-orange-50 text-orange-600' },
-    in_progress: { label: '진행 중', color: 'bg-green-50 text-green-600' },
-    completed: { label: '종료', color: 'bg-gray-100 text-gray-500' },
-    on_hold: { label: '보류', color: 'bg-orange-50 text-orange-500' },
+    active: { label: '진행 중', color: 'bg-green-50 text-green-600' },
+    standby: { label: '대기', color: 'bg-blue-50 text-blue-600' },
+    dormant: { label: '휴면', color: 'bg-orange-50 text-orange-600' },
+    inactive: { label: '비활성', color: 'bg-gray-100 text-gray-500' },
   };
 
-  const { label, color } = statusMap[status] || statusMap.on_hold;
+  const { label, color } = statusMap[status] || statusMap.inactive;
 
   return (
     <span className={`px-2 py-0.5 rounded-lg text-xs font-medium whitespace-nowrap flex-shrink-0 ${color}`}>

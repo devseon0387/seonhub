@@ -8,6 +8,7 @@ import { addToTrash } from '@/lib/trash';
 import { getProjectById, updateProject, deleteProject, getClients as fetchClients, getProjectEpisodes, getPartners, upsertEpisode, updateEpisodeFields, deleteEpisode, deleteProjectEpisodes } from '@/lib/supabase/db';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import Link from 'next/link';
+import { getComputedProjectStatus } from '@/lib/utils';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
 import ProjectChecklistModal from '@/components/ProjectChecklistModal';
 import EpisodeDetailModal from '@/components/EpisodeDetailModal';
@@ -665,7 +666,7 @@ export default function ProjectDetailPage() {
               </span>
               <h1 className="text-2xl font-bold text-gray-900 mt-0.5">{project.title}</h1>
               <div className="mt-1">
-                <StatusBadge status={project.status} />
+                <StatusBadge status={getComputedProjectStatus(episodes)} />
               </div>
             </div>
           </div>
@@ -2687,13 +2688,13 @@ export default function ProjectDetailPage() {
 // 상태 배지 컴포넌트
 function StatusBadge({ status }: { status: string }) {
   const statusMap: Record<string, { label: string; color: string; bgColor: string }> = {
-    planning: { label: '시작 전', color: 'text-gray-600', bgColor: 'bg-orange-100' },
-    in_progress: { label: '진행 중', color: 'text-gray-600', bgColor: 'bg-green-100' },
-    completed: { label: '완료', color: 'text-gray-700', bgColor: 'bg-gray-100' },
-    on_hold: { label: '보류', color: 'text-gray-600', bgColor: 'bg-orange-100' },
+    active: { label: '진행 중', color: 'text-green-700', bgColor: 'bg-green-100' },
+    standby: { label: '대기', color: 'text-blue-700', bgColor: 'bg-blue-100' },
+    dormant: { label: '휴면', color: 'text-orange-700', bgColor: 'bg-orange-100' },
+    inactive: { label: '비활성', color: 'text-gray-700', bgColor: 'bg-gray-100' },
   };
 
-  const { label, color, bgColor } = statusMap[status] || statusMap.on_hold;
+  const { label, color, bgColor } = statusMap[status] || statusMap.inactive;
 
   return (
     <span className={`inline-flex px-4 py-2 rounded-full text-sm font-semibold ${color} ${bgColor}`}>

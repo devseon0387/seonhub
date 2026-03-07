@@ -8,7 +8,7 @@ import { Project, Episode, Partner, Client, WorkContentType } from '@/types';
 import { EmptyReviews, EmptyDeadlines } from '@/components/EmptyState';
 import { FloatingLabelInput, FloatingLabelTextarea } from '@/components/FloatingLabelInput';
 import ProjectWizardModal from '@/components/ProjectWizardModal';
-import { formatPhoneNumber } from '@/lib/utils';
+import { formatPhoneNumber, getComputedProjectStatus } from '@/lib/utils';
 import { getProjects, getPartners, getClients, insertClient, insertPartner, insertProject, getAllEpisodes, upsertEpisodes } from '@/lib/supabase/db';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { useToast } from '@/contexts/ToastContext';
@@ -478,11 +478,15 @@ export default function DashboardPage() {
                     <p key={h} style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', color: '#c4b5a5', textTransform: 'uppercase', textAlign: i > 0 ? 'center' : 'left' }}>{h}</p>
                   ))}
                 </div>
-                {projects.filter(p => p.status === 'in_progress' || p.status === 'planning').slice(0, 8).map((project, i, arr) => {
+                {projects.filter(p => {
+                  const computed = getComputedProjectStatus(allEpisodes.filter(ep => ep.projectId === p.id));
+                  return computed === 'active' || computed === 'standby';
+                }).slice(0, 8).map((project, i, arr) => {
                   const partner = partners.find(p => p.id === project.partnerId);
                   const eps     = allEpisodes.filter(ep => ep.projectId === project.id);
                   const done    = eps.filter(ep => ep.status === 'completed').length;
                   const pct     = eps.length > 0 ? Math.round((done / eps.length) * 100) : 0;
+                  const computedStatus = getComputedProjectStatus(eps);
                   return (
                     <Link key={project.id} href={`/projects/${project.id}`}
                       style={{ display: 'grid', gridTemplateColumns: '1fr 120px 80px', alignItems: 'center', padding: '14px 24px', borderBottom: i < arr.length - 1 ? rowDivider : 'none', transition: 'background 0.12s' }}
@@ -505,7 +509,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        <StatusBadge status={project.status} />
+                        <StatusBadge status={computedStatus} />
                       </div>
                     </Link>
                   );
@@ -1467,13 +1471,13 @@ export default function DashboardPage() {
 // 상태 배지 컴포넌트
 function StatusBadge({ status }: { status: string }) {
   const statusMap: Record<string, { label: string; style: React.CSSProperties }> = {
-    planning: { label: '시작 전', style: { background: 'rgba(234,88,12,0.1)', color: '#c2410c' } },
-    in_progress: { label: '진행 중', style: { background: 'rgba(245,158,11,0.1)', color: '#d97706' } },
-    completed: { label: '종료', style: { background: 'rgba(148,163,184,0.15)', color: '#64748b' } },
-    on_hold: { label: '보류', style: { background: 'rgba(249,115,22,0.1)', color: '#ea580c' } },
+    active: { label: '진행 중', style: { background: 'rgba(22,163,74,0.1)', color: '#16a34a' } },
+    standby: { label: '대기', style: { background: 'rgba(37,99,235,0.1)', color: '#2563eb' } },
+    dormant: { label: '휴면', style: { background: 'rgba(234,88,12,0.1)', color: '#ea580c' } },
+    inactive: { label: '비활성', style: { background: 'rgba(148,163,184,0.15)', color: '#64748b' } },
   };
 
-  const { label, style } = statusMap[status] || statusMap.on_hold;
+  const { label, style } = statusMap[status] || statusMap.inactive;
 
   return (
     <span className="px-2 py-0.5 rounded-lg text-xs font-medium whitespace-nowrap" style={style}>
