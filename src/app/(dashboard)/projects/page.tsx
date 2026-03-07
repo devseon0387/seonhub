@@ -87,10 +87,12 @@ export default function ProjectsPage() {
     }, 200);
   };
 
-  // 프로젝트별 계산된 상태 맵
+  // 프로젝트별 에피소드 & 계산된 상태 캐싱
+  const projectEpisodesMap = new Map<string, Episode[]>();
   const projectStatusMap = new Map<string, ComputedProjectStatus>();
   projects.forEach(project => {
     const projectEpisodes = episodes.filter(e => e.projectId === project.id);
+    projectEpisodesMap.set(project.id, projectEpisodes);
     projectStatusMap.set(project.id, getComputedProjectStatus(projectEpisodes));
   });
 
@@ -114,11 +116,8 @@ export default function ProjectsPage() {
     .sort((a, b) => {
       // 정렬 적용
       if (sortBy === 'recent') {
-        const statusA = projectStatusMap.get(a.id)!;
-        const statusB = projectStatusMap.get(b.id)!;
-        const epsA = episodes.filter(e => e.projectId === a.id);
-        const epsB = episodes.filter(e => e.projectId === b.id);
-        return getProjectSortKey(epsA, statusA) - getProjectSortKey(epsB, statusB);
+        return getProjectSortKey(projectEpisodesMap.get(a.id)!, projectStatusMap.get(a.id)!)
+             - getProjectSortKey(projectEpisodesMap.get(b.id)!, projectStatusMap.get(b.id)!);
       } else if (sortBy === 'amount') {
         return b.budget.totalAmount - a.budget.totalAmount;
       } else if (sortBy === 'name') {

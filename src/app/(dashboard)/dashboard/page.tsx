@@ -478,15 +478,14 @@ export default function DashboardPage() {
                     <p key={h} style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', color: '#c4b5a5', textTransform: 'uppercase', textAlign: i > 0 ? 'center' : 'left' }}>{h}</p>
                   ))}
                 </div>
-                {projects.filter(p => {
-                  const computed = getComputedProjectStatus(allEpisodes.filter(ep => ep.projectId === p.id));
-                  return computed === 'active' || computed === 'standby';
-                }).slice(0, 8).map((project, i, arr) => {
+                {projects.map(p => {
+                  const eps = allEpisodes.filter(ep => ep.projectId === p.id);
+                  return { project: p, eps, computed: getComputedProjectStatus(eps) };
+                }).filter(({ computed }) => computed === 'active' || computed === 'standby')
+                .slice(0, 8).map(({ project, eps, computed: computedStatus }, i, arr) => {
                   const partner = partners.find(p => p.id === project.partnerId);
-                  const eps     = allEpisodes.filter(ep => ep.projectId === project.id);
                   const done    = eps.filter(ep => ep.status === 'completed').length;
                   const pct     = eps.length > 0 ? Math.round((done / eps.length) * 100) : 0;
-                  const computedStatus = getComputedProjectStatus(eps);
                   return (
                     <Link key={project.id} href={`/projects/${project.id}`}
                       style={{ display: 'grid', gridTemplateColumns: '1fr 120px 80px', alignItems: 'center', padding: '14px 24px', borderBottom: i < arr.length - 1 ? rowDivider : 'none', transition: 'background 0.12s' }}
