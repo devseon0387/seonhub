@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Partner } from '@/types';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
+import { formatPhoneNumber } from '@/lib/utils';
 import { updatePartner } from '@/lib/supabase/db';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -111,8 +112,8 @@ export default function PartnerEditModal({ partner, onClose, onSaved }: PartnerE
               <FloatingLabelInput
                 label="전화번호"
                 type="tel"
-                value={editForm.phone}
-                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                value={formatPhoneNumber(editForm.phone)}
+                onChange={(e) => setEditForm({ ...editForm, phone: formatPhoneNumber(e.target.value) })}
               />
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-gray-700">계좌번호</label>

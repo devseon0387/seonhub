@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { getProjects, insertProject, getClients as fetchClients, getAllEpisodes, getPartners } from '@/lib/supabase/db';
+import { getProjects, insertProject, insertClient, getClients as fetchClients, getAllEpisodes, getPartners, upsertEpisodes } from '@/lib/supabase/db';
 import { Calendar, User, X, ChevronDown, Search, ArrowRight, Plus, Building2 } from 'lucide-react';
 import { calculateReserve } from '@/lib/utils';
 import Link from 'next/link';
@@ -9,6 +9,8 @@ import { Project, Client, Episode, WorkContentType, Partner } from '@/types';
 import { updateEpisodeInStorage } from '@/lib/storage';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
 import { motion, AnimatePresence } from 'framer-motion';
+import ProjectWizardModal from '@/components/ProjectWizardModal';
+import { useToast } from '@/contexts/ToastContext';
 
 
 interface EpisodeWithProjectId extends Episode {
@@ -56,41 +58,16 @@ export default function ProjectsPage() {
     window.addEventListener('fab:action', handler);
     return () => window.removeEventListener('fab:action', handler);
   }, []);
-  const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
-  const [isPartnerDropdownOpen, setIsPartnerDropdownOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'in_progress' | 'completed' | 'planning'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'amount' | 'name'>('recent');
-  const [isProjectSuccess, setIsProjectSuccess] = useState(false);
 
   // 작업 타입 모달 상태
   const [selectedWorkTypeModal, setSelectedWorkTypeModal] = useState<{ episodeId: string; workType: WorkContentType } | null>(null);
   const [isModalClosing, setIsModalClosing] = useState(false);
   const modalCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 토스트 알림 상태
-  const [toast, setToast] = useState<{ message: string; show: boolean; isClosing: boolean }>({
-    message: '',
-    show: false,
-    isClosing: false
-  });
-  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const toastCloseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [newProject, setNewProject] = useState<Partial<Project>>({
-    title: '',
-    description: '',
-    client: '',
-    partnerId: '',
-    status: 'planning',
-    budget: {
-      totalAmount: 0,
-      partnerPayment: 0,
-      managementFee: 0,
-      marginRate: 0,
-    },
-    tags: [],
-  });
-
+  const globalToast = useToast();
   // 이 useEffect를 제거했습니다 - localStorage 덮어쓰기 문제 해결
 
   // ⚠️ 회차 자동 저장 제거 - 모달에서 상태 변경 시에만 저장
@@ -106,25 +83,6 @@ export default function ProjectsPage() {
       setSelectedWorkTypeModal(null);
       setIsModalClosing(false);
     }, 200);
-  };
-
-  // 토스트 표시 함수
-  const showToast = (message: string) => {
-    if (toastTimeoutRef.current) {
-      clearTimeout(toastTimeoutRef.current);
-    }
-    if (toastCloseTimeoutRef.current) {
-      clearTimeout(toastCloseTimeoutRef.current);
-    }
-
-    setToast({ message, show: true, isClosing: false });
-
-    toastTimeoutRef.current = setTimeout(() => {
-      setToast(prev => ({ ...prev, isClosing: true }));
-      toastCloseTimeoutRef.current = setTimeout(() => {
-        setToast({ message: '', show: false, isClosing: false });
-      }, 300);
-    }, 2000);
   };
 
   // 필터링 및 정렬된 프로젝트 목록
@@ -175,69 +133,64 @@ export default function ProjectsPage() {
     })
     .filter(item => item.project); // 프로젝트가 있는 것만
 
-  const handleAddProject = async () => {
-    if (!newProject.title || !newProject.client || !newProject.partnerId) {
-      alert('프로젝트 이름, 클라이언트, 담당자를 입력해주세요.');
-      return;
+  const handleWizardComplete = async (data: any) => {
+    // 클라이언트 처리
+    let clientName = '';
+    if (data.client?.isNew && data.client.name) {
+      const saved = await insertClient({
+        name: data.client.name,
+        contactPerson: data.client.contact,
+        status: 'active',
+      });
+      if (saved) {
+        clientName = saved.name;
+        setClients(prev => [saved, ...prev]);
+      }
+    } else if (data.client?.id) {
+      const found = clients.find(c => c.id === data.client.id);
+      if (found) clientName = found.name;
     }
 
-    const projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt'> = {
-      title: newProject.title!,
-      description: newProject.description || '',
-      client: newProject.client!,
-      partnerId: newProject.partnerId!,
-      partnerIds: newProject.partnerId ? [newProject.partnerId] : [],
+    // 프로젝트 생성
+    const saved = await insertProject({
+      title: data.project.title,
+      description: data.project.description || '',
+      client: clientName,
+      partnerId: data.project.partnerIds[0] || '',
+      partnerIds: data.project.partnerIds,
       managerIds: [],
-      status: newProject.status || 'planning',
-      budget: newProject.budget || {
-        totalAmount: 0,
-        partnerPayment: 0,
-        managementFee: 0,
-        marginRate: 0,
-      },
-      tags: newProject.tags || [],
-      workContent: [],
-    };
-
-    const saved = await insertProject(projectData);
-    if (saved) {
-      setProjects(prev => [...prev, saved]);
-      setIsProjectSuccess(true);
-      setTimeout(() => {
-        setIsAddModalOpen(false);
-        setIsProjectSuccess(false);
-        setNewProject({
-          title: '',
-          description: '',
-          client: '',
-          partnerId: '',
-          status: 'planning',
-          budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0, marginRate: 0 },
-          tags: [],
-        });
-      }, 1500);
-    } else {
-      alert('프로젝트 저장에 실패했습니다. 다시 시도해주세요.');
-    }
-  };
-
-  const handleCloseModal = () => {
-    setIsAddModalOpen(false);
-    setIsProjectSuccess(false);
-    setNewProject({
-      title: '',
-      description: '',
-      client: '',
-      partnerId: '',
+      category: data.project.category,
       status: 'planning',
-      budget: {
-        totalAmount: 0,
-        partnerPayment: 0,
-        managementFee: 0,
-        marginRate: 0,
-      },
+      budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0, marginRate: 0 },
+      workContent: [],
       tags: [],
     });
+
+    if (saved) {
+      // 회차 생성
+      if (data.episodes.shouldCreate && data.episodes.count) {
+        const newEpisodes = Array.from({ length: data.episodes.count }, (_, i) => ({
+          id: crypto.randomUUID(),
+          projectId: saved.id,
+          episodeNumber: i + 1,
+          title: '',
+          workContent: [] as any[],
+          status: 'waiting' as const,
+          assignee: data.project.partnerIds[0] || '',
+          manager: '',
+          startDate: data.episodes.dates?.[i]?.startDate || new Date().toISOString(),
+          dueDate: data.episodes.dates?.[i]?.endDate || undefined,
+          budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0 },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }));
+        await upsertEpisodes(newEpisodes);
+        setEpisodes(prev => [...prev, ...newEpisodes]);
+      }
+      setProjects(prev => [saved, ...prev]);
+    }
+
+    setIsAddModalOpen(false);
   };
 
   if (loading) {
@@ -267,20 +220,10 @@ export default function ProjectsPage() {
           from { opacity: 1; transform: scale(1) translateY(0); }
           to { opacity: 0; transform: scale(0.95) translateY(-16px); }
         }
-        @keyframes toast-in {
-          from { opacity: 0; transform: translate(-50%, -12px); }
-          to { opacity: 1; transform: translate(-50%, 0); }
-        }
-        @keyframes toast-out {
-          from { opacity: 1; transform: translate(-50%, 0); }
-          to { opacity: 0; transform: translate(-50%, -12px); }
-        }
         .animate-modal-overlay { animation: modal-overlay-in 0.2s ease-out forwards; }
         .animate-modal-overlay-out { animation: modal-overlay-out 0.2s ease-in forwards; }
         .animate-modal-content { animation: modal-content-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
         .animate-modal-content-out { animation: modal-content-out 0.2s ease-in forwards; }
-        .animate-toast-in { animation: toast-in 0.25s ease-out forwards; }
-        .animate-toast-out { animation: toast-out 0.25s ease-in forwards; }
         @keyframes checkmark { 100% { stroke-dashoffset: 0; } }
         @keyframes circle-scale {
           0% { transform: scale(0); opacity: 0; }
@@ -481,246 +424,14 @@ export default function ProjectsPage() {
         </motion.div>
       </AnimatePresence>
 
-      {/* 프로젝트 추가 모달 - Toss Style */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto animate-in fade-in duration-200">
-          <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => !isProjectSuccess && handleCloseModal()}
-          />
-          <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
-            <div
-              className="relative bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 duration-300"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {isProjectSuccess ? (
-                /* 성공 화면 */
-                <div className="px-6 sm:px-8 py-16 flex flex-col items-center justify-center">
-                  <div className="checkmark-circle w-24 h-24 bg-orange-500 rounded-full flex items-center justify-center mb-6">
-                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                      <path
-                        className="checkmark-check"
-                        d="M14 24L20 30L34 16"
-                        stroke="white"
-                        strokeWidth="4"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">프로젝트 추가 완료</h2>
-                  <p className="text-gray-500">새로운 프로젝트가 시작되었습니다</p>
-                </div>
-              ) : (
-                <>
-                  {/* 헤더 */}
-                  <div className="sticky top-0 bg-white px-6 sm:px-8 pt-8 pb-6 rounded-t-[28px] z-10">
-                    <button
-                      onClick={handleCloseModal}
-                      className="absolute right-6 top-6 p-2 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <X size={24} className="text-gray-400" />
-                    </button>
-                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">새 프로젝트를<br />시작할게요</h2>
-                    <p className="text-sm text-gray-500">프로젝트 정보를 입력해주세요</p>
-                  </div>
-
-                  {/* 폼 */}
-                  <div className="px-6 sm:px-8 pb-8 space-y-6">
-                    {/* 기본 정보 */}
-                    <div className="space-y-4">
-                      <h3 className="text-sm font-semibold text-gray-900">
-                        프로젝트 기본 정보
-                      </h3>
-                      <FloatingLabelInput
-                        label="프로젝트 이름"
-                        required
-                        type="text"
-                        value={newProject.title}
-                        onChange={(e) => setNewProject({ ...newProject, title: e.target.value })}
-                      />
-                    </div>
-
-                    {/* 담당자 선택 */}
-                    <div className="space-y-4">
-                      <h3 className="text-sm font-semibold text-gray-900">
-                        담당자 선택
-                      </h3>
-
-                      {/* 클라이언트 선택 */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          클라이언트 <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={() => setIsClientDropdownOpen(!isClientDropdownOpen)}
-                            className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white text-left flex items-center justify-between hover:border-gray-300 transition-all"
-                          >
-                            {newProject.client ? (
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                                  {newProject.client.charAt(0)}
-                                </div>
-                                <span className="text-gray-900 font-medium">{newProject.client}</span>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400">클라이언트를 선택해주세요</span>
-                            )}
-                            <ChevronDown size={20} className="text-gray-400" />
-                          </button>
-                          {isClientDropdownOpen && (
-                            <div className="absolute z-20 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-2xl max-h-60 overflow-auto">
-                              {clients.length === 0 ? (
-                                <div className="p-6 text-center text-gray-500">
-                                  <p>등록된 클라이언트가 없습니다</p>
-                                </div>
-                              ) : (
-                                clients.map((client) => (
-                                  <button
-                                    key={client.id}
-                                    type="button"
-                                    onClick={() => {
-                                      setNewProject({ ...newProject, client: client.name });
-                                      setIsClientDropdownOpen(false);
-                                    }}
-                                    className="w-full px-4 py-3 hover:bg-orange-50 flex items-center gap-3 text-left transition-colors first:rounded-t-xl last:rounded-b-xl"
-                                  >
-                                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                      <Building2 size={15} className="text-orange-500" />
-                                    </div>
-                                    <div>
-                                      <p className="text-gray-900 font-medium">{client.name}</p>
-                                      {client.company && <p className="text-xs text-gray-500">{client.company}</p>}
-                                    </div>
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* 파트너 선택 */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          담당 파트너 <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={() => setIsPartnerDropdownOpen(!isPartnerDropdownOpen)}
-                            className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white text-left flex items-center justify-between hover:border-gray-300 transition-all"
-                          >
-                            {newProject.partnerId ? (
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                  <User size={16} className="text-orange-500" />
-                                </div>
-                                <span className="text-gray-900 font-medium">
-                                  {allPartners.find(p => p.id === newProject.partnerId)?.name}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400">파트너를 선택해주세요</span>
-                            )}
-                            <ChevronDown size={20} className="text-gray-400" />
-                          </button>
-                          {isPartnerDropdownOpen && (
-                            <div className="absolute z-20 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-2xl max-h-60 overflow-auto">
-                              {allPartners.length === 0 ? (
-                                <div className="p-6 text-center text-gray-500">
-                                  <p>등록된 파트너가 없습니다</p>
-                                </div>
-                              ) : (
-                                allPartners.map((partner) => (
-                                  <button
-                                    key={partner.id}
-                                    type="button"
-                                    onClick={() => {
-                                      setNewProject({ ...newProject, partnerId: partner.id });
-                                      setIsPartnerDropdownOpen(false);
-                                    }}
-                                    className="w-full px-4 py-3 hover:bg-orange-50 flex items-center gap-3 text-left transition-colors first:rounded-t-xl last:rounded-b-xl"
-                                  >
-                                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                      <User size={16} className="text-orange-500" />
-                                    </div>
-                                    <div>
-                                      <p className="text-gray-900 font-medium">{partner.name}</p>
-                                      <p className="text-xs text-gray-500">{partner.email}</p>
-                                    </div>
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 비용 정보 */}
-                    <div className="space-y-4">
-                      <h3 className="text-sm font-semibold text-gray-900">
-                        비용 정보
-                      </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <FloatingLabelInput
-                          label="전체 비용"
-                          type="number"
-                          value={newProject.budget?.totalAmount || 0}
-                          onChange={(e) => setNewProject({
-                            ...newProject,
-                            budget: { ...newProject.budget!, totalAmount: Number(e.target.value) }
-                          })}
-                        />
-                        <FloatingLabelInput
-                          label="파트너 지급"
-                          type="number"
-                          value={newProject.budget?.partnerPayment || 0}
-                          onChange={(e) => setNewProject({
-                            ...newProject,
-                            budget: { ...newProject.budget!, partnerPayment: Number(e.target.value) }
-                          })}
-                        />
-                        <FloatingLabelInput
-                          label="매니징 비용"
-                          type="number"
-                          value={newProject.budget?.managementFee || 0}
-                          onChange={(e) => setNewProject({
-                            ...newProject,
-                            budget: { ...newProject.budget!, managementFee: Number(e.target.value) }
-                          })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 푸터 */}
-                  <div className="sticky bottom-0 bg-white px-6 sm:px-8 py-6 border-t border-gray-100 rounded-b-[28px]">
-                    <div className="flex gap-3">
-                      <button
-                        onClick={handleCloseModal}
-                        className="flex-1 h-14 text-gray-700 font-semibold bg-gray-100 hover:bg-gray-200 rounded-xl transition-all active:scale-[0.98]"
-                      >
-                        취소
-                      </button>
-                      <button
-                        onClick={handleAddProject}
-                        disabled={!newProject.title || !newProject.client || !newProject.partnerId}
-                        className="flex-1 h-14 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98] shadow-lg shadow-orange-500/30"
-                      >
-                        프로젝트 시작하기
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 프로젝트 추가 위자드 */}
+      <ProjectWizardModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onComplete={handleWizardComplete}
+        clients={clients}
+        partners={allPartners}
+      />
 
       {/* 작업 목록 모달 */}
       {selectedWorkTypeModal && (() => {
@@ -875,11 +586,11 @@ export default function ProjectsPage() {
                                         const ok = await updateEpisodeInStorage(updatedEpisode);
                                         if (!ok) {
                                           setEpisodes(prevEpisodes);
-                                          showToast('저장에 실패했습니다. 다시 시도해주세요.');
+                                          globalToast.error('저장에 실패했습니다. 다시 시도해주세요.');
                                           return;
                                         }
                                       }
-                                      showToast(`"${step.label || `작업 ${index + 1}`}"을(를) 완료로 표시했습니다.`);
+                                      globalToast.success(`"${step.label || `작업 ${index + 1}`}"을(를) 완료로 표시했습니다.`);
                                     }}
                                     className="px-3 py-1.5 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm font-medium"
                                   >
@@ -907,11 +618,11 @@ export default function ProjectsPage() {
                                         const ok = await updateEpisodeInStorage(updatedEpisode);
                                         if (!ok) {
                                           setEpisodes(prevEpisodes);
-                                          showToast('저장에 실패했습니다. 다시 시도해주세요.');
+                                          globalToast.error('저장에 실패했습니다. 다시 시도해주세요.');
                                           return;
                                         }
                                       }
-                                      showToast(`"${step.label || `작업 ${index + 1}`}"을(를) 진행중으로 변경했습니다.`);
+                                      globalToast.success(`"${step.label || `작업 ${index + 1}`}"을(를) 진행중으로 변경했습니다.`);
                                     }}
                                     className="px-3 py-1.5 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors text-sm font-medium"
                                   >
@@ -942,38 +653,6 @@ export default function ProjectsPage() {
         );
       })()}
 
-      {/* 토스트 알림 */}
-      {toast.show && (
-        <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[60] ${toast.isClosing ? 'animate-toast-out' : 'animate-toast-in'}`}>
-          <div className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 min-w-[320px]">
-            <div className="flex-shrink-0">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-white">{toast.message}</p>
-            </div>
-            <button
-              onClick={() => {
-                if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-                if (toastCloseTimeoutRef.current) clearTimeout(toastCloseTimeoutRef.current);
-                setToast(prev => ({ ...prev, isClosing: true }));
-                setTimeout(() => {
-                  setToast({ message: '', show: false, isClosing: false });
-                }, 200);
-              }}
-              className="flex-shrink-0 p-1 hover:bg-white/20 rounded-full transition-colors"
-            >
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

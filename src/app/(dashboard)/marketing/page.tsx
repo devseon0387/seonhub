@@ -49,8 +49,8 @@ export default function MarketingPage() {
   const clientSummary = clients
     .map(client => ({
       ...client,
-      projectCount: projects.filter(p => p.client === client.name).length,
-      completedCount: projects.filter(p => p.client === client.name && p.status === 'completed').length,
+      projectCount: projects.filter(p => p.clientId === client.id || p.client === client.name).length,
+      completedCount: projects.filter(p => (p.clientId === client.id || p.client === client.name) && p.status === 'completed').length,
     }))
     .filter(c => c.projectCount > 0)
     .sort((a, b) => b.projectCount - a.projectCount);

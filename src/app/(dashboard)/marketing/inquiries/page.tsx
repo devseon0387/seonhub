@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   MessageSquare,
@@ -21,12 +22,13 @@ import {
   Link2,
   AlertCircle,
 } from 'lucide-react';
-import { Inquiry, InquiryStatus } from '@/types';
+import { Inquiry, InquiryStatus, PortfolioItem } from '@/types';
 import {
   getInquiries,
   updateInquiryStatus,
   updateInquiryNotes,
   deleteInquiry,
+  getPortfolioItems,
 } from '@/lib/supabase/db';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -51,6 +53,7 @@ const STATUS_OPTIONS: { value: InquiryStatus; label: string }[] = [
 export default function InquiriesPage() {
   const toast = useToast();
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [filter, setFilter] = useState<FilterStatus>('all');
@@ -65,15 +68,42 @@ export default function InquiriesPage() {
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [playingVideoUrl, setPlayingVideoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
-      const items = await getInquiries();
+      const [items, portfolio] = await Promise.all([getInquiries(), getPortfolioItems()]);
       setInquiries(items);
+      setPortfolioItems(portfolio);
       setLoading(false);
     }
     load();
   }, []);
+
+  // 포트폴리오 레퍼런스 문자열에서 매칭되는 포트폴리오 아이템 찾기
+  const findPortfolioItem = (ref: string | { id: string; title: string; category: string; client: string }): PortfolioItem | undefined => {
+    if (typeof ref !== 'string') {
+      return portfolioItems.find(p => p.id === ref.id || p.title === ref.title);
+    }
+    // "[카테고리] 제목 (클라이언트)" 형태 파싱
+    const match = ref.match(/^\[(.+?)\]\s*(.+?)(?:\s*\((.+?)\))?$/);
+    if (match) {
+      const [, , title] = match;
+      return portfolioItems.find(p => p.title === title.trim());
+    }
+    // 제목만으로 매칭
+    return portfolioItems.find(p => ref.includes(p.title));
+  };
+
+  const getYoutubeEmbedUrl = (url: string): string | null => {
+    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/);
+    return match ? `https://www.youtube.com/embed/${match[1]}` : null;
+  };
+
+  const getYoutubeThumbnail = (url: string): string | null => {
+    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/);
+    return match ? `https://img.youtube.com/vi/${match[1]}/mqdefault.jpg` : null;
+  };
 
   const filteredInquiries = inquiries.filter(item => {
     if (filter !== 'all' && item.status !== filter) return false;
@@ -480,17 +510,45 @@ export default function InquiriesPage() {
                       <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">참고 포트폴리오</p>
                     </div>
                     <div className="space-y-2">
-                      {selectedInquiry.portfolioReferences.map((ref) => (
-                        <div key={ref.id} className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
-                          <div className="w-8 h-8 bg-orange-100 rounded flex items-center justify-center flex-shrink-0">
-                            <Briefcase size={14} className="text-orange-500" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{ref.title}</p>
-                            <p className="text-xs text-gray-500">{ref.category} &middot; {ref.client}</p>
-                          </div>
-                        </div>
-                      ))}
+                      {selectedInquiry.portfolioReferences.map((ref, idx) => {
+                        const isString = typeof ref === 'string';
+                        const label = isString ? ref : ref.title;
+                        const portfolioItem = findPortfolioItem(ref);
+                        const hasVideo = !!portfolioItem?.youtubeUrl;
+                        const category = !isString && ref.category ? ref.category : portfolioItem?.category;
+                        const client = !isString && ref.client ? ref.client : portfolioItem?.client;
+
+                        return (
+                          <button
+                            key={isString ? idx : ref.id ?? idx}
+                            type="button"
+                            onClick={() => {
+                              if (hasVideo) {
+                                const embedUrl = getYoutubeEmbedUrl(portfolioItem!.youtubeUrl);
+                                if (embedUrl) setPlayingVideoUrl(embedUrl);
+                              }
+                            }}
+                            className={`w-full flex items-center gap-3 bg-gray-50 rounded-lg p-3 text-left transition-colors ${hasVideo ? 'hover:bg-orange-50 cursor-pointer' : 'cursor-default'}`}
+                          >
+                            <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${hasVideo ? 'bg-red-100' : 'bg-orange-100'}`}>
+                              {hasVideo ? (
+                                <div className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-l-[9px] border-l-red-500 ml-0.5" />
+                              ) : (
+                                <Briefcase size={14} className="text-orange-500" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">{label}</p>
+                              {category && (
+                                <p className="text-xs text-gray-500">{category}{client ? ` · ${client}` : ''}</p>
+                              )}
+                            </div>
+                            {hasVideo && (
+                              <ExternalLink size={14} className="text-gray-300 flex-shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -605,6 +663,43 @@ export default function InquiriesPage() {
           </div>
         </div>
       )}
+
+      {/* 영상 재생 모달 */}
+      <AnimatePresence>
+        {playingVideoUrl && (
+          <motion.div
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+            onClick={() => setPlayingVideoUrl(null)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="fixed inset-0 bg-black/70" />
+            <motion.div
+              className="relative w-full max-w-3xl aspect-video rounded-xl overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+            >
+              <button
+                onClick={() => setPlayingVideoUrl(null)}
+                className="absolute -top-10 right-0 text-white/80 hover:text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+              <iframe
+                src={`${playingVideoUrl}?autoplay=1`}
+                className="w-full h-full"
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

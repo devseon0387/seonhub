@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Client, Project, Partner, Episode } from '@/types';
-import { ArrowLeft, Mail, Phone, Building2, MapPin, User } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Building2, MapPin, User, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { getClients, getProjects, getPartners, getAllEpisodes } from '@/lib/supabase/db';
+import { getClients, getProjects, getPartners, getAllEpisodes, insertProject, insertClient, upsertEpisodes, updateClient } from '@/lib/supabase/db';
+import { formatPhoneNumber } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import ProjectWizardModal from '@/components/ProjectWizardModal';
 
 export default function ClientDetailPage() {
   const params = useParams();
@@ -17,7 +19,9 @@ export default function ClientDetailPage() {
   const [clientProjects, setClientProjects] = useState<Project[]>([]);
   const [allPartners, setAllPartners] = useState<Partner[]>([]);
   const [episodes, setEpisodes] = useState<(Episode & { projectId: string })[]>([]);
+  const [allClients, setAllClients] = useState<Client[]>([]);
   const [activeFilter, setActiveFilter] = useState<'all' | 'in_progress' | 'completed' | 'planning'>('all');
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -27,10 +31,11 @@ export default function ClientDetailPage() {
         getPartners(),
         getAllEpisodes(),
       ]);
+      setAllClients(clients);
       const foundClient = clients.find(c => c.id === clientId);
       if (foundClient) {
         setClient(foundClient);
-        setClientProjects(projects.filter(p => p.client === foundClient.name));
+        setClientProjects(projects.filter(p => p.clientId === foundClient.id || p.client === foundClient.name));
       }
       setAllPartners(partners);
       setEpisodes(episodesData);
@@ -60,6 +65,63 @@ export default function ClientDetailPage() {
   const completedProjects = clientProjects.filter(p => p.status === 'completed').length;
   const totalBudget = clientProjects.reduce((sum, p) => sum + p.budget.totalAmount, 0);
 
+  const handleWizardComplete = async (data: any) => {
+    // 클라이언트 처리
+    let clientName = client?.name || '';
+    if (data.client?.isNew && data.client.name) {
+      const saved = await insertClient({
+        name: data.client.name,
+        contactPerson: data.client.contact,
+        status: 'active',
+      });
+      if (saved) clientName = saved.name;
+    } else if (data.client?.id) {
+      const found = allClients.find(c => c.id === data.client!.id);
+      if (found) clientName = found.name;
+    }
+
+    // 프로젝트 생성
+    const saved = await insertProject({
+      title: data.project.title,
+      description: data.project.description || '',
+      client: clientName,
+      partnerId: data.project.partnerIds[0] || '',
+      partnerIds: data.project.partnerIds,
+      managerIds: [],
+      category: data.project.category,
+      status: 'planning',
+      budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0, marginRate: 0 },
+      workContent: [],
+      tags: [],
+    });
+
+    if (saved) {
+      // 회차 생성
+      if (data.episodes.shouldCreate && data.episodes.count) {
+        const newEpisodes = Array.from({ length: data.episodes.count }, (_, i) => ({
+          id: crypto.randomUUID(),
+          projectId: saved.id,
+          episodeNumber: i + 1,
+          title: '',
+          workContent: [] as any[],
+          status: 'waiting' as const,
+          assignee: data.project.partnerIds[0] || '',
+          manager: '',
+          startDate: data.episodes.dates?.[i]?.startDate || new Date().toISOString(),
+          dueDate: data.episodes.dates?.[i]?.endDate || undefined,
+          budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0 },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }));
+        await upsertEpisodes(newEpisodes);
+      }
+
+      setClientProjects(prev => [saved, ...prev]);
+    }
+
+    setIsWizardOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto py-8 px-4">
@@ -88,15 +150,23 @@ export default function ClientDetailPage() {
                       {client.company}
                     </p>
                   )}
-                  <span
-                    className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium ${
+                  <button
+                    onClick={async () => {
+                      const newStatus = client.status === 'active' ? 'inactive' : 'active';
+                      const ok = await updateClient(client.id, { status: newStatus });
+                      if (ok) {
+                        setClient({ ...client, status: newStatus as 'active' | 'inactive' });
+                      }
+                    }}
+                    className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
                       client.status === 'active'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
+                        ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                        : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                     }`}
+                    title={client.status === 'active' ? '클릭하여 비활성으로 변경' : '클릭하여 활성으로 변경'}
                   >
                     {client.status === 'active' ? '활성' : '비활성'}
-                  </span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -125,7 +195,7 @@ export default function ClientDetailPage() {
                   <p className="text-sm text-gray-500">전화번호</p>
                   <p className="text-base text-gray-900 mt-1 flex items-center gap-2">
                     <Phone size={14} className="text-gray-400" />
-                    {client.phone}
+                    {formatPhoneNumber(client.phone)}
                   </p>
                 </div>
               )}
@@ -175,6 +245,13 @@ export default function ClientDetailPage() {
         <div>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <h2 className="text-xl font-bold text-gray-900">프로젝트 목록</h2>
+            <button
+              onClick={() => setIsWizardOpen(true)}
+              className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm font-medium flex items-center gap-1.5"
+            >
+              <Plus size={16} />
+              새 프로젝트
+            </button>
           </div>
 
           {/* 필터 탭 */}
@@ -288,6 +365,15 @@ export default function ClientDetailPage() {
             </motion.div>
           </AnimatePresence>
         </div>
+        {/* 프로젝트 생성 위자드 */}
+        <ProjectWizardModal
+          isOpen={isWizardOpen}
+          onClose={() => setIsWizardOpen(false)}
+          onComplete={handleWizardComplete}
+          clients={allClients}
+          partners={allPartners}
+          defaultClientId={client.id}
+        />
       </div>
     </div>
   );

@@ -33,9 +33,9 @@ body {
   min-height: 100vh;
 }
 
-/* 커스텀 커서 — 시스템 커서 완전 숨김 */
-html, body { cursor: none !important; }
-*, *::before, *::after { cursor: none !important; }
+/* 기본 커서 사용 */
+html, body { cursor: default; }
+*, *::before, *::after { cursor: auto; }
 
 /* ── Card utility ── */
 .card {

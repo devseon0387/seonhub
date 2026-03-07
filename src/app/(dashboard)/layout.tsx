@@ -14,7 +14,7 @@ import GlobalSearch from '@/components/GlobalSearch';
 import TutorialProvider from '@/components/tutorial/TutorialProvider';
 import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import NotificationDropdown from '@/components/NotificationDropdown';
-import CustomCursor from '@/components/CustomCursor';
+
 import FeedbackModal from '@/components/FeedbackModal';
 import { APP_VERSION, APP_LAST_UPDATED } from '@/config/version';
 import Link from 'next/link';
@@ -160,10 +160,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const session = sessionStorage.getItem('vm_active_session');
       if (!stay && !session) { await supabase.auth.signOut(); router.push('/login'); return; }
       setUserEmail(user.email ?? '');
+
+      // 프로필 캐싱 (sessionStorage)
+      const cached = sessionStorage.getItem('vm_profile');
+      if (cached) {
+        try {
+          const p = JSON.parse(cached);
+          if (p.role !== 'admin' && p.approved !== true) {
+            supabase.auth.signOut();
+            router.push('/login');
+            return;
+          }
+          setMyRole(p.role);
+        } catch { /* 캐시 파싱 실패 시 서버에서 다시 로드 */ }
+      }
+      // 항상 서버에서 최신 프로필 확인 (캐시와 무관)
       getMyProfile().then(p => {
         if (p) {
-          // 승인되지 않은 사용자 차단 (admin은 항상 허용)
+          sessionStorage.setItem('vm_profile', JSON.stringify(p));
           if (p.role !== 'admin' && p.approved !== true) {
+            sessionStorage.removeItem('vm_profile');
             supabase.auth.signOut();
             router.push('/login');
             return;
@@ -179,6 +195,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const handleLogout = async () => {
     localStorage.removeItem('vm_stay_logged_in');
     sessionStorage.removeItem('vm_active_session');
+    sessionStorage.removeItem('vm_profile');
     await createClient().auth.signOut();
     window.location.href = '/login';
   };
@@ -188,7 +205,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <TutorialProvider>
-    <div style={{ cursor: 'none', minHeight: '100vh', background: '#f5f4f2' }}>
+    <div style={{ minHeight: '100vh', background: '#f5f4f2' }}>
       {/* 글로벌 검색 (Cmd+K / FAB로 열림, 버튼 UI는 숨기고 모달 리스너만 유지) */}
       <div style={{ position: 'fixed', width: 0, height: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 0 }}>
         <div style={{ pointerEvents: 'auto' }}><GlobalSearch /></div>
@@ -222,8 +239,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .vm-hamburger { display: flex !important; }
         }
       `}</style>
-      <CustomCursor />
-
       {/* ══════════════════════════════════════════
           아이콘 레일 — 항상 보이는 왼쪽 세로 바
       ══════════════════════════════════════════ */}

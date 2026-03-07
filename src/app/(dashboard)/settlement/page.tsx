@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { Users, Receipt, FolderOpen, Briefcase, TrendingUp, ClipboardCheck, Wallet, ArrowRight, ChevronDown } from 'lucide-react';
 import { Project, Partner, Client, Episode } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getProjects, getPartners, getClients, getProjectEpisodes } from '@/lib/supabase/db';
+import { getProjects, getPartners, getClients, getAllEpisodes } from '@/lib/supabase/db';
+import { groupByClient, groupByPartner, calculateManagerTotal } from '@/lib/settlement';
 
 const statusConfig: Record<string, { label: string; dot: string; badge: string }> = {
   planning:    { label: '시작 전', dot: 'bg-orange-400',   badge: 'bg-orange-50 text-orange-600' },
@@ -17,6 +18,7 @@ export default function SettlementPage() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState<'client' | 'partner' | 'manager'>('client');
   const [tabDirection, setTabDirection] = useState(1);
   const [openClients, setOpenClients] = useState<Record<string, boolean>>({});
@@ -38,55 +40,67 @@ export default function SettlementPage() {
     setActiveTab(tab);
   };
 
-  useEffect(() => {
-    Promise.all([getProjects(), getPartners(), getClients()]).then(
-      async ([projectsData, partnersData, clientsData]) => {
+  const loadData = () => {
+    setError(false);
+    setLoading(true);
+    Promise.all([getProjects(), getPartners(), getClients(), getAllEpisodes()]).then(
+      ([projectsData, partnersData, clientsData, allEpisodes]) => {
         setProjects(projectsData);
         setPartners(partnersData);
         setClients(clientsData);
 
-        // 모든 프로젝트의 에피소드를 병렬로 로드
-        const epEntries = await Promise.all(
-          projectsData.map(async (p) => {
-            const eps = await getProjectEpisodes(p.id);
-            return [p.id, eps] as const;
-          })
-        );
-        setEpisodesMap(Object.fromEntries(epEntries));
+        // 에피소드를 projectId 기준으로 그룹핑
+        const epMap: Record<string, typeof allEpisodes> = {};
+        allEpisodes.forEach(ep => {
+          if (!epMap[ep.projectId]) epMap[ep.projectId] = [];
+          epMap[ep.projectId].push(ep);
+        });
+        setEpisodesMap(epMap);
         setLoading(false);
       }
-    );
-  }, []);
+    ).catch(() => { setError(true); setLoading(false); });
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  // 이번 달 프로젝트만 필터링
+  const now = new Date();
+  const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const thisMonthProjects = projects.filter(p => {
+    const ym = p.createdAt.slice(0, 7);
+    return ym === currentYM;
+  });
 
   // 클라이언트 정산
-  const clientSettlements = (() => {
-    const grouped: Record<string, { clientName: string; clientInfo?: Client; projects: Project[]; totalAmount: number }> = {};
-    projects.forEach(p => {
-      if (!p.client) return;
-      if (!grouped[p.client]) {
-        grouped[p.client] = { clientName: p.client, clientInfo: clients.find(c => c.name === p.client), projects: [], totalAmount: 0 };
-      }
-      grouped[p.client].projects.push(p);
-      grouped[p.client].totalAmount += p.budget.totalAmount;
-    });
-    return Object.values(grouped);
-  })();
+  const clientSettlements = groupByClient(thisMonthProjects, clients);
   const clientGrandTotal = clientSettlements.reduce((s, cs) => s + cs.totalAmount, 0);
 
   // 파트너 정산
-  const partnerSettlements = partners.map(partner => {
-    const partnerProjects = projects.filter(p => p.partnerIds?.includes(partner.id) || p.partnerId === partner.id);
-    const totalAmount = partnerProjects.reduce((s, p) => s + p.budget.partnerPayment, 0);
-    return { partner, partnerProjects, totalAmount, projectCount: partnerProjects.length };
-  }).filter(ps => ps.projectCount > 0);
+  const partnerSettlements = groupByPartner(thisMonthProjects, partners);
   const partnerGrandTotal = partnerSettlements.reduce((s, ps) => s + ps.totalAmount, 0);
 
   // 매니저 정산
-  const managerTotal = projects.reduce((s, p) => s + p.budget.managementFee, 0);
-  const avgMarginRate = projects.length > 0
-    ? (projects.reduce((s, p) => s + p.budget.marginRate, 0) / projects.length).toFixed(1)
+  const managerTotal = calculateManagerTotal(thisMonthProjects);
+  const avgMarginRate = thisMonthProjects.length > 0
+    ? (thisMonthProjects.reduce((s, p) => s + p.budget.marginRate, 0) / thisMonthProjects.length).toFixed(1)
     : '0';
   const margin = clientGrandTotal - partnerGrandTotal - managerTotal;
+
+  // 입금/지급 현황 (에피소드 paymentStatus 기준)
+  const allThisMonthEpisodes = thisMonthProjects.flatMap(p => episodesMap[p.id] || []);
+  const paidEpisodes = allThisMonthEpisodes.filter(ep => ep.paymentStatus === 'completed').length;
+  const unpaidEpisodes = allThisMonthEpisodes.length - paidEpisodes;
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <p className="text-gray-500">데이터를 불러오는데 실패했습니다.</p>
+        <button onClick={loadData} className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm font-medium">
+          다시 시도
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -141,6 +155,19 @@ export default function SettlementPage() {
             <p className="text-xl font-bold text-emerald-600">{(margin / 10000).toFixed(0)}<span className="text-sm font-medium text-emerald-300 ml-0.5">만원</span></p>
           </div>
         </div>
+        {allThisMonthEpisodes.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-4 text-xs">
+            <span className="text-gray-400">입금 현황</span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+              <span className="text-gray-600">완료 {paidEpisodes}건</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+              <span className="text-gray-600">대기 {unpaidEpisodes}건</span>
+            </span>
+          </div>
+        )}
       </div>
 
       {loading && (
@@ -275,6 +302,13 @@ export default function SettlementPage() {
                                             <div className="flex items-center gap-2 min-w-0">
                                               <span className="text-xs text-orange-400 font-semibold flex-shrink-0">{ep.episodeNumber}편</span>
                                               <span className="text-sm text-gray-600 truncate">{ep.title}</span>
+                                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                                                ep.paymentStatus === 'completed'
+                                                  ? 'bg-green-50 text-green-600'
+                                                  : 'bg-orange-50 text-orange-500'
+                                              }`}>
+                                                {ep.paymentStatus === 'completed' ? '입금완료' : '입금대기'}
+                                              </span>
                                             </div>
                                             {ep.budget && (
                                               <span className="text-xs text-gray-500 ml-3 flex-shrink-0">{(ep.budget.totalAmount / 10000).toFixed(0)}만원</span>
@@ -387,6 +421,13 @@ export default function SettlementPage() {
                                             <div className="flex items-center gap-2 min-w-0">
                                               <span className="text-xs text-orange-400 font-semibold flex-shrink-0">{ep.episodeNumber}편</span>
                                               <span className="text-sm text-gray-600 truncate">{ep.title}</span>
+                                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                                                ep.paymentStatus === 'completed'
+                                                  ? 'bg-green-50 text-green-600'
+                                                  : 'bg-orange-50 text-orange-500'
+                                              }`}>
+                                                {ep.paymentStatus === 'completed' ? '지급완료' : '지급대기'}
+                                              </span>
                                             </div>
                                             {ep.budget && (
                                               <span className="text-xs text-gray-500 ml-3 flex-shrink-0">{(ep.budget.partnerPayment / 10000).toFixed(0)}만원</span>
@@ -424,7 +465,7 @@ export default function SettlementPage() {
                 <span className="text-xs text-gray-400">평균 마진율 {avgMarginRate}%</span>
               </div>
 
-              {projects.length === 0 ? (
+              {thisMonthProjects.length === 0 ? (
                 <div className="py-20 text-center text-gray-400">
                   <Receipt className="mx-auto mb-3 text-gray-200" size={36} />
                   <p className="font-medium text-gray-500">정산 내역이 없어요</p>
@@ -440,7 +481,7 @@ export default function SettlementPage() {
                     <span className="text-right">마진율</span>
                   </div>
                   <div className="divide-y divide-gray-50">
-                    {projects.map(project => {
+                    {thisMonthProjects.map(project => {
                       const sc = statusConfig[project.status] ?? statusConfig.planning;
                       return (
                         <div key={project.id} className="px-5 py-3.5 hover:bg-gray-50 transition-colors grid grid-cols-[1fr_72px_84px_60px] gap-3 items-center">

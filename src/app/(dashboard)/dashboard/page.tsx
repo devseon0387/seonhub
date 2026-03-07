@@ -8,6 +8,7 @@ import { Project, Episode, Partner, Client, WorkContentType } from '@/types';
 import { EmptyReviews, EmptyDeadlines } from '@/components/EmptyState';
 import { FloatingLabelInput, FloatingLabelTextarea } from '@/components/FloatingLabelInput';
 import ProjectWizardModal from '@/components/ProjectWizardModal';
+import { formatPhoneNumber } from '@/lib/utils';
 import { getProjects, getPartners, getClients, insertClient, insertPartner, insertProject, getAllEpisodes, upsertEpisodes } from '@/lib/supabase/db';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -909,8 +910,8 @@ export default function DashboardPage() {
                     <FloatingLabelInput
                       label="전화번호"
                       type="tel"
-                      value={newClient.phone}
-                      onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+                      value={formatPhoneNumber(newClient.phone)}
+                      onChange={(e) => setNewClient({ ...newClient, phone: formatPhoneNumber(e.target.value) })}
                     />
                   </div>
                 </div>
@@ -1072,8 +1073,8 @@ export default function DashboardPage() {
                   <FloatingLabelInput
                     label="전화번호"
                     type="tel"
-                    value={newPartner.phone}
-                    onChange={(e) => setNewPartner({ ...newPartner, phone: e.target.value })}
+                    value={formatPhoneNumber(newPartner.phone)}
+                    onChange={(e) => setNewPartner({ ...newPartner, phone: formatPhoneNumber(e.target.value) })}
                   />
 
                   {/* 파트너 유형 선택 - 토스 스타일 버튼 */}

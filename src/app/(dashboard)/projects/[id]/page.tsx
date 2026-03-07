@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Project, Client, Episode, Partner, WorkContentType } from '@/types';
 import { ArrowLeft, Calendar, User, DollarSign, Tag, Edit, Trash2, TrendingUp, ChevronRight, X, UserCircle, FileText, Users, Video, Palette, Image, CheckCircle2, Clock, Pause, Target, ChevronDown, ClipboardCheck, Building2, Tv, Youtube, Monitor, Camera } from 'lucide-react';
 import { addToTrash } from '@/lib/trash';
-import { getProjectById, updateProject, deleteProject, getClients as fetchClients, getProjectEpisodes, getPartners, upsertEpisode, deleteEpisode, deleteProjectEpisodes } from '@/lib/supabase/db';
+import { getProjectById, updateProject, deleteProject, getClients as fetchClients, getProjectEpisodes, getPartners, upsertEpisode, updateEpisodeFields, deleteEpisode, deleteProjectEpisodes } from '@/lib/supabase/db';
 import Link from 'next/link';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
 import ProjectChecklistModal from '@/components/ProjectChecklistModal';
@@ -192,7 +192,7 @@ export default function ProjectDetailPage() {
       completedAt: newStatus === 'completed' ? new Date().toISOString() : undefined,
     };
     setEpisodes(prev => prev.map(e => e.id === episodeId ? updated : e));
-    const ok = await upsertEpisode(updated);
+    const ok = await updateEpisodeFields(episodeId, { status: newStatus, completedAt: newStatus === 'completed' ? new Date().toISOString() : undefined });
     if (!ok) {
       setEpisodes(prev => prev.map(e => e.id === episodeId ? episode : e));
       showToastMessage('상태 변경에 실패했습니다. 다시 시도해주세요.');
@@ -392,32 +392,6 @@ export default function ProjectDetailPage() {
   };
 
 
-  if (isLoadingProject) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
-      </div>
-    );
-  }
-
-  if (!project) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">프로젝트를 찾을 수 없습니다</h2>
-          <p className="text-gray-500 mb-6">요청하신 프로젝트가 존재하지 않습니다.</p>
-          <Link
-            href="/projects"
-            className="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-          >
-            <ArrowLeft size={16} className="mr-2" />
-            프로젝트 목록으로 돌아가기
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   const partners = partnerIds.map(id => allPartners.find(p => p.id === id)).filter(Boolean);
   const managers = managerIds.map(id => allPartners.find(p => p.id === id)).filter(Boolean);
   const activeEpisodes = episodes.filter(ep => ep.status === 'in_progress' || ep.status === 'waiting');
@@ -585,6 +559,75 @@ export default function ProjectDetailPage() {
   const lastDeliveryDate = getLastDeliveryDate();
   const todayDueEpisodes = getTodayDueEpisodes();
   const thisWeekDueEpisodes = getThisWeekDueEpisodes();
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleAddEpisode = useCallback(async () => {
+    const nextEpisodeNumber = episodes.length > 0
+      ? Math.max(...episodes.map(ep => ep.episodeNumber)) + 1
+      : 1;
+
+    const defaultAssignee = partnerIds.length > 0 ? partnerIds[0] : (allPartners[0]?.id || '');
+    const defaultManager = managerIds.length > 0 ? managerIds[0] : (allPartners[0]?.id || '');
+
+    const newEpisode: EpisodeWithProjectId = {
+      id: crypto.randomUUID(),
+      projectId: projectId,
+      episodeNumber: nextEpisodeNumber,
+      title: '',
+      client: project?.client,
+      workContent: [],
+      status: 'waiting',
+      assignee: defaultAssignee,
+      manager: defaultManager,
+      startDate: new Date().toISOString(),
+      budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0 },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const ok = await upsertEpisode(newEpisode);
+    if (!ok) {
+      showToastMessage('회차 추가에 실패했습니다. 다시 시도해주세요.');
+      return;
+    }
+    setEpisodes(prev => [...prev, newEpisode]);
+    router.push(`/projects/${projectId}/episodes/${newEpisode.id}`);
+  }, [episodes, partnerIds, allPartners, managerIds, projectId, project?.client, router]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail === 'new-episode') handleAddEpisode();
+    };
+    window.addEventListener('fab:action', handler);
+    return () => window.removeEventListener('fab:action', handler);
+  }, [handleAddEpisode]);
+
+  if (isLoadingProject) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">프로젝트를 찾을 수 없습니다</h2>
+          <p className="text-gray-500 mb-6">요청하신 프로젝트가 존재하지 않습니다.</p>
+          <Link
+            href="/projects"
+            className="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+          >
+            <ArrowLeft size={16} className="mr-2" />
+            프로젝트 목록으로 돌아가기
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -1167,11 +1210,9 @@ export default function ProjectDetailPage() {
                           <span className="text-lg font-bold text-gray-900">
                             {episode.episodeNumber === 0 ? '회차 미정' : `${episode.episodeNumber}편`}
                           </span>
-                          {episode.title && (
-                            <h3 className="text-base font-semibold text-gray-900">
-                              {episode.title}
-                            </h3>
-                          )}
+                          <h3 className="text-base font-semibold text-gray-900">
+                            {episode.title || <span className="text-gray-300 font-normal">제목 없음</span>}
+                          </h3>
                           <select
                             value={episode.status}
                             onClick={e => e.stopPropagation()}
@@ -1349,7 +1390,7 @@ export default function ProjectDetailPage() {
                   if (!changed) return;
                   const updated = { ...ep, episodeNumber: edit.episodeNumber, title: edit.title, assignee: edit.assignee, manager: edit.manager, startDate: edit.startDate, dueDate: edit.dueDate || undefined, updatedAt: new Date().toISOString() };
                   setEpisodes(prev => prev.map(e => e.id === edit.id ? updated : e));
-                  await upsertEpisode(updated);
+                  await updateEpisodeFields(edit.id, { episodeNumber: edit.episodeNumber, title: edit.title, assignee: edit.assignee, manager: edit.manager, startDate: edit.startDate, dueDate: edit.dueDate || undefined });
                 }));
                 setIsEpisodeEditMode(false);
                 showToastMessage('회차 정보가 저장되었습니다.');
@@ -1368,39 +1409,7 @@ export default function ProjectDetailPage() {
             {isEpisodeEditMode ? '저장' : '회차 수정'}
           </button>
           <button
-            onClick={async () => {
-              const nextEpisodeNumber = episodes.length > 0
-                ? Math.max(...episodes.map(ep => ep.episodeNumber)) + 1
-                : 1;
-
-              // 프로젝트의 담당 파트너와 매니저를 자동 배치
-              const defaultAssignee = partnerIds.length > 0 ? partnerIds[0] : (allPartners[0]?.id || '');
-              const defaultManager = managerIds.length > 0 ? managerIds[0] : (allPartners[0]?.id || '');
-
-              const newEpisode: EpisodeWithProjectId = {
-                id: crypto.randomUUID(),
-                projectId: projectId,
-                episodeNumber: nextEpisodeNumber,
-                title: '',
-                client: project?.client,
-                workContent: [],
-                status: 'waiting',
-                assignee: defaultAssignee,
-                manager: defaultManager,
-                startDate: new Date().toISOString(),
-                budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0 },
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              };
-
-              const ok = await upsertEpisode(newEpisode);
-              if (!ok) {
-                showToastMessage('회차 추가에 실패했습니다. 다시 시도해주세요.');
-                return;
-              }
-              setEpisodes(prev => [...prev, newEpisode]);
-              router.push(`/projects/${projectId}/episodes/${newEpisode.id}`);
-            }}
+            onClick={handleAddEpisode}
             data-tour="tour-detail-add-episode"
             className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm"
           >
@@ -1438,7 +1447,7 @@ export default function ProjectDetailPage() {
                       {/* 첫 번째 줄: 편 수, 회차 이름, 상태, 작업 개수 */}
                       <div className="flex items-center space-x-3">
                         {isEpisodeEditMode ? (
-                          <>
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
                             <div className="flex items-center flex-shrink-0">
                               <input
                                 type="number"
@@ -1450,22 +1459,20 @@ export default function ProjectDetailPage() {
                                     setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, episodeNumber: num } : ed));
                                   }
                                 }}
-                                className="w-12 text-lg font-bold text-gray-900 bg-white border border-gray-300 rounded-lg px-2 py-1 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                className="w-14 text-lg font-bold text-gray-900 bg-white border border-gray-300 rounded-lg px-2 py-1 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
                               <span className="text-lg font-bold text-gray-900 ml-0.5">편</span>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <input
-                                type="text"
-                                value={editingEpisodes.find(e => e.id === episode.id)?.title ?? episode.title}
-                                placeholder="회차 이름 입력"
-                                onChange={(e) => {
-                                  setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, title: e.target.value } : ed));
-                                }}
-                                className="w-full text-base font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-1 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 placeholder-gray-300"
-                              />
-                            </div>
-                          </>
+                            <input
+                              type="text"
+                              value={editingEpisodes.find(e => e.id === episode.id)?.title ?? episode.title}
+                              placeholder="회차 이름 입력"
+                              onChange={(e) => {
+                                setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, title: e.target.value } : ed));
+                              }}
+                              className="flex-1 min-w-[120px] text-base font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-1 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 placeholder-gray-300"
+                            />
+                          </div>
                         ) : (
                           <>
                             <span className="text-lg font-bold text-gray-900">
@@ -2636,7 +2643,7 @@ export default function ProjectDetailPage() {
           isOpen={!!selectedEpisodeForDetail}
           onClose={() => setSelectedEpisodeForDetail(null)}
           onSave={async (updatedEpisode) => {
-            const ok = await upsertEpisode({ ...updatedEpisode, projectId });
+            const ok = await updateEpisodeFields(updatedEpisode.id, updatedEpisode);
             if (ok) {
               setEpisodes(prev =>
                 prev.map(e => e.id === updatedEpisode.id ? { ...updatedEpisode, projectId } : e)

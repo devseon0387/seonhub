@@ -38,6 +38,7 @@ export interface Project {
   title: string;
   description: string;
   client: string;
+  clientId?: string; // 클라이언트 FK (client_id)
   partnerId: string; // 담당 파트너 (첫 번째 파트너 / 하위 호환용)
   partnerIds: string[]; // 담당 파트너 목록 (복수)
   managerIds: string[]; // 매니저 목록
@@ -102,6 +103,7 @@ export interface Episode {
   title: string; // 회차 이름
   description?: string; // 회차 설명
   client?: string; // 클라이언트 이름
+  clientId?: string; // 클라이언트 FK (client_id)
   workContent: WorkContentType[]; // 작업 내용 (복수 선택 가능)
   workItems?: EpisodeWorkItem[]; // 작업 항목별 상세 정보
   status: EpisodeStatus; // 진행사항
@@ -167,7 +169,7 @@ export interface Inquiry {
   budget?: string;
   message: string;
   referencesLinks: string[];
-  portfolioReferences: { id: string; title: string; category: string; client: string }[];
+  portfolioReferences: (string | { id: string; title: string; category: string; client: string })[];
   referralSource?: string;
   status: InquiryStatus;
   notes?: string;

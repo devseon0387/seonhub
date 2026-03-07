@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Phone, User, Mail } from 'lucide-react';
 import { Partner } from '@/types';
 import { getPartners } from '@/lib/supabase/db';
+import { formatPhoneNumber } from '@/lib/utils';
 
 const GENERATIONS = [1, 2, 3];
 
@@ -165,7 +166,7 @@ function PartnerCard({ partner }: { partner: Partner }) {
         {partner.phone && (
           <div className="flex items-center gap-1.5 text-xs text-gray-500">
             <Phone size={11} className="flex-shrink-0" />
-            <span className="truncate">{partner.phone}</span>
+            <span className="truncate">{formatPhoneNumber(partner.phone)}</span>
           </div>
         )}
         {partner.email && (

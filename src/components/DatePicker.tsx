@@ -118,16 +118,23 @@ export default function DatePicker({ value, onChange, placeholder, minDate }: Da
           </span>
         </div>
         {value && (
-          <button
-            type="button"
+          <span
+            role="button"
+            tabIndex={0}
             onClick={(e) => {
               e.stopPropagation();
               onChange('');
             }}
-            className="text-gray-300 hover:text-gray-500 transition-colors text-sm leading-none"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation();
+                onChange('');
+              }
+            }}
+            className="text-gray-300 hover:text-gray-500 transition-colors text-sm leading-none cursor-pointer"
           >
             ✕
-          </button>
+          </span>
         )}
       </button>
 

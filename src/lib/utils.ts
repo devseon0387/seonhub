@@ -11,6 +11,15 @@ export function calculateReserve(budget: ProjectBudget): number {
   return budget.totalAmount - budget.partnerPayment - budget.managementFee;
 }
 
+// 전화번호 포맷 (숫자만 추출 후 하이픈 자동 삽입)
+export function formatPhoneNumber(value: string | undefined): string {
+  if (!value) return '';
+  const digits = value.replace(/\D/g, '');
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7, 11)}`;
+}
+
 // 날짜 포맷 함수
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);

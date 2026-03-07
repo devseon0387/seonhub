@@ -5,6 +5,7 @@ import { ArrowLeft, Briefcase, Users, ClipboardCheck, Wallet, ArrowRight, Chevro
 import { Project, Partner, Client } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getProjects, getPartners, getClients } from '@/lib/supabase/db';
+import { groupByClient, groupByPartner } from '@/lib/settlement';
 import Link from 'next/link';
 
 const statusConfig: Record<string, { label: string; dot: string }> = {
@@ -79,26 +80,9 @@ export default function SettlementHistoryPage() {
   // 선택된 월의 정산 계산
   const filteredProjects = currentMonthData?.projects ?? [];
 
-  const clientSettlements = useMemo(() => {
-    const grouped: Record<string, { clientName: string; clientInfo?: Client; projects: Project[]; totalAmount: number }> = {};
-    filteredProjects.forEach(p => {
-      if (!p.client) return;
-      if (!grouped[p.client]) {
-        grouped[p.client] = { clientName: p.client, clientInfo: clients.find(c => c.name === p.client), projects: [], totalAmount: 0 };
-      }
-      grouped[p.client].projects.push(p);
-      grouped[p.client].totalAmount += p.budget.totalAmount;
-    });
-    return Object.values(grouped);
-  }, [filteredProjects, clients]);
+  const clientSettlements = useMemo(() => groupByClient(filteredProjects, clients), [filteredProjects, clients]);
 
-  const partnerSettlements = useMemo(() => {
-    return partners.map(partner => {
-      const partnerProjects = filteredProjects.filter(p => p.partnerIds?.includes(partner.id) || p.partnerId === partner.id);
-      const totalAmount = partnerProjects.reduce((s, p) => s + p.budget.partnerPayment, 0);
-      return { partner, partnerProjects, totalAmount, projectCount: partnerProjects.length };
-    }).filter(ps => ps.projectCount > 0);
-  }, [filteredProjects, partners]);
+  const partnerSettlements = useMemo(() => groupByPartner(filteredProjects, partners), [filteredProjects, partners]);
 
   if (loading) {
     return (

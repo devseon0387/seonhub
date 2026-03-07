@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Partner, Project, Episode } from '@/types';
 import { addToTrash } from '@/lib/trash';
 import DatePicker from '@/components/DatePicker';
+import { formatPhoneNumber } from '@/lib/utils';
 import { useToast } from '@/contexts/ToastContext';
 import { getPartners, updatePartner, deletePartner, getProjects, getAllEpisodes } from '@/lib/supabase/db';
 import PartnerEditModal from '../PartnerEditModal';
@@ -386,7 +387,7 @@ export default function PartnerDetailPage() {
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{partner.name}</h1>
                 <p className="text-sm text-gray-500 mt-1">
-                  {[partner.email, partner.phone].filter(Boolean).join(' · ') || '-'}
+                  {[partner.email, partner.phone ? formatPhoneNumber(partner.phone) : ''].filter(Boolean).join(' · ') || '-'}
                 </p>
                 <button
                   onClick={handleToggleStatus}
@@ -474,7 +475,7 @@ export default function PartnerDetailPage() {
                           onClick={() => copyToClipboard(partner.phone!, '전화번호')}
                           className="flex items-center gap-1.5 text-sm font-medium text-gray-900 hover:text-orange-600 transition-colors group/copy"
                         >
-                          {partner.phone}
+                          {formatPhoneNumber(partner.phone)}
                           {copiedField === '전화번호' ? (
                             <Check size={13} className="text-green-500" />
                           ) : (

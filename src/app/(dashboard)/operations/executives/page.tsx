@@ -7,6 +7,7 @@ import { Partner } from '@/types';
 import { getPartners, insertPartner, deletePartner } from '@/lib/supabase/db';
 import { addToTrash } from '@/lib/trash';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
+import { formatPhoneNumber } from '@/lib/utils';
 import { useToast } from '@/contexts/ToastContext';
 
 export default function ExecutivesPage() {
@@ -190,8 +191,8 @@ export default function ExecutivesPage() {
                   <FloatingLabelInput
                     label="전화번호"
                     type="tel"
-                    value={newMember.phone}
-                    onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })}
+                    value={formatPhoneNumber(newMember.phone)}
+                    onChange={(e) => setNewMember({ ...newMember, phone: formatPhoneNumber(e.target.value) })}
                   />
                 </div>
               </div>
@@ -300,7 +301,7 @@ function MemberCard({ partner, onDelete }: { partner: Partner; onDelete: (p: Par
         {partner.phone && (
           <div className="flex items-center gap-1.5 text-xs text-gray-500">
             <Phone size={11} className="flex-shrink-0" />
-            <span className="truncate">{partner.phone}</span>
+            <span className="truncate">{formatPhoneNumber(partner.phone)}</span>
           </div>
         )}
         {partner.email && (

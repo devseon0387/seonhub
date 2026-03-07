@@ -8,10 +8,15 @@ import {
 // ─── API 설정 ─────────────────────────────────────────────────────────────────
 const BASE_URL = (process.env.STRATEGY_BASE_URL || 'https://video-moment.vercel.app').replace(/\/$/, '');
 
+const API_KEY = process.env.API_SECRET_KEY || '';
+
 async function api(method, path, body) {
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(API_KEY ? { 'x-api-key': API_KEY } : {}),
+    },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
   if (!res.ok) {

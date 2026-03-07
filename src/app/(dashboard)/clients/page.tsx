@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Mail, Phone, Building2, MapPin, X, Trash2, ChevronDown, Search, Folder, Plus, Users, CheckCircle, Pencil } from 'lucide-react';
 import { Client, Project } from '@/types';
 import { addToTrash } from '@/lib/trash';
+import { formatPhoneNumber } from '@/lib/utils';
 import { FloatingLabelInput, FloatingLabelTextarea } from '@/components/FloatingLabelInput';
 import { EmptyClients, EmptySearch } from '@/components/EmptyState';
 import { getClients, insertClient, updateClient, deleteClient, getProjects } from '@/lib/supabase/db';
@@ -17,14 +18,19 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
+  const loadData = () => {
+    setError(false);
+    setLoading(true);
     Promise.all([getClients(), getProjects()]).then(([c, p]) => {
       setClients(c);
       setAllProjects(p);
       setLoading(false);
-    });
-  }, []);
+    }).catch(() => { setError(true); setLoading(false); });
+  };
+
+  useEffect(() => { loadData(); }, []);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
@@ -59,7 +65,7 @@ export default function ClientsPage() {
 
   const handleAddClient = async () => {
     if (!newClient.name) {
-      alert('클라이언트 이름을 입력해주세요.');
+      toast.error('클라이언트 이름을 입력해주세요.');
       return;
     }
 
@@ -143,7 +149,7 @@ export default function ClientsPage() {
         if (deleted) {
           setClients(prev => prev.filter(c => c.id !== clientToDelete.id));
         } else {
-          alert('삭제에 실패했습니다. 다시 시도해주세요.');
+          toast.error('삭제에 실패했습니다. 다시 시도해주세요.');
         }
       }
       setIsDeleteModalOpen(false);
@@ -161,7 +167,7 @@ export default function ClientsPage() {
             : c
         ));
       } else {
-        alert('상태 변경에 실패했습니다. 다시 시도해주세요.');
+        toast.error('상태 변경에 실패했습니다. 다시 시도해주세요.');
       }
       setIsDeleteModalOpen(false);
       setClientToDelete(null);
@@ -192,6 +198,17 @@ export default function ClientsPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <p className="text-gray-500">데이터를 불러오는데 실패했습니다.</p>
+        <button onClick={loadData} className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm font-medium">
+          다시 시도
+        </button>
       </div>
     );
   }
@@ -370,7 +387,7 @@ export default function ClientsPage() {
                       {client.phone && (
                         <div className="text-sm text-gray-900 flex items-center">
                           <Phone size={12} className="mr-2 text-gray-400" />
-                          {client.phone}
+                          {formatPhoneNumber(client.phone)}
                         </div>
                       )}
                       {!client.email && !client.phone && (
@@ -389,7 +406,7 @@ export default function ClientsPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {allProjects.filter(p => p.client === client.name).length}개
+                    {allProjects.filter(p => p.clientId === client.id || p.client === client.name).length}개
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
@@ -501,7 +518,7 @@ export default function ClientsPage() {
                 {client.phone && (
                   <div className="flex items-center text-sm text-gray-600">
                     <Phone size={14} className="mr-2 text-gray-400 flex-shrink-0" />
-                    {client.phone}
+                    {formatPhoneNumber(client.phone)}
                   </div>
                 )}
                 {client.address && (
@@ -517,7 +534,7 @@ export default function ClientsPage() {
                 <div className="flex items-center text-sm">
                   <Folder size={14} className="mr-1 text-gray-400" />
                   <span className="font-medium text-gray-900">
-                    {allProjects.filter(p => p.client === client.name).length}개 프로젝트
+                    {allProjects.filter(p => p.clientId === client.id || p.client === client.name).length}개 프로젝트
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -634,8 +651,8 @@ export default function ClientsPage() {
                         <FloatingLabelInput
                           label="전화번호"
                           type="tel"
-                          value={newClient.phone}
-                          onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+                          value={formatPhoneNumber(newClient.phone)}
+                          onChange={(e) => setNewClient({ ...newClient, phone: formatPhoneNumber(e.target.value) })}
                         />
                       </div>
                     </div>
@@ -746,8 +763,8 @@ export default function ClientsPage() {
                     <FloatingLabelInput
                       label="전화번호"
                       type="tel"
-                      value={editingClient.phone || ''}
-                      onChange={(e) => setEditingClient({ ...editingClient, phone: e.target.value })}
+                      value={formatPhoneNumber(editingClient.phone || '')}
+                      onChange={(e) => setEditingClient({ ...editingClient, phone: formatPhoneNumber(e.target.value) })}
                     />
                   </div>
                 </div>

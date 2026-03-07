@@ -14,6 +14,7 @@ interface ProjectWizardModalProps {
   onComplete: (data: WizardData) => void;
   clients: Client[];
   partners: Partner[];
+  defaultClientId?: string;
 }
 
 interface WizardData {
@@ -69,16 +70,17 @@ export default function ProjectWizardModal({
   onComplete,
   clients,
   partners,
+  defaultClientId,
 }: ProjectWizardModalProps) {
   const { warning } = useToast();
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(defaultClientId ? 3 : 1);
   const [direction, setDirection] = useState(1);
   const [wizardData, setWizardData] = useState<Partial<WizardData>>({});
 
   // 임시 폼 데이터
-  const [startType, setStartType] = useState<'with-client' | 'project-only' | null>(null);
+  const [startType, setStartType] = useState<'with-client' | 'project-only' | null>(defaultClientId ? 'with-client' : null);
   const [clientOption, setClientOption] = useState<'existing' | 'new' | 'skip'>('existing');
-  const [selectedClientId, setSelectedClientId] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState(defaultClientId ?? '');
   const [newClientName, setNewClientName] = useState('');
   const [newClientContact, setNewClientContact] = useState('');
   const [newClientEmail, setNewClientEmail] = useState('');
@@ -88,12 +90,35 @@ export default function ProjectWizardModal({
   const [projectDescription, setProjectDescription] = useState('');
   const [selectedPartnerIds, setSelectedPartnerIds] = useState<string[]>([]);
 
-  const [addProjectNow, setAddProjectNow] = useState<boolean | null>(null);
+  const [addProjectNow, setAddProjectNow] = useState<boolean | null>(defaultClientId ? true : null);
   const [shouldCreateEpisodes, setShouldCreateEpisodes] = useState<boolean | null>(null);
   const [episodeCount, setEpisodeCount] = useState(10);
   const [episodeInputType, setEpisodeInputType] = useState<'quick' | 'custom' | null>(null);
   const [customEpisodeCount, setCustomEpisodeCount] = useState('');
   const [episodeDates, setEpisodeDates] = useState<Array<{ startDate: string; endDate: string }>>([]);
+
+  // 모달 열릴 때 상태 초기화
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentStep(defaultClientId ? 3 : 1);
+      setStartType(defaultClientId ? 'with-client' : null);
+      setSelectedClientId(defaultClientId ?? '');
+      setClientOption('existing');
+      setAddProjectNow(defaultClientId ? true : null);
+      setProjectTitle('');
+      setProjectCategory('');
+      setProjectDescription('');
+      setSelectedPartnerIds([]);
+      setShouldCreateEpisodes(null);
+      setEpisodeCount(10);
+      setEpisodeInputType(null);
+      setCustomEpisodeCount('');
+      setNewClientName('');
+      setNewClientContact('');
+      setNewClientEmail('');
+      setProjectOnlyClientId('');
+    }
+  }, [isOpen, defaultClientId]);
 
   // 회차 수가 바뀔 때 날짜 배열 동기화
   useEffect(() => {
@@ -210,6 +235,11 @@ export default function ProjectWizardModal({
   };
 
   const handlePrevious = () => {
+    // defaultClientId가 있으면 step 3에서 뒤로가면 닫기
+    if (currentStep === 3 && defaultClientId) {
+      onClose();
+      return;
+    }
     // "프로젝트만 빠르게"는 step 3에서 step 1로 돌아감
     if (currentStep === 3 && startType === 'project-only') {
       goToStep(1);

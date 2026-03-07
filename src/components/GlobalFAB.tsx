@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Plus, Search, Bell, Sparkles, FolderOpen, Briefcase, Users, HelpCircle, MessageSquarePlus } from 'lucide-react';
+import { Plus, Search, Bell, Sparkles, FolderOpen, Briefcase, Users, HelpCircle, MessageSquarePlus, FilePlus } from 'lucide-react';
 
 interface FABAction {
   label: string;
@@ -104,6 +104,21 @@ function getPageActions(pathname: string): FABAction[] {
         label: '새 클라이언트',
         icon: Briefcase,
         onClick: () => window.dispatchEvent(new CustomEvent('fab:action', { detail: 'new-client' })),
+        bg: 'bg-gradient-to-r from-orange-500 to-orange-600',
+        text: 'text-white',
+        iconColor: 'text-white',
+      },
+    ];
+  }
+
+  // /projects/[id] 프로젝트 상세 페이지 — 새 회차
+  if (/^\/projects\/[^/]+$/.test(pathname)) {
+    return [
+      ...common,
+      {
+        label: '새 회차',
+        icon: FilePlus,
+        onClick: () => window.dispatchEvent(new CustomEvent('fab:action', { detail: 'new-episode' })),
         bg: 'bg-gradient-to-r from-orange-500 to-orange-600',
         text: 'text-white',
         iconColor: 'text-white',

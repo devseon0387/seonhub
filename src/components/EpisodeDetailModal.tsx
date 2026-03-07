@@ -230,12 +230,25 @@ export default function EpisodeDetailModal({
     field: keyof WorkStep,
     value: string
   ) => {
-    setWorkSteps(prev => ({
-      ...prev,
-      [workType]: prev[workType].map(step =>
+    setWorkSteps(prev => {
+      let updated = prev[workType].map(step =>
         step.id === stepId ? { ...step, [field]: value } : step
-      ),
-    }));
+      );
+      // 단계 완료 시 다음 단계를 자동으로 '진행 중'으로 전환
+      if (field === 'status' && value === 'completed') {
+        const idx = updated.findIndex(s => s.id === stepId);
+        if (idx >= 0 && idx < updated.length - 1) {
+          const next = updated[idx + 1];
+          if (next.status === 'waiting') {
+            updated = updated.map((s, i) => i === idx + 1 ? { ...s, status: 'in_progress' } : s);
+          }
+        }
+      }
+      return {
+        ...prev,
+        [workType]: updated,
+      };
+    });
   };
 
   // 비용 토글

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Episode, Partner, EpisodeWorkItem, WorkContentType, Project, WorkStep, WorkTypeBudget } from '@/types';
 import { Plus, Calendar, DollarSign, ChevronDown, ChevronRight, ArrowLeft, X, User } from 'lucide-react';
-import { getProjects, getProjectEpisodes, getPartners, upsertEpisode } from '@/lib/supabase/db';
+import { getProjects, getProjectEpisodes, getPartners, updateEpisodeFields } from '@/lib/supabase/db';
 import DateRangePicker from '@/components/DateRangePicker';
 import DatePicker from '@/components/DatePicker';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -248,7 +248,21 @@ export default function EpisodeDetailPage() {
         }
 
         if (foundEpisode.workBudgets) {
-          setWorkBudgets(foundEpisode.workBudgets);
+          // 기존 저장된 비용이 있으면 사용하되, 비용이 0인 작업 타입은 프로젝트 비용으로 자동 채움
+          const merged = { ...foundEpisode.workBudgets };
+          if (foundProject?.workTypeCosts && foundEpisode.workContent) {
+            foundEpisode.workContent.forEach(workType => {
+              const existing = merged[workType];
+              const hasBudget = existing && (existing.partnerPayment > 0 || existing.managementFee > 0);
+              if (!hasBudget && foundProject.workTypeCosts![workType]) {
+                merged[workType] = {
+                  partnerPayment: foundProject.workTypeCosts![workType].partnerCost,
+                  managementFee: foundProject.workTypeCosts![workType].managementCost,
+                };
+              }
+            });
+          }
+          setWorkBudgets(merged);
         } else if (foundProject?.workTypeCosts && foundEpisode.workContent) {
           const newBudgets = { ...workBudgets };
           foundEpisode.workContent.forEach(workType => {
@@ -276,16 +290,9 @@ export default function EpisodeDetailPage() {
 
     setSaveStatus('saving');
 
-    const updatedEpisodeData: Episode & { projectId: string } = {
-      ...editedEpisode,
-      projectId,
-      status: getOverallEpisodeStatus(),
-      workSteps,
-      workBudgets,
-      updatedAt: new Date().toISOString(),
-    };
+    const status = getOverallEpisodeStatus();
 
-    upsertEpisode(updatedEpisodeData).then(() => {
+    updateEpisodeFields(episodeId, { status, workSteps, workBudgets }).then(() => {
       setSaveStatus('saved');
       if (saveStatusTimeoutRef.current) clearTimeout(saveStatusTimeoutRef.current);
       saveStatusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
@@ -449,11 +456,22 @@ export default function EpisodeDetailPage() {
           ),
         };
       }
+      let updated = steps.map(step =>
+        step.id === stepId ? { ...step, [field]: value } : step
+      );
+      // 단계 완료 시 다음 단계를 자동으로 '진행 중'으로 전환
+      if (field === 'status' && value === 'completed') {
+        const idx = updated.findIndex(s => s.id === stepId);
+        if (idx >= 0 && idx < updated.length - 1) {
+          const next = updated[idx + 1];
+          if (next.status === 'waiting') {
+            updated = updated.map((s, i) => i === idx + 1 ? { ...s, status: 'in_progress' } : s);
+          }
+        }
+      }
       return {
         ...prev,
-        [workType]: steps.map(step =>
-          step.id === stepId ? { ...step, [field]: value } : step
-        ),
+        [workType]: updated,
       };
     });
   };
@@ -668,9 +686,10 @@ export default function EpisodeDetailPage() {
                       type="text"
                       autoFocus
                       value={editedEpisode.title}
+                      placeholder="회차 제목을 입력하세요"
                       onChange={(e) => handleFieldChange('title', e.target.value)}
                       onBlur={handleFieldBlur}
-                      className="text-2xl font-bold text-gray-900 bg-orange-50/50 border-b-2 border-orange-400 border-t-0 border-l-0 border-r-0 rounded-none px-1 py-0.5 focus:outline-none focus:ring-0"
+                      className="text-2xl font-bold text-gray-900 bg-orange-50/50 border-b-2 border-orange-400 border-t-0 border-l-0 border-r-0 rounded-none px-1 py-0.5 focus:outline-none focus:ring-0 placeholder-gray-300"
                     />
                   </motion.div>
                 ) : (
@@ -682,7 +701,7 @@ export default function EpisodeDetailPage() {
                     animate={{ color: '#1c1917' }}
                     transition={{ duration: 0.6, delay: 1, ease: 'easeOut' }}
                   >
-                    {editedEpisode.title}
+                    {editedEpisode.title || <span className="text-gray-300">회차 제목을 입력하세요</span>}
                   </motion.span>
                 )}
                 {(() => {

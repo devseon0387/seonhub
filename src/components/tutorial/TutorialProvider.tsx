@@ -3,6 +3,7 @@
 import { createContext, useState, useCallback, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { TUTORIAL_STEPS, TutorialPageKey, TutorialStep } from './tutorialSteps';
+import { getTutorialDone, setTutorialPageDone } from '@/lib/supabase/db';
 
 export interface TutorialContextValue {
   isActive: boolean;
@@ -16,8 +17,6 @@ export interface TutorialContextValue {
 }
 
 export const TutorialContext = createContext<TutorialContextValue | null>(null);
-
-const STORAGE_PREFIX = 'vm_tutorial_';
 
 function getPageKey(pathname: string): TutorialPageKey | null {
   if (pathname === '/management' || pathname === '/') return 'management';
@@ -38,7 +37,15 @@ export default function TutorialProvider({ children }: { children: React.ReactNo
   const [pageKey, setPageKey] = useState<TutorialPageKey | null>(null);
   const autoStartedRef = useRef<Set<string>>(new Set());
 
+  // DB에서 로드한 튜토리얼 완료 맵
+  const [doneMap, setDoneMap] = useState<Record<string, boolean> | null>(null);
+
   const steps = pageKey ? TUTORIAL_STEPS[pageKey] : [];
+
+  // 마운트 시 DB에서 완료 목록 로드
+  useEffect(() => {
+    getTutorialDone().then(setDoneMap);
+  }, []);
 
   const startTutorial = useCallback((key: TutorialPageKey) => {
     setPageKey(key);
@@ -48,7 +55,8 @@ export default function TutorialProvider({ children }: { children: React.ReactNo
 
   const completeTutorial = useCallback(() => {
     if (pageKey) {
-      localStorage.setItem(STORAGE_PREFIX + pageKey, 'done');
+      setTutorialPageDone(pageKey);
+      setDoneMap(prev => ({ ...prev, [pageKey]: true }));
     }
     setIsActive(false);
     setCurrentStepIndex(0);
@@ -73,21 +81,22 @@ export default function TutorialProvider({ children }: { children: React.ReactNo
     completeTutorial();
   }, [completeTutorial]);
 
-  // 첫 방문 시 자동 시작 (800ms 딜레이)
+  // 첫 방문 시 자동 시작 (800ms 딜레이) — DB 로딩 완료 후에만
   useEffect(() => {
+    if (doneMap === null) return; // 아직 DB 로딩 중
+
     const key = getPageKey(pathname);
     if (!key) return;
     if (autoStartedRef.current.has(key)) return;
 
-    const done = localStorage.getItem(STORAGE_PREFIX + key);
-    if (done) return;
+    if (doneMap[key]) return;
 
     autoStartedRef.current.add(key);
     const timer = setTimeout(() => {
       startTutorial(key);
     }, 800);
     return () => clearTimeout(timer);
-  }, [pathname, startTutorial]);
+  }, [pathname, startTutorial, doneMap]);
 
   // FAB "replay-tutorial" 이벤트 리스닝
   useEffect(() => {
@@ -96,7 +105,6 @@ export default function TutorialProvider({ children }: { children: React.ReactNo
       if (detail === 'replay-tutorial') {
         const key = getPageKey(pathname);
         if (key) {
-          localStorage.removeItem(STORAGE_PREFIX + key);
           startTutorial(key);
         }
       }

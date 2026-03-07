@@ -36,7 +36,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/api/auth') || pathname.startsWith('/api/mcp') || pathname.startsWith('/api/strategy');
+  // API key 인증: /api/strategy, /api/mcp 경로
+  const isMcpOrStrategy = pathname.startsWith('/api/mcp') || pathname.startsWith('/api/strategy');
+  if (isMcpOrStrategy) {
+    const apiKey = request.headers.get('x-api-key');
+    const expectedKey = process.env.API_SECRET_KEY;
+    if (!expectedKey || apiKey !== expectedKey) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    return supabaseResponse;
+  }
+
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/api/auth');
   const isApiRoute = pathname.startsWith('/api/');
 
   if (!user && !isAuthPage) {

@@ -6,6 +6,7 @@ import { Mail, Phone, User, X, Trash2, Edit, Folder, Film, DollarSign, Calendar,
 import { useRouter } from 'next/navigation';
 import { Partner, Project, Episode } from '@/types';
 import { addToTrash } from '@/lib/trash';
+import { formatPhoneNumber } from '@/lib/utils';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
 import { useToast } from '@/contexts/ToastContext';
 import { EmptyPartners, EmptySearch } from '@/components/EmptyState';
@@ -452,7 +453,7 @@ export default function PartnersPage() {
                             {partner.name}
                           </div>
                           <div className="text-xs text-gray-400 truncate">
-                            {[partner.email, partner.phone].filter(Boolean).join(' · ')}
+                            {[partner.email, partner.phone ? formatPhoneNumber(partner.phone) : ''].filter(Boolean).join(' · ')}
                           </div>
                         </div>
                       </div>
@@ -568,7 +569,7 @@ export default function PartnersPage() {
                 {partner.phone && (
                   <div className="flex items-center text-sm text-gray-600 mb-3">
                     <Phone size={14} className="mr-2 text-gray-400" />
-                    {partner.phone}
+                    {formatPhoneNumber(partner.phone)}
                   </div>
                 )}
 
@@ -747,8 +748,8 @@ export default function PartnersPage() {
                       <FloatingLabelInput
                         label="전화번호"
                         type="tel"
-                        value={newPartner.phone}
-                        onChange={(e) => setNewPartner({ ...newPartner, phone: e.target.value })}
+                        value={formatPhoneNumber(newPartner.phone)}
+                        onChange={(e) => setNewPartner({ ...newPartner, phone: formatPhoneNumber(e.target.value) })}
                       />
                       {/* 은행 + 계좌번호 */}
                       <div className="space-y-1.5">
