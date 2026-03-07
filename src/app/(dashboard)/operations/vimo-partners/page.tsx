@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Phone, User, Mail } from 'lucide-react';
 import { Partner } from '@/types';
 import { getPartners } from '@/lib/supabase/db';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { formatPhoneNumber } from '@/lib/utils';
 
 const GENERATIONS = [1, 2, 3];
@@ -15,12 +16,16 @@ export default function VimoPartnersPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | number>('all');
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     getPartners().then((p) => {
       setPartners(p);
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useSupabaseRealtime(['partners'], loadData);
 
   // 기수별 최대 기수 계산 (데이터 기반으로 탭 동적 생성)
   const allGenerations = Array.from(

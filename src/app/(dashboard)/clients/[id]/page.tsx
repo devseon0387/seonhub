@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Client, Project, Partner, Episode } from '@/types';
 import { ArrowLeft, Mail, Phone, Building2, MapPin, User, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { getClients, getProjects, getPartners, getAllEpisodes, insertProject, insertClient, upsertEpisodes, updateClient } from '@/lib/supabase/db';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { formatPhoneNumber } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProjectWizardModal from '@/components/ProjectWizardModal';
@@ -23,25 +24,26 @@ export default function ClientDetailPage() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'in_progress' | 'completed' | 'planning'>('all');
   const [isWizardOpen, setIsWizardOpen] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
-      const [clients, projects, partners, episodesData] = await Promise.all([
-        getClients(),
-        getProjects(),
-        getPartners(),
-        getAllEpisodes(),
-      ]);
-      setAllClients(clients);
-      const foundClient = clients.find(c => c.id === clientId);
-      if (foundClient) {
-        setClient(foundClient);
-        setClientProjects(projects.filter(p => p.clientId === foundClient.id || p.client === foundClient.name));
-      }
-      setAllPartners(partners);
-      setEpisodes(episodesData);
-    };
-    loadData();
+  const loadData = useCallback(async () => {
+    const [clients, projects, partners, episodesData] = await Promise.all([
+      getClients(),
+      getProjects(),
+      getPartners(),
+      getAllEpisodes(),
+    ]);
+    setAllClients(clients);
+    const foundClient = clients.find(c => c.id === clientId);
+    if (foundClient) {
+      setClient(foundClient);
+      setClientProjects(projects.filter(p => p.clientId === foundClient.id || p.client === foundClient.name));
+    }
+    setAllPartners(partners);
+    setEpisodes(episodesData);
   }, [clientId]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useSupabaseRealtime(['clients', 'projects', 'episodes'], loadData);
 
   if (!client) {
     return (

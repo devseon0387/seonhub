@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Episode, Partner, EpisodeWorkItem, WorkContentType, Project, WorkStep, WorkTypeBudget } from '@/types';
 import { Plus, Calendar, DollarSign, ChevronDown, ChevronRight, ArrowLeft, X, User } from 'lucide-react';
 import { getProjects, getProjectEpisodes, getPartners, updateEpisodeFields } from '@/lib/supabase/db';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import DateRangePicker from '@/components/DateRangePicker';
 import DatePicker from '@/components/DatePicker';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -39,6 +40,9 @@ export default function EpisodeDetailPage() {
   // 자동 저장 상태
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const saveStatusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Realtime: 로컬 저장 직후 echo 무시용
+  const isLocalSaveRef = useRef(false);
 
   // 섹션 접기/펼치기 상태
   const [collapsedSections, setCollapsedSections] = useState({
@@ -214,61 +218,75 @@ export default function EpisodeDetailPage() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [paymentStatusOpen, invoiceStatusOpen]);
 
-  useEffect(() => {
-    const loadData = async () => {
-      const [projects, episodes, partnersData] = await Promise.all([
-        getProjects(),
-        getProjectEpisodes(projectId),
-        getPartners(),
-      ]);
+  const loadData = useCallback(async () => {
+    const [projects, episodes, partnersData] = await Promise.all([
+      getProjects(),
+      getProjectEpisodes(projectId),
+      getPartners(),
+    ]);
 
-      const foundProject = projects.find(p => p.id === projectId);
-      if (foundProject) setProject(foundProject);
+    const foundProject = projects.find(p => p.id === projectId);
+    if (foundProject) setProject(foundProject);
 
-      const foundEpisode = episodes.find(e => e.id === episodeId);
-      if (foundEpisode) {
-        setEpisode(foundEpisode);
-        setEditedEpisode(foundEpisode);
+    const foundEpisode = episodes.find(e => e.id === episodeId);
+    if (foundEpisode) {
+      setEpisode(foundEpisode);
+      setEditedEpisode(foundEpisode);
 
-        if (foundEpisode.workSteps) {
-          setWorkSteps(foundEpisode.workSteps);
-        }
+      if (foundEpisode.workSteps) {
+        setWorkSteps(foundEpisode.workSteps);
+      }
 
-        if (foundEpisode.workBudgets) {
-          // 기존 저장된 비용이 있으면 사용하되, 비용이 0인 작업 타입은 프로젝트 비용으로 자동 채움
-          const merged = { ...foundEpisode.workBudgets };
-          if (foundProject?.workTypeCosts && foundEpisode.workContent) {
-            foundEpisode.workContent.forEach(workType => {
-              const existing = merged[workType];
-              const hasBudget = existing && (existing.partnerPayment > 0 || existing.managementFee > 0);
-              if (!hasBudget && foundProject.workTypeCosts![workType]) {
-                merged[workType] = {
-                  partnerPayment: foundProject.workTypeCosts![workType].partnerCost,
-                  managementFee: foundProject.workTypeCosts![workType].managementCost,
-                };
-              }
-            });
-          }
-          setWorkBudgets(merged);
-        } else if (foundProject?.workTypeCosts && foundEpisode.workContent) {
-          const newBudgets = { ...workBudgets };
+      if (foundEpisode.workBudgets) {
+        // 기존 저장된 비용이 있으면 사용하되, 비용이 0인 작업 타입은 프로젝트 비용으로 자동 채움
+        const merged = { ...foundEpisode.workBudgets };
+        if (foundProject?.workTypeCosts && foundEpisode.workContent) {
           foundEpisode.workContent.forEach(workType => {
-            if (foundProject.workTypeCosts![workType]) {
-              newBudgets[workType] = {
+            const existing = merged[workType];
+            const hasBudget = existing && (existing.partnerPayment > 0 || existing.managementFee > 0);
+            if (!hasBudget && foundProject.workTypeCosts![workType]) {
+              merged[workType] = {
                 partnerPayment: foundProject.workTypeCosts![workType].partnerCost,
                 managementFee: foundProject.workTypeCosts![workType].managementCost,
               };
             }
           });
-          setWorkBudgets(newBudgets);
         }
+        setWorkBudgets(merged);
+      } else if (foundProject?.workTypeCosts && foundEpisode.workContent) {
+        const newBudgets: Record<WorkContentType, WorkTypeBudget> = {
+          '롱폼': { partnerPayment: 0, managementFee: 0 },
+          '기획 숏폼': { partnerPayment: 0, managementFee: 0 },
+          '본편 숏폼': { partnerPayment: 0, managementFee: 0 },
+          '썸네일': { partnerPayment: 0, managementFee: 0 },
+        };
+        foundEpisode.workContent.forEach(workType => {
+          if (foundProject.workTypeCosts![workType]) {
+            newBudgets[workType] = {
+              partnerPayment: foundProject.workTypeCosts![workType].partnerCost,
+              managementFee: foundProject.workTypeCosts![workType].managementCost,
+            };
+          }
+        });
+        setWorkBudgets(newBudgets);
       }
+    }
 
-      setPartners(partnersData);
-      isInitialMount.current = false;
-    };
-    loadData();
+    setPartners(partnersData);
+    isInitialMount.current = false;
   }, [projectId, episodeId]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // Realtime: 다른 사용자/비봇의 변경을 감지하여 re-fetch (자기 echo는 무시)
+  const handleRealtimeRefresh = useCallback(() => {
+    if (isLocalSaveRef.current) return; // 로컬 저장 직후 echo → 무시
+    loadData();
+  }, [loadData]);
+
+  useSupabaseRealtime(['episodes'], handleRealtimeRefresh, {
+    filter: { column: 'id', value: episodeId },
+  });
 
   // 실시간 자동 저장
   useEffect(() => {
@@ -276,6 +294,7 @@ export default function EpisodeDetailPage() {
     if (isInitialMount.current || !editedEpisode) return;
 
     setSaveStatus('saving');
+    isLocalSaveRef.current = true;
 
     const status = getOverallEpisodeStatus();
 
@@ -283,6 +302,8 @@ export default function EpisodeDetailPage() {
       setSaveStatus('saved');
       if (saveStatusTimeoutRef.current) clearTimeout(saveStatusTimeoutRef.current);
       saveStatusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
+      // 1초 후 echo 무시 해제
+      setTimeout(() => { isLocalSaveRef.current = false; }, 1000);
     });
   }, [editedEpisode, workSteps, workBudgets, episodeId, projectId]);
 

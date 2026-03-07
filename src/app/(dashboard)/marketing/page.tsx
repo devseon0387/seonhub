@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Video,
   Eye,
@@ -16,6 +16,7 @@ import {
 import Link from 'next/link';
 import { Project, PortfolioItem, Client, Inquiry } from '@/types';
 import { getProjects, getPortfolioItems, getClients, getInquiries } from '@/lib/supabase/db';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 
 export default function MarketingPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -24,22 +25,23 @@ export default function MarketingPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-      const [p, pf, c, inq] = await Promise.all([
-        getProjects(),
-        getPortfolioItems(),
-        getClients(),
-        getInquiries(),
-      ]);
-      setProjects(p);
-      setPortfolioItems(pf);
-      setClients(c);
-      setInquiries(inq);
-      setLoading(false);
-    }
-    load();
+  const loadData = useCallback(async () => {
+    const [p, pf, c, inq] = await Promise.all([
+      getProjects(),
+      getPortfolioItems(),
+      getClients(),
+      getInquiries(),
+    ]);
+    setProjects(p);
+    setPortfolioItems(pf);
+    setClients(c);
+    setInquiries(inq);
+    setLoading(false);
   }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useSupabaseRealtime(['portfolio_items'], loadData);
 
   const completedProjects = projects.filter(p => p.status === 'completed');
   const publishedPortfolio = portfolioItems.filter(p => p.isPublished);

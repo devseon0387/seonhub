@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -31,6 +31,7 @@ import {
   getPortfolioItems,
 } from '@/lib/supabase/db';
 import { useToast } from '@/contexts/ToastContext';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 
 type FilterStatus = 'all' | InquiryStatus;
 
@@ -70,15 +71,16 @@ export default function InquiriesPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [playingVideoUrl, setPlayingVideoUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      const [items, portfolio] = await Promise.all([getInquiries(), getPortfolioItems()]);
-      setInquiries(items);
-      setPortfolioItems(portfolio);
-      setLoading(false);
-    }
-    load();
+  const loadData = useCallback(async () => {
+    const [items, portfolio] = await Promise.all([getInquiries(), getPortfolioItems()]);
+    setInquiries(items);
+    setPortfolioItems(portfolio);
+    setLoading(false);
   }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useSupabaseRealtime(['inquiries'], loadData);
 
   // 포트폴리오 레퍼런스 문자열에서 매칭되는 포트폴리오 아이템 찾기
   const findPortfolioItem = (ref: string | { id: string; title: string; category: string; client: string }): PortfolioItem | undefined => {

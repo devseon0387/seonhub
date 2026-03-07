@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Users, FolderOpen, CheckCircle, Clock, TrendingUp, Wallet, Calendar, X, ChevronDown, Sparkles, AlertTriangle, Megaphone, Building2, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -10,6 +10,7 @@ import { FloatingLabelInput, FloatingLabelTextarea } from '@/components/Floating
 import ProjectWizardModal from '@/components/ProjectWizardModal';
 import { formatPhoneNumber } from '@/lib/utils';
 import { getProjects, getPartners, getClients, insertClient, insertPartner, insertProject, getAllEpisodes, upsertEpisodes } from '@/lib/supabase/db';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { useToast } from '@/contexts/ToastContext';
 
 export default function DashboardPage() {
@@ -90,28 +91,30 @@ export default function DashboardPage() {
     tags: [],
   });
 
+  const loadData = useCallback(async () => {
+    const [projectsData, partnersData, clientsData, episodesData] = await Promise.all([
+      getProjects(),
+      getPartners(),
+      getClients(),
+      getAllEpisodes(),
+    ]);
+    setProjects(projectsData);
+    setPartners(partnersData);
+    setClients(clientsData);
+    setAllEpisodes(episodesData);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     // 로그인 직후 환영 토스트
     if (sessionStorage.getItem('vm_just_logged_in')) {
       sessionStorage.removeItem('vm_just_logged_in');
       toast.success('로그인에 성공했습니다!');
     }
-
-    const loadData = async () => {
-      const [projectsData, partnersData, clientsData, episodesData] = await Promise.all([
-        getProjects(),
-        getPartners(),
-        getClients(),
-        getAllEpisodes(),
-      ]);
-      setProjects(projectsData);
-      setPartners(partnersData);
-      setClients(clientsData);
-      setAllEpisodes(episodesData);
-      setLoading(false);
-    };
     loadData();
-  }, []);
+  }, [loadData]);
+
+  useSupabaseRealtime(['projects', 'episodes', 'partners', 'clients'], loadData);
 
   // 클라이언트 추가 핸들러
   const handleAddClient = async () => {

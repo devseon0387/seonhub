@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Users, Receipt, FolderOpen, Briefcase, TrendingUp, ClipboardCheck, Wallet, ArrowRight, ChevronDown } from 'lucide-react';
 import { Project, Partner, Client, Episode } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getProjects, getPartners, getClients, getAllEpisodes } from '@/lib/supabase/db';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { groupByClient, groupByPartner, calculateManagerTotal } from '@/lib/settlement';
 
 const statusConfig: Record<string, { label: string; dot: string; badge: string }> = {
@@ -40,7 +41,7 @@ export default function SettlementPage() {
     setActiveTab(tab);
   };
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     setError(false);
     setLoading(true);
     Promise.all([getProjects(), getPartners(), getClients(), getAllEpisodes()]).then(
@@ -59,9 +60,11 @@ export default function SettlementPage() {
         setLoading(false);
       }
     ).catch(() => { setError(true); setLoading(false); });
-  };
+  }, []);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useSupabaseRealtime(['episodes', 'projects', 'partners'], loadData);
 
   // 이번 달 프로젝트만 필터링
   const now = new Date();

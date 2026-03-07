@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Phone, Building2, MapPin, X, Trash2, ChevronDown, Search, Folder, Plus, Users, CheckCircle, Pencil } from 'lucide-react';
 import { Client, Project } from '@/types';
@@ -10,6 +10,7 @@ import { FloatingLabelInput, FloatingLabelTextarea } from '@/components/Floating
 import { EmptyClients, EmptySearch } from '@/components/EmptyState';
 import { getClients, insertClient, updateClient, deleteClient, getProjects } from '@/lib/supabase/db';
 import { useToast } from '@/contexts/ToastContext';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 
 export default function ClientsPage() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     setError(false);
     setLoading(true);
     Promise.all([getClients(), getProjects()]).then(([c, p]) => {
@@ -28,9 +29,11 @@ export default function ClientsPage() {
       setAllProjects(p);
       setLoading(false);
     }).catch(() => { setError(true); setLoading(false); });
-  };
+  }, []);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useSupabaseRealtime(['clients'], loadData);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 

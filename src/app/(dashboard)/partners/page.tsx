@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, User, X, Trash2, Edit, Folder, Film, DollarSign, Calendar, ChevronDown, Search, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -11,6 +11,7 @@ import { FloatingLabelInput } from '@/components/FloatingLabelInput';
 import { useToast } from '@/contexts/ToastContext';
 import { EmptyPartners, EmptySearch } from '@/components/EmptyState';
 import { getPartners, insertPartner, updatePartner, deletePartner, getProjects, getAllEpisodes } from '@/lib/supabase/db';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import PartnerEditModal from './PartnerEditModal';
 
 const KR_BANKS = [
@@ -88,7 +89,7 @@ export default function PartnersPage() {
   const [allEpisodesData, setAllEpisodesData] = useState<(Episode & { projectId: string })[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     Promise.all([getPartners(), getProjects(), getAllEpisodes()]).then(
       ([p, proj, eps]) => {
         setPartners(p);
@@ -98,6 +99,10 @@ export default function PartnersPage() {
       }
     );
   }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useSupabaseRealtime(['partners'], loadData);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [partnerToDelete, setPartnerToDelete] = useState<{ id: string; name: string } | null>(null);

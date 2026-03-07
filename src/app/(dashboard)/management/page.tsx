@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   getProjects, getPartners, getClients, getAllEpisodes,
@@ -8,6 +8,7 @@ import {
   insertProject, insertClient, upsertEpisodes,
   ChecklistRow,
 } from '@/lib/supabase/db';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { Calendar, Clock, AlertCircle, CheckCircle, Users, Sparkles, Plus, Trash2, Bell, BellOff, X, Link2, Search, Repeat2, ChevronLeft, ChevronRight, User, FolderOpen } from 'lucide-react';
 import { Project, Episode, Partner, Client, WorkContentType } from '@/types';
 import ProjectWizardModal from '@/components/ProjectWizardModal';
@@ -358,29 +359,32 @@ export default function ManagementPage() {
 
   const [loading, setLoading] = useState(true);
 
+  const loadData = useCallback(async () => {
+    const [projectsData, partnersData, clientsData, episodesData, checklistRows] = await Promise.all([
+      getProjects(),
+      getPartners(),
+      getClients(),
+      getAllEpisodes(),
+      getMyChecklists(),
+    ]);
+    setProjects(projectsData);
+    setPartners(partnersData);
+    setClients(clientsData);
+    setAllEpisodes(episodesData);
+    setChecklistItems(checklistRows.map(rowToItem));
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
-    const loadData = async () => {
-      const [projectsData, partnersData, clientsData, episodesData, checklistRows] = await Promise.all([
-        getProjects(),
-        getPartners(),
-        getClients(),
-        getAllEpisodes(),
-        getMyChecklists(),
-      ]);
-      setProjects(projectsData);
-      setPartners(partnersData);
-      setClients(clientsData);
-      setAllEpisodes(episodesData);
-      setChecklistItems(checklistRows.map(rowToItem));
-      setLoading(false);
-    };
     loadData();
 
     // 알림 권한 상태 초기화
     if ('Notification' in window) {
       notificationPermission.current = Notification.permission;
     }
-  }, []);
+  }, [loadData]);
+
+  useSupabaseRealtime(['projects', 'episodes', 'partners', 'clients'], loadData);
 
   // 알림 체크 (30초마다) - checklistItems를 ref로 참조해 인터벌 재생성 방지
   const checklistItemsRef = useRef<ChecklistItem[]>([]);

@@ -10,6 +10,7 @@ import DatePicker from '@/components/DatePicker';
 import { formatPhoneNumber } from '@/lib/utils';
 import { useToast } from '@/contexts/ToastContext';
 import { getPartners, updatePartner, deletePartner, getProjects, getAllEpisodes } from '@/lib/supabase/db';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import PartnerEditModal from '../PartnerEditModal';
 
 interface PartnerHistoryEntry {
@@ -239,6 +240,8 @@ export default function PartnerDetailPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useSupabaseRealtime(['partners', 'episodes'], loadData);
 
   // #1 로딩: 스켈레톤 UI
   if (loading) {

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getProjects, insertProject, insertClient, getClients as fetchClients, getAllEpisodes, getPartners, upsertEpisodes } from '@/lib/supabase/db';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { Calendar, User, X, ChevronDown, Search, ArrowRight, Plus, Building2 } from 'lucide-react';
 import { calculateReserve } from '@/lib/utils';
 import Link from 'next/link';
@@ -31,22 +32,23 @@ export default function ProjectsPage() {
   // Supabase에서 파트너 데이터 로드
   const [allPartners, setAllPartners] = useState<Partner[]>([]);
 
-  useEffect(() => {
-    const loadData = async () => {
-      const [projectsData, clientsData, episodesData, partnersData] = await Promise.all([
-        getProjects(),
-        fetchClients(),
-        getAllEpisodes(),
-        getPartners(),
-      ]);
-      setProjects(projectsData);
-      setClients(clientsData);
-      setEpisodes(episodesData);
-      setAllPartners(partnersData);
-      setLoading(false);
-    };
-    loadData();
+  const loadData = useCallback(async () => {
+    const [projectsData, clientsData, episodesData, partnersData] = await Promise.all([
+      getProjects(),
+      fetchClients(),
+      getAllEpisodes(),
+      getPartners(),
+    ]);
+    setProjects(projectsData);
+    setClients(clientsData);
+    setEpisodes(episodesData);
+    setAllPartners(partnersData);
+    setLoading(false);
   }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useSupabaseRealtime(['projects', 'episodes', 'clients', 'partners'], loadData);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 

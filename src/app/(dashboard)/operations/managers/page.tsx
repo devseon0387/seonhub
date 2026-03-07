@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Phone, User, Mail, Plus, X, Trash2 } from 'lucide-react';
 import { Partner } from '@/types';
 import { getPartners, insertPartner, deletePartner } from '@/lib/supabase/db';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { addToTrash } from '@/lib/trash';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
 import { formatPhoneNumber } from '@/lib/utils';
@@ -23,12 +24,16 @@ export default function ManagersPage() {
     role: 'admin', position: 'manager', status: 'active',
   });
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     getPartners().then((all) => {
       setManagers(all.filter((p) => p.position === 'manager'));
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useSupabaseRealtime(['partners'], loadData);
 
   const handleAdd = async () => {
     if (!newMember.name) {

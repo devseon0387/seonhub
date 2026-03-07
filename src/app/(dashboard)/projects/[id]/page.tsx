@@ -6,6 +6,7 @@ import { Project, Client, Episode, Partner, WorkContentType } from '@/types';
 import { ArrowLeft, Calendar, User, DollarSign, Tag, Edit, Trash2, TrendingUp, ChevronRight, X, UserCircle, FileText, Users, Video, Palette, Image, CheckCircle2, Clock, Pause, Target, ChevronDown, ClipboardCheck, Building2, Tv, Youtube, Monitor, Camera } from 'lucide-react';
 import { addToTrash } from '@/lib/trash';
 import { getProjectById, updateProject, deleteProject, getClients as fetchClients, getProjectEpisodes, getPartners, upsertEpisode, updateEpisodeFields, deleteEpisode, deleteProjectEpisodes } from '@/lib/supabase/db';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import Link from 'next/link';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
 import ProjectChecklistModal from '@/components/ProjectChecklistModal';
@@ -101,38 +102,39 @@ export default function ProjectDetailPage() {
   const [isChannelDropdownOpen, setIsChannelDropdownOpen] = useState(false);
   const [isWorkContentDropdownOpen, setIsWorkContentDropdownOpen] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
-      const [foundProject, clientsData, partnersData, eps] = await Promise.all([
-        getProjectById(projectId),
-        fetchClients(),
-        getPartners(),
-        getProjectEpisodes(projectId),
-      ]);
-      setProject(foundProject);
-      if (foundProject) {
-        setPartnerIds(foundProject.partnerIds);
-        setManagerIds(foundProject.managerIds);
-        setSelectedClient(foundProject.client || '');
-        setSelectedCategory(foundProject.category || '');
-        const defaultCosts = {
-          '롱폼': { partnerCost: 0, managementCost: 0 },
-          '기획 숏폼': { partnerCost: 0, managementCost: 0 },
-          '본편 숏폼': { partnerCost: 0, managementCost: 0 },
-          '썸네일': { partnerCost: 0, managementCost: 0 },
-        };
-        const costs = foundProject.workTypeCosts ? { ...defaultCosts, ...foundProject.workTypeCosts } : defaultCosts;
-        setWorkTypeCosts(costs);
-        setTotalAmount(foundProject.budget.totalAmount);
-        setTempWorkContent(foundProject.workContent || []);
-      }
-      setClients(clientsData);
-      setAllPartners(partnersData);
-      setEpisodes(eps);
-      setIsLoadingProject(false);
-    };
-    loadData();
+  const loadData = useCallback(async () => {
+    const [foundProject, clientsData, partnersData, eps] = await Promise.all([
+      getProjectById(projectId),
+      fetchClients(),
+      getPartners(),
+      getProjectEpisodes(projectId),
+    ]);
+    setProject(foundProject);
+    if (foundProject) {
+      setPartnerIds(foundProject.partnerIds);
+      setManagerIds(foundProject.managerIds);
+      setSelectedClient(foundProject.client || '');
+      setSelectedCategory(foundProject.category || '');
+      const defaultCosts = {
+        '롱폼': { partnerCost: 0, managementCost: 0 },
+        '기획 숏폼': { partnerCost: 0, managementCost: 0 },
+        '본편 숏폼': { partnerCost: 0, managementCost: 0 },
+        '썸네일': { partnerCost: 0, managementCost: 0 },
+      };
+      const costs = foundProject.workTypeCosts ? { ...defaultCosts, ...foundProject.workTypeCosts } : defaultCosts;
+      setWorkTypeCosts(costs);
+      setTotalAmount(foundProject.budget.totalAmount);
+      setTempWorkContent(foundProject.workContent || []);
+    }
+    setClients(clientsData);
+    setAllPartners(partnersData);
+    setEpisodes(eps);
+    setIsLoadingProject(false);
   }, [projectId]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useSupabaseRealtime(['projects', 'episodes', 'partners', 'clients'], loadData);
 
   // 드롭다운 외부 클릭 감지
   useEffect(() => {

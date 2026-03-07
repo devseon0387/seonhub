@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ArrowLeft, Briefcase, Users, ClipboardCheck, Wallet, ArrowRight, ChevronDown, Receipt, Calendar } from 'lucide-react';
 import { Project, Partner, Client } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getProjects, getPartners, getClients } from '@/lib/supabase/db';
+import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { groupByClient, groupByPartner } from '@/lib/settlement';
 import Link from 'next/link';
 
@@ -43,7 +44,7 @@ export default function SettlementHistoryPage() {
     setActiveTab(tab);
   };
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     Promise.all([getProjects(), getPartners(), getClients()]).then(
       ([p, pa, c]) => {
         setProjects(p);
@@ -53,6 +54,10 @@ export default function SettlementHistoryPage() {
       }
     );
   }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useSupabaseRealtime(['episodes', 'projects', 'partners'], loadData);
 
   // 월별로 프로젝트 그룹핑 (createdAt 기준)
   const monthlyData = useMemo(() => {
