@@ -57,26 +57,46 @@ export function getComputedProjectStatus(
   return 'inactive';
 }
 
-// 프로젝트 정렬 키 (active: 가장 가까운 미완료 dueDate, 나머지: 마지막 completedAt)
-export function getProjectSortKey(
-  projectEpisodes: Episode[],
-  computedStatus: ComputedProjectStatus
+// 상태 우선순위 (active가 가장 먼저)
+const STATUS_PRIORITY: Record<ComputedProjectStatus, number> = {
+  active: 0, standby: 1, dormant: 2, inactive: 3,
+};
+
+// 프로젝트 정렬: 상태 우선순위 비교 후, 같은 그룹 내 일정순
+export function compareProjects(
+  aEpisodes: Episode[], aStatus: ComputedProjectStatus,
+  bEpisodes: Episode[], bStatus: ComputedProjectStatus,
 ): number {
-  if (computedStatus === 'active') {
-    // 미완료 에피소드 중 가장 가까운 dueDate (오름차순 → 작은 값이 먼저)
-    const dueDates = projectEpisodes
-      .filter(ep => ep.status !== 'completed' && ep.dueDate)
-      .map(ep => new Date(ep.dueDate!).getTime());
-    if (dueDates.length > 0) return Math.min(...dueDates);
-    return Infinity; // dueDate 없으면 맨 뒤
+  // 1. 상태 그룹 우선순위
+  const priorityDiff = STATUS_PRIORITY[aStatus] - STATUS_PRIORITY[bStatus];
+  if (priorityDiff !== 0) return priorityDiff;
+
+  // 2. 같은 그룹 내 정렬
+  if (aStatus === 'active') {
+    // 가장 가까운 미완료 에피소드 dueDate 오름차순
+    const aDue = getEarliestDueDate(aEpisodes);
+    const bDue = getEarliestDueDate(bEpisodes);
+    return aDue - bDue;
   }
-  // 대기/휴면/비활성: 마지막 completedAt (내림차순 → 큰 값이 먼저 → 음수로 변환)
-  const completedDates = projectEpisodes
+  // standby/dormant/inactive: 마지막 completedAt 내림차순 (최신 먼저)
+  const aCompleted = getLatestCompletedAt(aEpisodes);
+  const bCompleted = getLatestCompletedAt(bEpisodes);
+  return bCompleted - aCompleted;
+}
+
+function getEarliestDueDate(episodes: Episode[]): number {
+  const dueDates = episodes
+    .filter(ep => ep.status !== 'completed' && ep.dueDate)
+    .map(ep => new Date(ep.dueDate!).getTime());
+  return dueDates.length > 0 ? Math.min(...dueDates) : Infinity;
+}
+
+function getLatestCompletedAt(episodes: Episode[]): number {
+  const dates = episodes
     .map(ep => ep.completedAt)
     .filter((d): d is string => !!d)
     .map(d => new Date(d).getTime());
-  if (completedDates.length > 0) return -Math.max(...completedDates);
-  return 0;
+  return dates.length > 0 ? Math.max(...dates) : 0;
 }
 
 // 프로젝트 상태 한글 변환

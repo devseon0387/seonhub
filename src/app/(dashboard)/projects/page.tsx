@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { getProjects, insertProject, insertClient, getClients as fetchClients, getAllEpisodes, getPartners, upsertEpisodes } from '@/lib/supabase/db';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { Calendar, User, X, ChevronDown, Search, ArrowRight, Plus, Building2 } from 'lucide-react';
-import { calculateReserve, getComputedProjectStatus, getProjectSortKey, ComputedProjectStatus } from '@/lib/utils';
+import { calculateReserve, getComputedProjectStatus, compareProjects, ComputedProjectStatus } from '@/lib/utils';
 import Link from 'next/link';
 import { Project, Client, Episode, WorkContentType, Partner } from '@/types';
 import { updateEpisodeFields } from '@/lib/supabase/db';
@@ -116,8 +116,10 @@ export default function ProjectsPage() {
     .sort((a, b) => {
       // 정렬 적용
       if (sortBy === 'recent') {
-        return getProjectSortKey(projectEpisodesMap.get(a.id)!, projectStatusMap.get(a.id)!)
-             - getProjectSortKey(projectEpisodesMap.get(b.id)!, projectStatusMap.get(b.id)!);
+        return compareProjects(
+          projectEpisodesMap.get(a.id)!, projectStatusMap.get(a.id)!,
+          projectEpisodesMap.get(b.id)!, projectStatusMap.get(b.id)!,
+        );
       } else if (sortBy === 'amount') {
         return b.budget.totalAmount - a.budget.totalAmount;
       } else if (sortBy === 'name') {
