@@ -27,6 +27,20 @@ const STORAGE_KEY = 'video-moment-changelog';
 
 const defaultChangelogs: ChangelogItem[] = [
   {
+    id: '4',
+    version: 'v0.1.3',
+    date: '2026-03-08',
+    title: '프로젝트 상태 자동 분류 체계 전환',
+    description: '수동 상태 설정 대신 에피소드 completedAt 기준으로 active/standby/dormant/inactive 상태를 자동 계산',
+    type: 'feature',
+    details: [
+      '에피소드 완료일 기준 프로젝트 상태 자동 계산 (active/standby/dormant/inactive)',
+      '프로젝트 목록 탭을 진행 중/대기/휴면/비활성으로 변경',
+      '진행 중 프로젝트는 마감일순, 나머지는 최신 완료일순 정렬',
+      '프로젝트 상세 및 대시보드 StatusBadge 일괄 업데이트',
+    ],
+  },
+  {
     id: '3',
     version: 'v0.1.2',
     date: '2026-02-24',
