@@ -161,13 +161,13 @@ export default function StrategyPage() {
   const [loading,   setLoading  ] = useState(true);
 
   useEffect(() => {
-    strategyApi.getGroups().then(async gs => {
+    Promise.all([
+      strategyApi.getGroups(),
+      strategyApi.getAllDocs(),
+    ]).then(([gs, allDocs]) => {
       setGroups(gs);
       const counts: Record<string, number> = {};
-      await Promise.all(gs.map(async g => {
-        const docs = await strategyApi.getDocs(g.id);
-        counts[g.id] = docs.length;
-      }));
+      gs.forEach(g => { counts[g.id] = allDocs.filter(d => d.groupId === g.id).length; });
       setDocCounts(counts);
     }).finally(() => setLoading(false));
   }, []);

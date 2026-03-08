@@ -57,6 +57,11 @@ export const strategyApi = {
     return r.json();
   },
 
+  async getAllDocs(): Promise<StrategyDoc[]> {
+    const r = await fetch('/api/strategy/docs');
+    return r.json();
+  },
+
   async getDoc(id: string): Promise<StrategyDoc | null> {
     const r = await fetch(`/api/strategy/docs/${id}`);
     if (!r.ok) return null;
