@@ -28,18 +28,28 @@ export default function EpisodeDetailPage() {
   const [episode, setEpisode] = useState<Episode | null>(null);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [editingField, setEditingField] = useState<string | null>(null);
+  const editingFieldRef = useRef<string | null>(null);
   const [partnerSearch, setPartnerSearch] = useState('');
   const [confirmRemove, setConfirmRemove] = useState<WorkContentType | null>(null);
   const [editedEpisode, setEditedEpisode] = useState<Episode | null>(null);
 
   // 초기 마운트 추적
   const isInitialMount = useRef(true);
+  // 사용자가 실제로 수정했을 때만 저장하기 위한 플래그
+  const isDirtyRef = useRef(false);
+
+  // 사용자 수정용 setter (dirty 플래그 자동 설정)
+  const editEpisode: typeof setEditedEpisode = (value) => {
+    isDirtyRef.current = true;
+    setEditedEpisode(value);
+  };
   // 수정 후에만 주황→검정 애니메이션 재생
   const [editedFields, setEditedFields] = useState<Set<string>>(new Set());
 
   // 자동 저장 상태
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const saveStatusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Realtime: 로컬 저장 직후 echo 무시용
   const isLocalSaveRef = useRef(false);
@@ -76,6 +86,16 @@ export default function EpisodeDetailPage() {
     '본편 숏폼': { partnerPayment: 0, managementFee: 0 },
     '썸네일': { partnerPayment: 0, managementFee: 0 },
   });
+
+  // 사용자 수정용 setter (dirty 플래그 자동 설정)
+  const editWorkSteps: typeof setWorkSteps = (value) => {
+    isDirtyRef.current = true;
+    setWorkSteps(value);
+  };
+  const editWorkBudgets: typeof setWorkBudgets = (value) => {
+    isDirtyRef.current = true;
+    setWorkBudgets(value);
+  };
 
   // 비용 상세 펼침/접힘 상태
   const [expandedBudgets, setExpandedBudgets] = useState<Record<WorkContentType, boolean>>({
@@ -231,7 +251,10 @@ export default function EpisodeDetailPage() {
     const foundEpisode = episodes.find(e => e.id === episodeId);
     if (foundEpisode) {
       setEpisode(foundEpisode);
-      setEditedEpisode(foundEpisode);
+      // 편집 중이면 editedEpisode를 덮어쓰지 않음 (입력값 유실 방지)
+      if (!editingFieldRef.current) {
+        setEditedEpisode(foundEpisode);
+      }
 
       if (foundEpisode.workSteps) {
         setWorkSteps(foundEpisode.workSteps);
@@ -288,23 +311,32 @@ export default function EpisodeDetailPage() {
     filter: { column: 'id', value: episodeId },
   });
 
-  // 실시간 자동 저장
+  // 실시간 자동 저장 — 사용자가 수정했을 때만 실행
   useEffect(() => {
-    // 초기 마운트 시에는 저장하지 않음
-    if (isInitialMount.current || !editedEpisode) return;
+    if (!isDirtyRef.current || !editedEpisode) return;
 
     setSaveStatus('saving');
-    isLocalSaveRef.current = true;
 
-    const status = getOverallEpisodeStatus();
+    // 이전 디바운스 타이머 취소
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
 
-    updateEpisodeFields(episodeId, { status, workSteps, workBudgets }).then(() => {
-      setSaveStatus('saved');
-      if (saveStatusTimeoutRef.current) clearTimeout(saveStatusTimeoutRef.current);
-      saveStatusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
-      // 1초 후 echo 무시 해제
-      setTimeout(() => { isLocalSaveRef.current = false; }, 1000);
-    });
+    saveDebounceRef.current = setTimeout(() => {
+      isDirtyRef.current = false;
+      isLocalSaveRef.current = true;
+
+      const status = getOverallEpisodeStatus();
+
+      updateEpisodeFields(episodeId, { ...editedEpisode, status, workSteps, workBudgets }).then(() => {
+        setSaveStatus('saved');
+        if (saveStatusTimeoutRef.current) clearTimeout(saveStatusTimeoutRef.current);
+        saveStatusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
+        setTimeout(() => { isLocalSaveRef.current = false; }, 1000);
+      });
+    }, 500);
+
+    return () => {
+      if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+    };
   }, [editedEpisode, workSteps, workBudgets, episodeId, projectId]);
 
   if (!episode || !editedEpisode || !project) {
@@ -355,7 +387,7 @@ export default function EpisodeDetailPage() {
     };
     const updatedWorkItems = [...(editedEpisode.workItems || []), newWorkItem];
 
-    setEditedEpisode(prev => prev ? ({
+    editEpisode(prev => prev ? ({
       ...prev,
       workContent: updatedWorkContent,
       workItems: updatedWorkItems,
@@ -363,7 +395,7 @@ export default function EpisodeDetailPage() {
 
     // 프로젝트의 비용 정보를 기반으로 작업별 비용 자동 설정
     if (project.workTypeCosts && project.workTypeCosts[workType]) {
-      setWorkBudgets(prev => ({
+      editWorkBudgets(prev => ({
         ...prev,
         [workType]: {
           partnerPayment: project.workTypeCosts![workType]!.partnerCost,
@@ -383,7 +415,7 @@ export default function EpisodeDetailPage() {
       assigneeId: editedEpisode.assignee || undefined,
     };
 
-    setWorkSteps(prev => ({
+    editWorkSteps(prev => ({
       ...prev,
       [workType]: [newStep],
     }));
@@ -394,14 +426,14 @@ export default function EpisodeDetailPage() {
     const updatedWorkContent = editedEpisode.workContent.filter(type => type !== workType);
     const updatedWorkItems = (editedEpisode.workItems || []).filter(item => item.type !== workType);
 
-    setEditedEpisode(prev => prev ? ({
+    editEpisode(prev => prev ? ({
       ...prev,
       workContent: updatedWorkContent,
       workItems: updatedWorkItems,
     }) : null);
 
     // 작업 단계도 초기화
-    setWorkSteps(prev => ({
+    editWorkSteps(prev => ({
       ...prev,
       [workType]: [],
     }));
@@ -431,7 +463,7 @@ export default function EpisodeDetailPage() {
       assigneeId: editedEpisode.assignee || undefined,
     };
 
-    setWorkSteps(prev => ({
+    editWorkSteps(prev => ({
       ...prev,
       [workType]: [...(prev[workType] || []), newStep],
     }));
@@ -439,7 +471,7 @@ export default function EpisodeDetailPage() {
 
   // 작업 단계 제거
   const handleRemoveWorkStep = (workType: WorkContentType, stepId: string) => {
-    setWorkSteps(prev => ({
+    editWorkSteps(prev => ({
       ...prev,
       [workType]: prev[workType].filter(step => step.id !== stepId),
     }));
@@ -452,7 +484,7 @@ export default function EpisodeDetailPage() {
     field: keyof WorkStep,
     value: string
   ) => {
-    setWorkSteps(prev => {
+    editWorkSteps(prev => {
       const steps = prev[workType];
       if (field === 'category') {
         // 카테고리 변경 시 label 자동 갱신
@@ -508,7 +540,7 @@ export default function EpisodeDetailPage() {
     field: 'partnerPayment' | 'managementFee',
     value: number
   ) => {
-    setWorkBudgets(prev => ({
+    editWorkBudgets(prev => ({
       ...prev,
       [workType]: {
         ...prev[workType],
@@ -527,7 +559,7 @@ export default function EpisodeDetailPage() {
   // 모든 작업 단계를 완료로 표시
   const handleMarkAllComplete = (workType: WorkContentType) => {
     setPrevWorkSteps(prev => ({ ...prev, [workType]: workSteps[workType].map(s => ({ ...s })) }));
-    setWorkSteps(prev => ({
+    editWorkSteps(prev => ({
       ...prev,
       [workType]: prev[workType].map(step => ({ ...step, status: 'completed' as const })),
     }));
@@ -537,7 +569,7 @@ export default function EpisodeDetailPage() {
   const handleUndoMarkAll = (workType: WorkContentType) => {
     const saved = prevWorkSteps[workType];
     if (!saved) return;
-    setWorkSteps(prev => ({ ...prev, [workType]: saved }));
+    editWorkSteps(prev => ({ ...prev, [workType]: saved }));
     setPrevWorkSteps(prev => ({ ...prev, [workType]: null }));
   };
 
@@ -605,15 +637,17 @@ export default function EpisodeDetailPage() {
 
   const handleFieldClick = (field: string) => {
     setEditingField(field);
+    editingFieldRef.current = field;
   };
 
   const handleFieldChange = (field: string, value: any) => {
-    setEditedEpisode(prev => prev ? ({ ...prev, [field]: value }) : null);
+    editEpisode(prev => prev ? ({ ...prev, [field]: value }) : null);
     setEditedFields(prev => new Set(prev).add(field));
   };
 
   const handleFieldBlur = () => {
     setEditingField(null);
+    editingFieldRef.current = null;
   };
 
   const getStatusColor = (status: string) => {
@@ -878,7 +912,7 @@ export default function EpisodeDetailPage() {
                               <p className="text-xs text-gray-400 mb-1.5">입금 예정일</p>
                               <DatePicker
                                 value={editedEpisode.paymentDueDate || ''}
-                                onChange={(val) => setEditedEpisode(prev => prev ? { ...prev, paymentDueDate: val || undefined } : prev)}
+                                onChange={(val) => editEpisode(prev => prev ? { ...prev, paymentDueDate: val || undefined } : prev)}
                                 placeholder="날짜 선택"
                               />
                             </div>
@@ -923,7 +957,7 @@ export default function EpisodeDetailPage() {
                                             key={opt.value}
                                             type="button"
                                             onClick={() => {
-                                              setEditedEpisode(prev => prev ? { ...prev, paymentStatus: opt.value } : prev);
+                                              editEpisode(prev => prev ? { ...prev, paymentStatus: opt.value } : prev);
                                               setPaymentStatusOpen(false);
                                             }}
                                             className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-sm transition-colors ${
@@ -951,7 +985,7 @@ export default function EpisodeDetailPage() {
                               <p className="text-xs text-gray-400 mb-1.5">세금계산서 발행일</p>
                               <DatePicker
                                 value={editedEpisode.invoiceDate || ''}
-                                onChange={(val) => setEditedEpisode(prev => prev ? { ...prev, invoiceDate: val || undefined } : prev)}
+                                onChange={(val) => editEpisode(prev => prev ? { ...prev, invoiceDate: val || undefined } : prev)}
                                 placeholder="날짜 선택"
                               />
                             </div>
@@ -996,7 +1030,7 @@ export default function EpisodeDetailPage() {
                                             key={opt.value}
                                             type="button"
                                             onClick={() => {
-                                              setEditedEpisode(prev => prev ? { ...prev, invoiceStatus: opt.value } : prev);
+                                              editEpisode(prev => prev ? { ...prev, invoiceStatus: opt.value } : prev);
                                               setInvoiceStatusOpen(false);
                                             }}
                                             className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-sm transition-colors ${
@@ -1054,7 +1088,7 @@ export default function EpisodeDetailPage() {
                               type="text"
                               inputMode="numeric"
                               value={formatCurrency(editedEpisode.budget?.totalAmount)}
-                              onChange={(e) => setEditedEpisode(prev => prev ? {
+                              onChange={(e) => editEpisode(prev => prev ? {
                                 ...prev,
                                 budget: {
                                   totalAmount: parseCurrency(e.target.value),
@@ -1121,7 +1155,7 @@ export default function EpisodeDetailPage() {
           {!editedEpisode.budget && (
             <button
               onClick={() => {
-                setEditedEpisode(prev => prev ? {
+                editEpisode(prev => prev ? {
                   ...prev,
                   budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0 }
                 } : prev);
@@ -2092,7 +2126,7 @@ export default function EpisodeDetailPage() {
                             startDate: '',
                             dueDate: '',
                           };
-                          setWorkSteps({
+                          editWorkSteps({
                             ...workSteps,
                             [selectedWorkTypeModal]: [...currentSteps, newStep]
                           });
@@ -2233,7 +2267,7 @@ export default function EpisodeDetailPage() {
                                     onClick={() => {
                                       const updatedSteps = [...steps];
                                       updatedSteps[index] = { ...step, status: 'completed' };
-                                      setWorkSteps({ ...workSteps, [selectedWorkTypeModal]: updatedSteps });
+                                      editWorkSteps({ ...workSteps, [selectedWorkTypeModal]: updatedSteps });
                                       showToast(`"${step.label || `작업 ${index + 1}`}"을(를) 완료로 표시했습니다.`);
                                     }}
                                     className="px-3 py-1.5 bg-green-500/90 backdrop-blur-sm text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium shadow-sm"
@@ -2246,7 +2280,7 @@ export default function EpisodeDetailPage() {
                                     onClick={() => {
                                       const updatedSteps = [...steps];
                                       updatedSteps[index] = { ...step, status: 'in_progress' };
-                                      setWorkSteps({ ...workSteps, [selectedWorkTypeModal]: updatedSteps });
+                                      editWorkSteps({ ...workSteps, [selectedWorkTypeModal]: updatedSteps });
                                       showToast(`"${step.label || `작업 ${index + 1}`}"을(를) 진행중으로 변경했습니다.`);
                                     }}
                                     className="px-3 py-1.5 bg-yellow-500/90 backdrop-blur-sm text-white rounded-lg hover:bg-yellow-600 transition-colors text-sm font-medium shadow-sm"

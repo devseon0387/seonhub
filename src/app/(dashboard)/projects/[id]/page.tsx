@@ -572,20 +572,58 @@ export default function ProjectDetailPage() {
     const defaultAssignee = partnerIds.length > 0 ? partnerIds[0] : (allPartners[0]?.id || '');
     const defaultManager = managerIds.length > 0 ? managerIds[0] : (allPartners[0]?.id || '');
 
+    // 프로젝트의 작업 타입과 비용 정보를 회차에 자동 적용
+    const projectWorkContent = project?.workContent || [];
+    const episodeWorkBudgets: Record<string, { partnerPayment: number; managementFee: number }> = {};
+    let episodePartnerTotal = 0;
+    let episodeManagementTotal = 0;
+    projectWorkContent.forEach(wt => {
+      const cost = workTypeCosts[wt as keyof typeof workTypeCosts];
+      if (cost) {
+        episodeWorkBudgets[wt] = {
+          partnerPayment: cost.partnerCost,
+          managementFee: cost.managementCost,
+        };
+        episodePartnerTotal += cost.partnerCost;
+        episodeManagementTotal += cost.managementCost;
+      }
+    });
+
+    // 각 작업 타입에 "원본 전달" 작업 단계 자동 생성
+    const episodeWorkSteps: Record<string, { id: string; label: string; category: string; status: string; startDate: string; dueDate: string; assigneeId?: string }[]> = {};
+    const now = new Date().toISOString();
+    projectWorkContent.forEach(wt => {
+      episodeWorkSteps[wt] = [{
+        id: `${wt}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        label: '원본 전달',
+        category: '원본 전달',
+        status: 'waiting',
+        startDate: now,
+        dueDate: '',
+        assigneeId: defaultAssignee || undefined,
+      }];
+    });
+
     const newEpisode: EpisodeWithProjectId = {
       id: crypto.randomUUID(),
       projectId: projectId,
       episodeNumber: nextEpisodeNumber,
       title: '',
       client: project?.client,
-      workContent: [],
+      workContent: projectWorkContent,
       status: 'waiting',
       assignee: defaultAssignee,
       manager: defaultManager,
-      startDate: new Date().toISOString(),
-      budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0 },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      startDate: now,
+      budget: {
+        totalAmount: episodePartnerTotal + episodeManagementTotal,
+        partnerPayment: episodePartnerTotal,
+        managementFee: episodeManagementTotal,
+      },
+      workBudgets: episodeWorkBudgets as any,
+      workSteps: episodeWorkSteps as any,
+      createdAt: now,
+      updatedAt: now,
     };
 
     const ok = await upsertEpisode(newEpisode);
@@ -595,7 +633,7 @@ export default function ProjectDetailPage() {
     }
     setEpisodes(prev => [...prev, newEpisode]);
     router.push(`/projects/${projectId}/episodes/${newEpisode.id}`);
-  }, [episodes, partnerIds, allPartners, managerIds, projectId, project?.client, router]);
+  }, [episodes, partnerIds, allPartners, managerIds, projectId, project, workTypeCosts, router]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -1194,7 +1232,7 @@ export default function ProjectDetailPage() {
           <div className="p-4 space-y-2">
             {episodes
               .filter(ep => ep.status === 'in_progress' || ep.status === 'waiting')
-              .sort((a, b) => a.episodeNumber - b.episodeNumber)
+              .sort((a, b) => b.episodeNumber - a.episodeNumber)
               .map((episode) => {
                 const assignee = allPartners.find(p => p.id === episode.assignee);
                 const manager = allPartners.find(p => p.id === episode.manager);
@@ -1216,17 +1254,7 @@ export default function ProjectDetailPage() {
                           <h3 className="text-base font-semibold text-gray-900">
                             {episode.title || <span className="text-gray-300 font-normal">제목 없음</span>}
                           </h3>
-                          <select
-                            value={episode.status}
-                            onClick={e => e.stopPropagation()}
-                            onChange={e => handleEpisodeStatusChange(episode.id, e.target.value as Episode['status'])}
-                            className="text-xs font-medium px-2 py-1 rounded-full border border-gray-200 bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400"
-                          >
-                            <option value="waiting">대기</option>
-                            <option value="in_progress">진행 중</option>
-                            <option value="review">검수</option>
-                            <option value="completed">완료</option>
-                          </select>
+                          <EpisodeStatusBadge status={episode.status} />
                         </div>
 
                         {/* 작업 타임라인 */}
@@ -1330,18 +1358,26 @@ export default function ProjectDetailPage() {
                           </div>
                         )}
 
-                        {/* 두 번째 줄: 담당자, 매니저 */}
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
-                          {assignee && (
-                            <div className="flex items-center gap-1.5">
-                              <User size={14} className="text-gray-400" />
-                              <span>파트너: {assignee.name}</span>
-                            </div>
-                          )}
-                          {manager && (
-                            <div className="flex items-center gap-1.5">
-                              <UserCircle size={14} className="text-gray-400" />
-                              <span>매니저: {manager.name}</span>
+                        {/* 두 번째 줄: 담당자, 매니저, 시작일, 마감일 */}
+                        <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
+                          <div className="flex items-center">
+                            <User size={14} className="mr-1.5 text-orange-500" />
+                            <span className="font-medium">{assignee?.name || '미정'}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <UserCircle size={14} className="mr-1.5 text-gray-400" />
+                            <span className="font-medium">{manager?.name || '미정'}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <Calendar size={14} className="mr-1.5" />
+                            <span>{episode.startDate && !isNaN(new Date(episode.startDate).getTime()) ? new Date(episode.startDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '시작일 등록 필요'}</span>
+                          </div>
+                          {episode.dueDate && (
+                            <div className="flex items-center">
+                              <span className="text-gray-400 mr-1">→</span>
+                              <span className="text-orange-600 font-medium">
+                                {new Date(episode.dueDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -1428,7 +1464,7 @@ export default function ProjectDetailPage() {
           </div>
         ) : (
           <div className="p-4 space-y-2">
-            {episodes.sort((a, b) => a.episodeNumber - b.episodeNumber).map((episode) => {
+            {episodes.sort((a, b) => b.episodeNumber - a.episodeNumber).map((episode) => {
               const assignee = allPartners.find(p => p.id === episode.assignee);
               const manager = allPartners.find(p => p.id === episode.manager);
 
@@ -1489,11 +1525,14 @@ export default function ProjectDetailPage() {
                           </>
                         )}
                         <EpisodeStatusBadge status={episode.status} />
-                        {episode.workContent.length > 0 && (
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                            작업 {episode.workContent.length}개
+                        {episode.workContent.length > 0 && episode.workContent.map((work, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-1 bg-orange-50 text-orange-600 rounded text-xs font-medium"
+                          >
+                            {work}
                           </span>
-                        )}
+                        ))}
                       </div>
 
                       {/* 두 번째 줄: 담당자 정보, 날짜, 비용 */}
@@ -1609,7 +1648,7 @@ export default function ProjectDetailPage() {
                           {/* 시작일 */}
                           <div className="flex items-center">
                             <Calendar size={14} className="mr-1.5" />
-                            <span>{new Date(episode.startDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}</span>
+                            <span>{episode.startDate && !isNaN(new Date(episode.startDate).getTime()) ? new Date(episode.startDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '시작일 등록 필요'}</span>
                           </div>
 
                           {/* 마감일 */}
@@ -1644,19 +1683,6 @@ export default function ProjectDetailPage() {
                       )}
 
 
-                      {/* 작업 내용 배지 */}
-                      {episode.workContent.length > 0 && (
-                        <div className="flex gap-1 flex-wrap">
-                          {episode.workContent.map((work, idx) => (
-                            <span
-                              key={idx}
-                              className="px-2 py-1 bg-orange-50 text-orange-600 rounded text-xs font-medium"
-                            >
-                              {work}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </div>
 
                       {!isEpisodeEditMode && (

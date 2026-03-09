@@ -165,7 +165,7 @@ export async function getProjectEpisodes(
     .from('episodes')
     .select('*')
     .eq('project_id', projectId)
-    .order('episode_number', { ascending: true });
+    .order('episode_number', { ascending: false });
   if (error) { console.error('[DB] getProjectEpisodes:', error.message); return []; }
   if (!data) return [];
   return (data as EpisodeRow[]).map(episodeFromRow);
