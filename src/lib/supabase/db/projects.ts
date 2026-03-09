@@ -152,7 +152,7 @@ export async function insertProject(
     .insert([projectToInsert(project)])
     .select()
     .single();
-  if (error) { console.error('[DB] insertProject:', error.message); return null; }
+  if (error) { console.error('[DB] insertProject:', error.message, error.details, error.hint, error.code); return null; }
   if (!data) return null;
   return projectFromRow(data as ProjectRow);
 }

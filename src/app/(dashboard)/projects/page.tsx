@@ -148,39 +148,44 @@ export default function ProjectsPage() {
     .filter(item => item.project); // 프로젝트가 있는 것만
 
   const handleWizardComplete = async (data: any) => {
-    // 클라이언트 처리
-    let clientName = '';
-    if (data.client?.isNew && data.client.name) {
-      const saved = await insertClient({
-        name: data.client.name,
-        contactPerson: data.client.contact,
-        status: 'active',
-      });
-      if (saved) {
-        clientName = saved.name;
-        setClients(prev => [saved, ...prev]);
+    try {
+      // 클라이언트 처리
+      let clientName = '';
+      if (data.client?.isNew && data.client.name) {
+        const saved = await insertClient({
+          name: data.client.name,
+          contactPerson: data.client.contact,
+          status: 'active',
+        });
+        if (saved) {
+          clientName = saved.name;
+          setClients(prev => [saved, ...prev]);
+        }
+      } else if (data.client?.id) {
+        const found = clients.find(c => c.id === data.client.id);
+        if (found) clientName = found.name;
       }
-    } else if (data.client?.id) {
-      const found = clients.find(c => c.id === data.client.id);
-      if (found) clientName = found.name;
-    }
 
-    // 프로젝트 생성
-    const saved = await insertProject({
-      title: data.project.title,
-      description: data.project.description || '',
-      client: clientName,
-      partnerId: data.project.partnerIds[0] || '',
-      partnerIds: data.project.partnerIds,
-      managerIds: [],
-      category: data.project.category,
-      status: 'planning',
-      budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0, marginRate: 0 },
-      workContent: [],
-      tags: [],
-    });
+      // 프로젝트 생성
+      const saved = await insertProject({
+        title: data.project.title,
+        description: data.project.description || '',
+        client: clientName,
+        partnerId: data.project.partnerIds[0] || '',
+        partnerIds: data.project.partnerIds,
+        managerIds: [],
+        category: data.project.category,
+        status: 'planning',
+        budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0, marginRate: 0 },
+        workContent: [],
+        tags: [],
+      });
 
-    if (saved) {
+      if (!saved) {
+        globalToast.error('프로젝트 생성에 실패했습니다. 다시 시도해주세요.');
+        return;
+      }
+
       // 회차 생성
       if (data.episodes.shouldCreate && data.episodes.count) {
         const newEpisodes = Array.from({ length: data.episodes.count }, (_, i) => ({
@@ -202,9 +207,12 @@ export default function ProjectsPage() {
         setEpisodes(prev => [...prev, ...newEpisodes]);
       }
       setProjects(prev => [saved, ...prev]);
+      globalToast.success('프로젝트가 생성되었습니다!');
+      setIsAddModalOpen(false);
+    } catch (err) {
+      console.error('[ProjectWizard] 프로젝트 생성 오류:', err);
+      globalToast.error('프로젝트 생성 중 오류가 발생했습니다: ' + String(err));
     }
-
-    setIsAddModalOpen(false);
   };
 
   if (loading) {
