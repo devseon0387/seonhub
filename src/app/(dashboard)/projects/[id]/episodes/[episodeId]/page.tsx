@@ -326,7 +326,20 @@ export default function EpisodeDetailPage() {
 
       const status = getOverallEpisodeStatus();
 
-      updateEpisodeFields(episodeId, { ...editedEpisode, status, workSteps, workBudgets }).then(() => {
+      // workBudgets 합계를 budget에 반영 (합산이 0이면 기존 값 유지)
+      const activeTypes = editedEpisode.workContent || [];
+      const calcPartner = activeTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.partnerPayment || 0), 0);
+      const calcManagement = activeTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.managementFee || 0), 0);
+      const updatedEpisode = {
+        ...editedEpisode,
+        budget: {
+          ...editedEpisode.budget!,
+          partnerPayment: calcPartner > 0 ? calcPartner : editedEpisode.budget!.partnerPayment,
+          managementFee: calcManagement > 0 ? calcManagement : editedEpisode.budget!.managementFee,
+        },
+      };
+
+      updateEpisodeFields(episodeId, { ...updatedEpisode, status, workSteps, workBudgets }).then(() => {
         setSaveStatus('saved');
         if (saveStatusTimeoutRef.current) clearTimeout(saveStatusTimeoutRef.current);
         saveStatusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000);

@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, FolderOpen, Settings, Briefcase, Trash2,
-  Megaphone, LogOut, ClipboardCheck, Building2,
+  Megaphone, LogOut, ClipboardCheck, Building2, Mail, Inbox, Send, MailPlus, Archive,
   Wallet, Receipt, FileText, Target, Shield, Layers, Menu, X, Calendar,
-  MessageSquarePlus,
+  MessageSquarePlus, CreditCard,
 } from 'lucide-react';
 import DashboardContent from '@/components/DashboardContent';
 import GlobalFAB from '@/components/GlobalFAB';
@@ -41,10 +41,27 @@ const SECTIONS: Section[] = [
       { type: 'link', href: '/management', label: '매니지먼트', icon: ClipboardCheck  },
       { type: 'link', href: '/projects',   label: '프로젝트',   icon: FolderOpen      },
       { type: 'divider' },
-      { type: 'link', href: '/clients',    label: '클라이언트', icon: Briefcase       },
-      { type: 'link', href: '/partners',   label: '파트너',     icon: Users           },
+      { type: 'link', href: '/finance/partner-settlement', label: '파트너 정산', icon: Users, badge: 'test' },
+      { type: 'link', href: '/finance/manager-settlement', label: '매니저 정산', icon: ClipboardCheck, badge: 'test' },
+      { type: 'divider' },
+      { type: 'link', href: '/clients',    label: '클라이언트 관리', icon: Briefcase       },
+      { type: 'link', href: '/partners',   label: '파트너 관리',     icon: Users           },
       { type: 'divider' },
       { type: 'link', href: '/feedback',   label: '개선사항',   icon: MessageSquarePlus },
+    ],
+  },
+  {
+    key: 'finance',
+    icon: Wallet,
+    label: '재무',
+    items: [
+      { type: 'link', href: '/finance/invoices',   label: '세금계산서',   icon: FileText   },
+      { type: 'link', href: '/finance/payments',   label: '입금 관리',    icon: Receipt    },
+      { type: 'link', href: '/finance/expenses',   label: '지출 관리',    icon: CreditCard },
+      { type: 'divider' },
+      { type: 'link', href: '/settlement', label: '정산',       icon: Receipt, sub: [
+        { href: '/settlement/history', label: '월별 내역', icon: Calendar },
+      ] },
     ],
   },
   {
@@ -52,10 +69,6 @@ const SECTIONS: Section[] = [
     icon: Building2,
     label: '경영',
     items: [
-      { type: 'link', href: '/finance',    label: '재무',       icon: Wallet,   badge: '준비중' },
-      { type: 'link', href: '/settlement', label: '정산',       icon: Receipt,  badge: '준비중', sub: [
-        { href: '/settlement/history', label: '월별 내역', icon: Calendar },
-      ] },
       { type: 'link', href: '/contracts',    label: '계약',       icon: FileText, badge: '준비중' },
       { type: 'link', href: '/strategy',   label: '전략',       icon: Target,   badge: '준비중' },
       { type: 'link', href: '/operations', label: '운영',       icon: Layers,   badge: '준비중' },
@@ -64,6 +77,20 @@ const SECTIONS: Section[] = [
         { href: '/marketing/portfolio', label: '포트폴리오', icon: Megaphone },
         { href: '/marketing/inquiries', label: '문의', icon: MessageSquarePlus },
       ] },
+    ],
+  },
+  {
+    key: 'mail',
+    icon: Mail,
+    label: '메일',
+    items: [
+      { type: 'link', href: '/mail/compose', label: '메일 쓰기', icon: MailPlus },
+      { type: 'divider' },
+      { type: 'link', href: '/mail', label: '전체 메일함', icon: Archive },
+      { type: 'link', href: '/mail/inbox', label: '받은 메일함', icon: Inbox },
+      { type: 'link', href: '/mail/sent', label: '보낸 메일함', icon: Send },
+      { type: 'divider' },
+      { type: 'link', href: '/mail/trash', label: '휴지통', icon: Trash2 },
     ],
   },
 ];
@@ -477,14 +504,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* 패널 네비게이션 */}
             <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 8px' }}>
-              {currentSection.items.map((item, idx) => {
+              {(() => {
+                // 섹션 내 가장 긴 매칭 href를 먼저 찾기
+                const linkItems = currentSection.items.filter(isLink);
+                let bestHref = '';
+                for (const li of linkItems) {
+                  const candidates = [li.href, ...(li.sub?.map(s => s.href) ?? [])];
+                  for (const h of candidates) {
+                    if ((pathname === h || pathname.startsWith(h + '/')) && h.length > bestHref.length) {
+                      bestHref = h;
+                    }
+                  }
+                }
+                return currentSection.items.map((item, idx) => {
                 if (item.type === 'divider') {
                   return <div key={`div-${idx}`} style={{ height: '1px', background: '#f0ece9', margin: '6px 10px' }} />;
                 }
 
                 const Icon     = item.icon;
-                const isActive = pathname === item.href || pathname.startsWith(item.href + '/') ||
+                const matchesThis = pathname === item.href || pathname.startsWith(item.href + '/') ||
                   (item.sub?.some(s => pathname.startsWith(s.href)) ?? false);
+                const isActive = matchesThis && (
+                  item.href === bestHref ||
+                  (item.sub?.some(s => s.href === bestHref) ?? false)
+                );
                 const hasSub   = !!item.sub?.length;
                 const isExp    = expanded === item.href;
 
@@ -588,7 +631,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </AnimatePresence>
                   </div>
                 );
-              })}
+              });
+              })()}
             </nav>
 
             {/* 패널 하단 — 브랜드 워드마크 */}
@@ -651,10 +695,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           // 일반 섹션 체크
           for (const sec of SECTIONS) {
             const links = sec.items.filter(isLink);
+            // 섹션 내 모든 href를 모아서 가장 긴 매칭 우선
+            let found: { href: string; label: string } | undefined;
             for (const link of links) {
               const allHrefs = [{ href: link.href, label: link.label }, ...(link.sub ?? [])];
-              const found = allHrefs.find(h => pathname === h.href || pathname.startsWith(h.href + '/'));
-              if (found) {
+              for (const h of allHrefs) {
+                if (pathname === h.href || pathname.startsWith(h.href + '/')) {
+                  if (!found || h.href.length > found.href.length) {
+                    found = h;
+                  }
+                }
+              }
+            }
+            if (found) {
                 const isProjectSubpage = found.label === '프로젝트' && pathname !== '/projects';
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px' }}>
@@ -705,7 +758,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </div>
                 );
               }
-            }
           }
           return null;
         })()}
