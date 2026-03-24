@@ -11,7 +11,7 @@ import DatePicker from '@/components/DatePicker';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // 모든 작업 타입 정의
-const ALL_WORK_TYPES: WorkContentType[] = ['롱폼', '기획 숏폼', '본편 숏폼', '썸네일'];
+const ALL_WORK_TYPES: WorkContentType[] = ['롱폼', '기획 숏폼', '본편 숏폼', '썸네일', 'OAP'];
 
 
 interface EpisodeWithProjectId extends Episode {
@@ -31,6 +31,7 @@ export default function EpisodeDetailPage() {
   const editingFieldRef = useRef<string | null>(null);
   const [partnerSearch, setPartnerSearch] = useState('');
   const [confirmRemove, setConfirmRemove] = useState<WorkContentType | null>(null);
+  const [shortformModal, setShortformModal] = useState<{ workType: WorkContentType; count: number; mode: 'new' | 'add' } | null>(null);
   const [editedEpisode, setEditedEpisode] = useState<Episode | null>(null);
 
   // 초기 마운트 추적
@@ -70,6 +71,7 @@ export default function EpisodeDetailPage() {
     '기획 숏폼': [],
     '본편 숏폼': [],
     '썸네일': [],
+    'OAP': [],
   });
 
   const [prevWorkSteps, setPrevWorkSteps] = useState<Record<WorkContentType, WorkStep[] | null>>({
@@ -77,6 +79,7 @@ export default function EpisodeDetailPage() {
     '기획 숏폼': null,
     '본편 숏폼': null,
     '썸네일': null,
+    'OAP': null,
   });
 
   // 각 작업 타입별 비용 관리
@@ -112,6 +115,36 @@ export default function EpisodeDetailPage() {
     '본편 숏폼': true,
     '썸네일': true,
   });
+
+  // 드래그 앤 드롭 상태
+  const [draggedWorkType, setDraggedWorkType] = useState<WorkContentType | null>(null);
+  const [dragOverWorkType, setDragOverWorkType] = useState<WorkContentType | null>(null);
+
+  const scrollYRef = useRef(0);
+
+  const handleDragStart = (workType: WorkContentType) => {
+    scrollYRef.current = window.scrollY;
+    setDraggedWorkType(workType);
+  };
+
+  const handleWorkTypeDrop = (targetWorkType: WorkContentType) => {
+    if (!draggedWorkType || draggedWorkType === targetWorkType || !editedEpisode) return;
+    const savedScroll = window.scrollY;
+    const currentOrder = [...(editedEpisode.workContent || [])];
+    const fromIdx = currentOrder.indexOf(draggedWorkType);
+    const toIdx = currentOrder.indexOf(targetWorkType);
+    if (fromIdx === -1 || toIdx === -1) return;
+    currentOrder.splice(fromIdx, 1);
+    currentOrder.splice(toIdx, 0, draggedWorkType);
+    editEpisode(prev => prev ? { ...prev, workContent: currentOrder } : null);
+    setDraggedWorkType(null);
+    setDragOverWorkType(null);
+    // 여러 프레임에 걸쳐 스크롤 고정
+    const restore = () => window.scrollTo(0, savedScroll);
+    restore();
+    requestAnimationFrame(restore);
+    requestAnimationFrame(() => requestAnimationFrame(restore));
+  };
 
   // 작업 목록 모달 상태
   const [selectedWorkTypeModal, setSelectedWorkTypeModal] = useState<WorkContentType | null>(null);
@@ -389,8 +422,22 @@ export default function EpisodeDetailPage() {
   // 비활성화된 작업 타입 목록
   const inactiveWorkTypes = ALL_WORK_TYPES.filter(type => !activeWorkTypes.includes(type));
 
-  // 작업 추가 (비활성화 → 활성화)
+  // 숏폼 여부 판별 (개수 모달 대상)
+  const isShortformType = (workType: WorkContentType) => workType === '기획 숏폼' || workType === '본편 숏폼';
+  // 고정 카테고리 타입 (원본 전달/가편/종편 드롭다운 없이 자체 카테고리 사용)
+  const isFixedCategoryType = (workType: WorkContentType) => isShortformType(workType) || workType === 'OAP';
+
+  // 작업 추가 (비활성화 → 활성화) — 숏폼이면 개수 모달 표시
   const handleAddWorkType = (workType: WorkContentType) => {
+    if (isShortformType(workType)) {
+      setShortformModal({ workType, count: 1, mode: 'new' });
+      return;
+    }
+    addWorkTypeWithCount(workType, 1);
+  };
+
+  // 실제 작업 타입 추가 로직 (count개 만큼 워크 스텝 생성)
+  const addWorkTypeWithCount = (workType: WorkContentType, count: number) => {
     const updatedWorkContent = [...editedEpisode.workContent, workType];
     const newWorkItem: EpisodeWorkItem = {
       type: workType,
@@ -417,20 +464,25 @@ export default function EpisodeDetailPage() {
       }));
     }
 
-    // 작업 단계도 1개 자동 생성
-    const newStep: WorkStep = {
-      id: `${workType}-${Date.now()}`,
-      label: '원본 전달',
-      category: '원본 전달',
-      status: 'waiting',
+    // 작업 단계 자동 생성
+    const fixedCategory = isFixedCategoryType(workType);
+    const newSteps: WorkStep[] = Array.from({ length: count }, (_, i) => ({
+      id: `${workType}-${Date.now()}-${i}`,
+      label: fixedCategory
+        ? (workType === 'OAP'
+          ? 'OAP 제작'
+          : (count > 1 ? `${workType} ${i + 1}편` : workType))
+        : '원본 전달',
+      category: fixedCategory ? workType : '원본 전달',
+      status: 'waiting' as const,
       startDate: editedEpisode.startDate,
       dueDate: editedEpisode.dueDate || '',
       assigneeId: editedEpisode.assignee || undefined,
-    };
+    }));
 
     editWorkSteps(prev => ({
       ...prev,
-      [workType]: [newStep],
+      [workType]: newSteps,
     }));
   };
 
@@ -460,25 +512,40 @@ export default function EpisodeDetailPage() {
     return `${count}차 ${category}`;
   };
 
-  // 작업 단계 추가
+  // 작업 단계 추가 — 숏폼이면 개수 모달, 아니면 바로 1개 추가
   const handleAddWorkStep = (workType: WorkContentType) => {
+    if (isShortformType(workType)) {
+      setShortformModal({ workType, count: 1, mode: 'add' });
+      return;
+    }
+    addWorkSteps(workType, 1);
+  };
+
+  // 실제 작업 단계 추가 로직 (count개)
+  const addWorkSteps = (workType: WorkContentType, count: number) => {
     const existing = workSteps[workType] || [];
-    const isFirst = existing.length === 0;
-    const category = isFirst ? '원본 전달' : '가편';
-    const label = generateStepLabel(category, workType, existing);
-    const newStep: WorkStep = {
-      id: `${workType}-${Date.now()}`,
-      label,
-      category,
-      status: 'waiting',
-      startDate: editedEpisode.startDate,
-      dueDate: editedEpisode.dueDate || '',
-      assigneeId: editedEpisode.assignee || undefined,
-    };
+    const fixedCat = isFixedCategoryType(workType);
+
+    const newSteps: WorkStep[] = Array.from({ length: count }, (_, i) => {
+      const idx = existing.length + i;
+      const category = fixedCat ? workType : (idx === 0 ? '원본 전달' : '가편');
+      const label = fixedCat
+        ? (workType === 'OAP' ? 'OAP 제작' : `${workType} ${idx + 1}편`)
+        : generateStepLabel(category, workType, [...existing, ...newSteps.slice(0, i)]);
+      return {
+        id: `${workType}-${Date.now()}-${i}`,
+        label,
+        category,
+        status: 'waiting' as const,
+        startDate: editedEpisode.startDate,
+        dueDate: editedEpisode.dueDate || '',
+        assigneeId: editedEpisode.assignee || undefined,
+      };
+    });
 
     editWorkSteps(prev => ({
       ...prev,
-      [workType]: [...(prev[workType] || []), newStep],
+      [workType]: [...(prev[workType] || []), ...newSteps],
     }));
   };
 
@@ -1231,7 +1298,7 @@ export default function EpisodeDetailPage() {
                 </div>
               </div>
             ) : (
-              <div className="mb-6 p-6 bg-gray-50 rounded-xl border border-gray-100 overflow-x-auto">
+              <div className="mb-6 px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">
                 <style jsx global>{`
                   @keyframes pulse-dot {
                     0%, 100% { opacity: 0.3; transform: scale(0.8); }
@@ -1333,7 +1400,7 @@ export default function EpisodeDetailPage() {
                     animation: modal-content-out 0.2s ease-in forwards;
                   }
                 `}</style>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
                   {/* 작업들 */}
                   {activeWorkTypes.map((workType, index) => {
                     const status = getWorkTypeStatus(workType);
@@ -1342,33 +1409,45 @@ export default function EpisodeDetailPage() {
 
                     // 이전 작업 중 하나라도 완료되었는지 확인
                     const hasPreviousCompleted = activeWorkTypes.slice(0, index).some(wt => getWorkTypeStatus(wt) === 'completed');
+                    const isActive = status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted);
 
                     return (
-                      <div key={workType} className="flex items-center gap-3">
+                      <div
+                        key={workType}
+                        className={`flex items-center gap-1.5 transition-transform ${dragOverWorkType === workType ? 'scale-110' : ''}`}
+                        onDragOver={(e) => { e.preventDefault(); setDragOverWorkType(workType); }}
+                        onDragLeave={() => setDragOverWorkType(null)}
+                        onDrop={(e) => { e.preventDefault(); handleWorkTypeDrop(workType); }}
+                      >
                         {/* 작업 박스 */}
                         <button
+                          draggable
+                          onDragStart={() => handleDragStart(workType)}
+                          onDragEnd={() => { setDraggedWorkType(null); setDragOverWorkType(null); }}
                           onClick={() => setSelectedWorkTypeModal(workType)}
-                          className={`flex items-center gap-2 rounded-xl border-2 transition-all cursor-pointer hover:shadow-2xl backdrop-blur-md ${
-                          status === 'completed'
-                            ? 'bg-green-100/50 border-green-300/60 px-4 py-2 min-w-[140px] opacity-60 hover:opacity-100'
-                            : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
-                            ? 'bg-yellow-100/60 border-yellow-300/70 px-5 py-3 min-w-[160px] shadow-xl scale-110 hover:scale-[1.15]'
-                            : 'bg-white/50 border-gray-200/60 px-4 py-2 min-w-[140px] hover:border-gray-300 hover:bg-gray-50'
+                          className={`flex items-center gap-1.5 rounded-lg border-2 transition-all cursor-grab active:cursor-grabbing hover:shadow-lg backdrop-blur-md whitespace-nowrap ${
+                          draggedWorkType === workType ? 'opacity-40' : ''
+                        } ${dragOverWorkType === workType && draggedWorkType !== workType ? 'ring-2 ring-orange-400 ring-offset-1' : ''
+                        } ${status === 'completed'
+                            ? 'bg-green-100/50 border-green-300/60 px-2.5 py-1.5 opacity-60 hover:opacity-100'
+                            : isActive
+                            ? 'bg-yellow-100/60 border-yellow-300/70 px-3 py-2 shadow-md scale-105 hover:scale-110'
+                            : 'bg-white/50 border-gray-200/60 px-2.5 py-1.5 hover:border-gray-300 hover:bg-gray-50'
                         }`}>
-                          <span className={`font-semibold text-sm ${
+                          <span className={`font-semibold text-xs ${
                             status === 'completed'
                               ? 'text-green-800'
-                              : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
+                              : isActive
                               ? 'text-yellow-800'
                               : 'text-gray-600'
                           }`}>
                             {workType}
                           </span>
                           {stepsCount > 0 && (
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${
+                            <span className={`text-[10px] px-1 py-0.5 rounded ${
                               status === 'completed'
                                 ? 'bg-green-100 text-green-700'
-                                : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
+                                : isActive
                                 ? 'bg-yellow-100 text-yellow-700'
                                 : 'bg-gray-100 text-gray-600'
                             }`}>
@@ -1378,10 +1457,8 @@ export default function EpisodeDetailPage() {
                         </button>
 
                         {/* 진행 표시 (3개의 점) */}
-                        <div className="flex items-center gap-2 px-2">
+                        <div className="flex items-center gap-1 px-0.5">
                           {[0, 1, 2].map((dotIndex) => {
-                            // 현재 작업이 진행 중이거나, 대기 상태지만 이전 작업이 완료되었으면 진행 중 애니메이션
-                            const isActive = status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted);
                             const isFilled = status === 'completed';
                             const isWaiting = status === 'waiting' && !hasPreviousCompleted;
                             const dotDelay = `${dotIndex * 0.3}s`;
@@ -1389,7 +1466,7 @@ export default function EpisodeDetailPage() {
                             return (
                               <div
                                 key={dotIndex}
-                                className={`w-2 h-2 rounded-full transition-all ${
+                                className={`w-1.5 h-1.5 rounded-full transition-all ${
                                   isFilled
                                     ? 'bg-green-500'
                                     : isActive
@@ -1426,9 +1503,9 @@ export default function EpisodeDetailPage() {
                     });
 
                     return (
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         {/* 마감 원 */}
-                        <div className={`relative w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
+                        <div className={`relative w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                           overallStatus === 'completed'
                             ? 'bg-green-500 border-green-600'
                             : overallStatus === 'in_progress'
@@ -1436,20 +1513,20 @@ export default function EpisodeDetailPage() {
                             : 'bg-white border-gray-300'
                         }`}>
                           {overallStatus === 'completed' && (
-                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                             </svg>
                           )}
                           {overallStatus === 'in_progress' && (
-                            <div className="w-2.5 h-2.5 bg-yellow-400 rounded-full pulse-dot" />
+                            <div className="w-2 h-2 bg-yellow-400 rounded-full pulse-dot" />
                           )}
                         </div>
 
                         {/* 마감일 표시 */}
-                        <div className="flex flex-col text-xs">
-                          <span className="text-gray-500 font-medium">마감</span>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-gray-500 font-medium">마감</span>
                           {finalDueDate ? (
-                            <span className={`font-bold text-sm ${
+                            <span className={`font-bold text-xs ${
                               overallStatus === 'completed'
                                 ? 'text-green-600'
                                 : overallStatus === 'in_progress'
@@ -1478,12 +1555,20 @@ export default function EpisodeDetailPage() {
                   return (
                     <motion.div
                       key={workType}
-                      layout
-                      initial={{ opacity: 0, height: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, height: 'auto', scale: 1 }}
-                      exit={{ opacity: 0, height: 0, scale: 0.95 }}
-                      transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-                      className={`rounded-xl transition-all mb-3 ${
+                      draggable
+                      onDragStart={() => handleDragStart(workType)}
+                      onDragEnd={() => { setDraggedWorkType(null); setDragOverWorkType(null); }}
+                      onDragOver={(e) => { e.preventDefault(); setDragOverWorkType(workType); }}
+                      onDragLeave={() => setDragOverWorkType(null)}
+                      onDrop={(e) => { e.preventDefault(); handleWorkTypeDrop(workType); }}
+                      initial={false}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className={`rounded-xl mb-3 cursor-grab active:cursor-grabbing ${
+                        draggedWorkType === workType ? 'opacity-40' : ''
+                      } ${dragOverWorkType === workType && draggedWorkType !== workType ? 'ring-2 ring-orange-400 ring-offset-2' : ''
+                      } ${
                         getWorkTypeStatus(workType) === 'completed'
                           ? allCompleted
                             ? 'border border-gray-100'
@@ -1608,7 +1693,11 @@ export default function EpisodeDetailPage() {
                                     <div className="grid grid-cols-[2fr_3fr_3fr_2fr_6fr] gap-2">
                                       {/* 카테고리 */}
                                       <div>
-                                        {index === 0 ? (
+                                        {isFixedCategoryType(workType) ? (
+                                          <div className="w-full text-xs px-2 py-2 bg-purple-50 border border-purple-200 rounded-md text-purple-700 font-medium text-center">
+                                            {workType}
+                                          </div>
+                                        ) : index === 0 ? (
                                           <div className="w-full text-xs px-2 py-2 bg-gray-100 border border-gray-200 rounded-md text-gray-600 font-medium text-center">
                                             원본 전달
                                           </div>
@@ -1906,6 +1995,85 @@ export default function EpisodeDetailPage() {
                   type="button"
                 >
                   삭제
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* 숏폼 개수 입력 모달 */}
+      <AnimatePresence>
+        {shortformModal && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-[10000] bg-black/30 backdrop-blur-[2px]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              onClick={() => setShortformModal(null)}
+            />
+            <motion.div
+              className="fixed z-[10001] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl border border-gray-100 p-6 w-[360px] max-w-[90vw]"
+              initial={{ opacity: 0, scale: 0.93, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 12 }}
+              transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+            >
+              <h3 className="text-base font-semibold text-gray-900 mb-1">{shortformModal.workType} {shortformModal.mode === 'add' ? '단계 추가' : '추가'}</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                {shortformModal.mode === 'add' ? '추가할' : '생성할'} 숏폼 개수를 입력해주세요.
+              </p>
+              <div className="flex items-center gap-3 mb-5">
+                <button
+                  type="button"
+                  onClick={() => setShortformModal(prev => prev && prev.count > 1 ? { ...prev, count: prev.count - 1 } : prev)}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors text-lg font-medium"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={shortformModal.count}
+                  onChange={(e) => {
+                    const v = Math.max(1, Math.min(50, parseInt(e.target.value) || 1));
+                    setShortformModal(prev => prev ? { ...prev, count: v } : prev);
+                  }}
+                  className="w-16 text-center text-lg font-semibold text-gray-900 border border-gray-200 rounded-xl py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShortformModal(prev => prev && prev.count < 50 ? { ...prev, count: prev.count + 1 } : prev)}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors text-lg font-medium"
+                >
+                  +
+                </button>
+                <span className="text-sm text-gray-400">개</span>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setShortformModal(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-500 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                  type="button"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={() => {
+                    if (shortformModal.mode === 'new') {
+                      addWorkTypeWithCount(shortformModal.workType, shortformModal.count);
+                    } else {
+                      addWorkSteps(shortformModal.workType, shortformModal.count);
+                    }
+                    setShortformModal(null);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-xl hover:bg-orange-600 transition-colors"
+                  type="button"
+                >
+                  추가
                 </button>
               </div>
             </motion.div>

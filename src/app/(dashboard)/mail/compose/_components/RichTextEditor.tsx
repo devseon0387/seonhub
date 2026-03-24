@@ -135,6 +135,7 @@ export default function RichTextEditor({ onChangeRef }: RichTextEditorProps) {
 
   const editor = useEditor({
     extensions,
+    immediatelyRender: false,
     onUpdate: ({ editor }) => {
       onChangeRef.current?.(editor.getHTML());
     },

@@ -106,7 +106,6 @@ export default function ManagerSettlementDetailPage() {
     return map;
   }, [allEpisodes]);
 
-  // 해당 월의 매니저 에피소드를 입금일별로 그룹핑
   const dateGroups = useMemo(() => {
     if (!manager) return [];
     const managerAllProjects = projects.filter(
@@ -212,26 +211,26 @@ export default function ManagerSettlementDetailPage() {
       {/* 요약 카드 */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs text-gray-400 mb-0.5">작업 수</p>
-          <p className="text-2xl font-bold text-gray-900">{allItems.length}<span className="text-sm font-medium text-gray-400 ml-0.5">건</span></p>
+          <p className="text-xs text-gray-400 mb-1">작업 수</p>
+          <p className="text-xl font-bold text-gray-900 whitespace-nowrap">{allItems.length}<span className="text-sm font-medium text-gray-400 ml-0.5">건</span></p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs text-gray-400 mb-0.5">총 매니징 비용</p>
-          <p className="text-2xl font-bold text-gray-900">{fmt(totalAmount)}</p>
+          <p className="text-xs text-gray-400 mb-1">총 매니징 비용</p>
+          <p className="text-xl font-bold text-gray-900 whitespace-nowrap">{fmt(totalAmount)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs text-gray-400 mb-0.5">
+          <p className="text-xs text-gray-400 mb-1 whitespace-nowrap">
             실 지급액{manager.partnerType && <span className="text-blue-400 ml-1">({getNetLabel(manager.partnerType)})</span>}
           </p>
-          <p className="text-2xl font-bold text-blue-600">{fmt(totalNetAmount)}</p>
+          <p className="text-xl font-bold text-blue-600 whitespace-nowrap">{fmt(totalNetAmount)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs text-gray-400 mb-0.5">지급 완료</p>
-          <p className="text-2xl font-bold text-emerald-600">{fmt(paidAmount)}</p>
+          <p className="text-xs text-gray-400 mb-1">지급 완료</p>
+          <p className="text-xl font-bold text-emerald-600 whitespace-nowrap">{fmt(paidAmount)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs text-gray-400 mb-0.5">지급 대기</p>
-          <p className="text-2xl font-bold text-orange-500">{fmt(unpaidAmount)}</p>
+          <p className="text-xs text-gray-400 mb-1">지급 대기</p>
+          <p className="text-xl font-bold text-orange-500 whitespace-nowrap">{fmt(unpaidAmount)}</p>
         </div>
       </div>
 
@@ -247,120 +246,120 @@ export default function ManagerSettlementDetailPage() {
           {dateGroups.map(({ date, items, totalAmount: groupTotal, paidCount, allPaid }) => {
             const dday = date !== 'unknown' ? getDday(date) : null;
             const groupNet = calcNetAmount(groupTotal, manager.partnerType);
+            const isUrgent = dday && (dday.label === 'D-day' || dday.label.startsWith('D+'));
+            const isNear = dday && !isUrgent && dday.label.startsWith('D-') && parseInt(dday.label.slice(2)) <= 3;
             return (
-              <div key={date} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div key={date} className={`bg-white rounded-2xl shadow-sm overflow-hidden ${
+                isUrgent ? 'border-2 border-red-200' : isNear ? 'border-2 border-orange-200' : 'border border-gray-100'
+              }`}>
                 {/* 날짜 그룹 헤더 */}
-                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className={`px-5 py-4 border-b flex items-center justify-between ${
+                  isUrgent ? 'bg-red-50/50 border-red-100' : isNear ? 'bg-orange-50/30 border-orange-100' : 'border-gray-100'
+                }`}>
                   <div className="flex items-center gap-3">
-                    <Calendar size={16} className="text-orange-400" />
+                    <Calendar size={16} className={isUrgent ? 'text-red-400' : 'text-orange-400'} />
                     <span className="text-sm font-semibold text-gray-900">
                       {date !== 'unknown' ? date : '입금일 미정'}
                     </span>
                     {dday && (
-                      <span className={`text-xs ${dday.color}`}>{dday.label}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                        isUrgent ? 'bg-red-100 text-red-600' : isNear ? 'bg-orange-100 text-orange-600' : 'text-gray-400'
+                      }`}>{dday.label}</span>
                     )}
-                    {allPaid && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 font-medium">전체 완료</span>
+                    {allPaid ? (
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 font-medium">지급 완료</span>
+                    ) : (
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-500 font-medium">지급 대기</span>
                     )}
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <span className="text-xs text-gray-400">{items.length}건 · 완료 {paidCount}/{items.length}</span>
-                    <div className="text-right">
-                      <span className="text-sm font-bold text-gray-900">{fmt(groupTotal)}</span>
-                      <span className="text-xs text-blue-500 ml-2">{fmt(groupNet)}</span>
-                    </div>
                   </div>
                 </div>
 
                 {/* 에피소드 테이블 */}
                 <div className="overflow-x-auto">
-                  <div className="min-w-[750px]">
-                    <div className="px-5 py-2 bg-gray-50 grid grid-cols-[minmax(160px,2fr)_minmax(200px,2fr)_auto_110px_110px_60px] gap-3 text-[11px] font-semibold text-gray-400 border-b border-gray-100">
-                      <span>프로젝트</span>
-                      <span>회차</span>
-                      <span>작업 내용</span>
-                      <span className="text-right">매니징 비용</span>
-                      <span className="text-right">실 수령액</span>
-                      <span className="text-right">지급</span>
-                    </div>
-                    <div className="divide-y divide-gray-50">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-gray-400">
+                        <th className="px-5 py-2 text-left font-semibold">프로젝트</th>
+                        <th className="px-3 py-2 text-left font-semibold w-[50px]">회차</th>
+                        <th className="px-3 py-2 text-left font-semibold">회차 제목</th>
+                        <th className="px-3 py-2 text-right font-semibold">금액</th>
+                        <th className="w-[20px]" />
+                        <th className="px-3 py-2 text-right font-semibold">{manager.partnerType === 'business' ? '부가세' : '원천징수'}</th>
+                        <th className="w-[20px]" />
+                        <th className="pl-3 pr-6 py-2 text-right font-semibold">실 수령액</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
                       {items.map(({ episode: ep, project }) => {
                         const epAmount = ep.budget?.managementFee ?? 0;
                         const epNet = calcNetAmount(epAmount, manager.partnerType);
                         return (
-                          <div key={ep.id} className="px-5 py-3 grid grid-cols-[minmax(160px,2fr)_minmax(200px,2fr)_auto_110px_110px_60px] gap-3 items-center hover:bg-gray-50 transition-colors">
-                            <span className="text-sm text-gray-700 whitespace-nowrap">{project.title}</span>
-                            <div className="flex items-center gap-1.5 whitespace-nowrap">
-                              <span className="text-sm text-orange-500 font-semibold">{ep.episodeNumber}편</span>
-                              {ep.title && <span className="text-sm text-gray-500">{ep.title}</span>}
-                            </div>
-                            <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                              {ep.workContent && ep.workContent.length > 0 ? (
-                                ep.workContent.map(wc => (
-                                  <span key={wc} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-medium">{wc}</span>
-                                ))
-                              ) : (
-                                <span className="text-xs text-gray-400">-</span>
-                              )}
-                            </div>
-                            <span className="text-sm font-medium text-gray-800 text-right">{fmt(epAmount)}</span>
-                            <span className="text-sm font-medium text-blue-600 text-right">{fmt(epNet)}</span>
-                            <div className="text-right">
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                                ep.paymentStatus === 'completed'
-                                  ? 'bg-emerald-50 text-emerald-600'
-                                  : 'bg-orange-50 text-orange-500'
-                              }`}>
-                                {ep.paymentStatus === 'completed' ? '완료' : '대기'}
-                              </span>
-                            </div>
-                          </div>
+                          <tr key={ep.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-5 py-3 text-sm text-gray-700 whitespace-nowrap">{project.title}</td>
+                            <td className="px-3 py-3 text-sm text-orange-500 font-semibold whitespace-nowrap">{ep.episodeNumber}편</td>
+                            <td className="px-3 py-3 text-sm text-gray-500">{ep.title || '-'}</td>
+                            <td className="px-3 py-3 text-sm font-medium text-gray-800 text-right whitespace-nowrap">{fmt(epAmount)}</td>
+                            <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">{manager.partnerType === 'business' ? '+' : '−'}</td>
+                            <td className="px-3 py-3 text-sm text-gray-400 text-right whitespace-nowrap">{fmt(Math.abs(epNet - epAmount))}</td>
+                            <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">=</td>
+                            <td className="px-3 py-3 text-sm font-bold text-gray-900 text-right whitespace-nowrap pr-6">{fmt(epNet)}</td>
+                          </tr>
                         );
                       })}
-                    </div>
-                    {/* 날짜 소계 */}
-                    <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 grid grid-cols-[minmax(160px,2fr)_minmax(200px,2fr)_auto_110px_110px_60px] gap-3 items-center">
-                      <span className="text-xs font-semibold text-gray-400">소계</span>
-                      <span />
-                      <span />
-                      <span className="text-sm font-bold text-gray-900 text-right">{fmt(groupTotal)}</span>
-                      <span className="text-sm font-bold text-blue-600 text-right">{fmt(groupNet)}</span>
-                      <span />
-                    </div>
-                  </div>
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-gray-50 border-t border-gray-100">
+                        <td className="px-5 py-3 text-xs font-semibold text-gray-400">소계</td>
+                        <td />
+                        <td />
+                        <td className="px-3 py-3 text-sm font-bold text-gray-900 text-right whitespace-nowrap">{fmt(groupTotal)}</td>
+                        <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">{manager.partnerType === 'business' ? '+' : '−'}</td>
+                        <td className="px-3 py-3 text-sm font-bold text-gray-400 text-right whitespace-nowrap">{fmt(Math.abs(groupNet - groupTotal))}</td>
+                        <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">=</td>
+                        <td className="px-3 py-3 text-sm font-bold text-blue-600 text-right whitespace-nowrap pr-6">{fmt(groupNet)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
                 </div>
               </div>
             );
           })}
 
           {/* 전체 합계 */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-4 flex items-center justify-between">
-            {(manager.bank && manager.bankAccount) ? (
-              <button
-                onClick={copyAccount}
-                className="flex items-center gap-2 text-xs px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <Landmark size={12} className="text-gray-400" />
-                <span className="text-gray-600">{manager.bank} {manager.bankAccount}</span>
-                {copiedId ? (
-                  <Check size={12} className="text-emerald-500" />
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-gray-700">총 합계</span>
+                {(manager.bank && manager.bankAccount) ? (
+                  <button
+                    onClick={copyAccount}
+                    className="flex items-center gap-2 text-xs px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <Landmark size={12} className="text-gray-400" />
+                    <span className="text-gray-500">{manager.bank} {manager.bankAccount}</span>
+                    {copiedId ? (
+                      <Check size={12} className="text-emerald-500" />
+                    ) : (
+                      <Copy size={12} className="text-gray-300" />
+                    )}
+                  </button>
                 ) : (
-                  <Copy size={12} className="text-gray-300" />
+                  <Link
+                    href={`/partners`}
+                    className="flex items-center gap-2 text-xs px-3 py-1.5 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors text-orange-500"
+                  >
+                    <Landmark size={12} />
+                    <span>계좌 정보 미등록</span>
+                  </Link>
                 )}
-              </button>
-            ) : (
-              <Link
-                href={`/partners`}
-                className="flex items-center gap-2 text-xs px-3 py-1.5 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors text-orange-500"
-              >
-                <Landmark size={12} />
-                <span>계좌 정보 미등록</span>
-              </Link>
-            )}
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-semibold text-gray-500">총 합계</span>
-              <span className="text-sm text-gray-500">{fmt(totalAmount)}</span>
-              <span className="text-lg font-bold text-blue-600">{fmt(totalNetAmount)}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-bold text-gray-900">{fmt(totalAmount)}</span>
+                <span className="text-gray-300">{manager.partnerType === 'business' ? '+' : '−'}</span>
+                <span className="text-gray-400">{fmt(Math.abs(totalNetAmount - totalAmount))}</span>
+                <span className="text-gray-300">=</span>
+                <span className="text-lg font-bold text-blue-600">{fmt(totalNetAmount)}</span>
+              </div>
             </div>
           </div>
         </div>

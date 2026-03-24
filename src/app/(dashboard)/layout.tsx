@@ -55,11 +55,11 @@ const SECTIONS: Section[] = [
     icon: Wallet,
     label: '재무',
     items: [
-      { type: 'link', href: '/finance/invoices',   label: '세금계산서',   icon: FileText   },
-      { type: 'link', href: '/finance/payments',   label: '입금 관리',    icon: Receipt    },
-      { type: 'link', href: '/finance/expenses',   label: '지출 관리',    icon: CreditCard },
+      { type: 'link', href: '/finance/invoices',   label: '세금계산서',   icon: FileText,   badge: '준비중' },
+      { type: 'link', href: '/finance/payments',   label: '입금 관리',    icon: Receipt,    badge: '준비중' },
+      { type: 'link', href: '/finance/expenses',   label: '지출 관리',    icon: CreditCard, badge: '준비중' },
       { type: 'divider' },
-      { type: 'link', href: '/settlement', label: '정산',       icon: Receipt, sub: [
+      { type: 'link', href: '/settlement', label: '정산',       icon: Receipt, badge: '준비중', sub: [
         { href: '/settlement/history', label: '월별 내역', icon: Calendar },
       ] },
     ],

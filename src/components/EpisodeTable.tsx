@@ -5,7 +5,7 @@ import { Episode, Partner, WorkContentType } from '@/types';
 import { Calendar, User } from 'lucide-react';
 import EpisodeDetailModal from './EpisodeDetailModal';
 
-const workContentOptions: WorkContentType[] = ['롱폼', '기획 숏폼', '본편 숏폼', '썸네일'];
+const workContentOptions: WorkContentType[] = ['롱폼', '기획 숏폼', '본편 숏폼', '썸네일', 'OAP'];
 
 interface EpisodeTableProps {
   episodes: Episode[];

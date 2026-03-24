@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Mail, Send, AlertCircle, CheckCircle2, Plus, X } from 'lucide-react';
+import { Mail, Send, AlertCircle, CheckCircle2, Plus, X, Eye } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import RichTextEditor from './_components/RichTextEditor';
 
@@ -9,6 +9,8 @@ export default function ComposeMailPage() {
   const toast = useToast();
 
   const [configured, setConfigured] = useState<boolean | null>(null);
+  const [senderEmail, setSenderEmail] = useState<string | null>(null);
+  const [senderName, setSenderName] = useState<string | null>(null);
   const [to, setTo] = useState<string[]>([]);
   const [toInput, setToInput] = useState('');
   const [cc, setCc] = useState<string[]>([]);
@@ -17,6 +19,7 @@ export default function ComposeMailPage() {
   const contentRef = useRef('');
   const [sending, setSending] = useState(false);
   const [showCc, setShowCc] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const onContentChange = useCallback((html: string) => {
     contentRef.current = html;
@@ -27,7 +30,7 @@ export default function ComposeMailPage() {
   useEffect(() => {
     fetch('/api/hiworks/send-mail')
       .then(res => res.json())
-      .then(data => setConfigured(data.configured))
+      .then(data => { setConfigured(data.configured); setSenderEmail(data.senderEmail ?? null); setSenderName(data.senderName ?? null); })
       .catch(() => setConfigured(false));
   }, []);
 
@@ -213,8 +216,28 @@ export default function ComposeMailPage() {
           </div>
         </div>
 
-        {/* 발송 버튼 */}
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #f0ece9', display: 'flex', justifyContent: 'flex-end' }}>
+        {/* 미리보기 / 발송 버튼 */}
+        <div style={{ padding: '16px 24px', borderTop: '1px solid #f0ece9', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+          <button
+            onClick={() => setShowPreview(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 24px',
+              borderRadius: '8px',
+              border: '1px solid #d6d3d1',
+              cursor: 'pointer',
+              background: '#ffffff',
+              color: '#44403c',
+              fontSize: '14px',
+              fontWeight: 600,
+              transition: 'background 0.15s',
+            }}
+          >
+            <Eye size={16} />
+            미리보기
+          </button>
           <button
             onClick={handleSend}
             disabled={sending || configured === false}
@@ -238,6 +261,88 @@ export default function ComposeMailPage() {
           </button>
         </div>
       </div>
+
+      {/* 미리보기 모달 */}
+      {showPreview && (
+        <div
+          onClick={() => setShowPreview(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#ffffff',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '640px',
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            }}
+          >
+            {/* 모달 헤더 */}
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0ece9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Eye size={18} style={{ color: '#ea580c' }} />
+                <span style={{ fontSize: '15px', fontWeight: 600, color: '#1c1917' }}>메일 미리보기</span>
+              </div>
+              <button
+                onClick={() => setShowPreview(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#78716c', display: 'flex', padding: '4px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* 모달 본문 */}
+            <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+              {/* 메타 정보 */}
+              <div style={{ marginBottom: '16px', fontSize: '13px', color: '#57534e', lineHeight: '1.8' }}>
+                <div><strong style={{ color: '#44403c' }}>보낸 사람:</strong> {senderName ? `${senderName} <${senderEmail}>` : senderEmail || <span style={{ color: '#a8a29e' }}>알 수 없음</span>}</div>
+                <div><strong style={{ color: '#44403c' }}>받는 사람:</strong> {to.length > 0 ? to.join(', ') : <span style={{ color: '#a8a29e' }}>없음</span>}</div>
+                <div><strong style={{ color: '#44403c' }}>참조:</strong> {cc.length > 0 ? cc.join(', ') : <span style={{ color: '#a8a29e' }}>없음</span>}</div>
+                <div><strong style={{ color: '#44403c' }}>제목:</strong> {subject || <span style={{ color: '#a8a29e' }}>없음</span>}</div>
+              </div>
+
+              <div style={{ height: '1px', background: '#f0ece9', margin: '0 0 16px' }} />
+
+              {/* 본문 미리보기 */}
+              <div
+                dangerouslySetInnerHTML={{ __html: contentRef.current || '<p style="color:#a8a29e">본문이 비어있습니다.</p>' }}
+                style={{ fontSize: '14px', lineHeight: '1.6', color: '#1c1917' }}
+              />
+            </div>
+
+            {/* 모달 푸터 */}
+            <div style={{ padding: '12px 20px', borderTop: '1px solid #f0ece9', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowPreview(false)}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '8px',
+                  border: '1px solid #d6d3d1',
+                  background: '#ffffff',
+                  color: '#44403c',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -13,3 +13,5 @@ export * from './portfolio';
 export * from './inquiries';
 export * from './feedback';
 export * from './users';
+export * from './sent-emails';
+export * from './expenses';
