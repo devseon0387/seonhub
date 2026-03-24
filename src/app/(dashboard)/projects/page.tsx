@@ -193,7 +193,7 @@ export default function ProjectsPage() {
           projectId: saved.id,
           episodeNumber: i + 1,
           title: '',
-          workContent: [] as any[],
+          workContent: [] as WorkContentType[],
           status: 'waiting' as const,
           assignee: data.project.partnerIds[0] || '',
           manager: '',

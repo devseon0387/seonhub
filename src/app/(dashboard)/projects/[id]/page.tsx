@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Project, Client, Episode, Partner, WorkContentType } from '@/types';
+import { Project, Client, Episode, Partner, WorkContentType, WorkStep, WorkTypeBudget } from '@/types';
 import { ArrowLeft, Calendar, User, DollarSign, Tag, Edit, Trash2, TrendingUp, ChevronRight, X, UserCircle, FileText, Users, Video, Palette, Image, CheckCircle2, Clock, Pause, Target, ChevronDown, ClipboardCheck, Building2, Tv, Youtube, Monitor, Camera } from 'lucide-react';
 import { addToTrash } from '@/lib/trash';
 import { getProjectById, updateProject, deleteProject, getClients as fetchClients, getProjectEpisodes, getPartners, upsertEpisode, updateEpisodeFields, deleteEpisode, deleteProjectEpisodes } from '@/lib/supabase/db';
@@ -59,7 +59,7 @@ export default function ProjectDetailPage() {
   const [tempPartnerIds, setTempPartnerIds] = useState<string[]>([]);
   const [tempSelectedCategory, setTempSelectedCategory] = useState<string>('');
   const [tempChannels, setTempChannels] = useState<string[]>([]);
-  const [tempWorkContent, setTempWorkContent] = useState<('롱폼' | '기획 숏폼' | '본편 숏폼' | '썸네일')[]>([]);
+  const [tempWorkContent, setTempWorkContent] = useState<WorkContentType[]>([]);
 
   // 비용 정보 임시 상태
   const [tempTotalAmount, setTempTotalAmount] = useState<number>(0);
@@ -68,6 +68,7 @@ export default function ProjectDetailPage() {
     '기획 숏폼': { partnerCost: 0, managementCost: 0 },
     '본편 숏폼': { partnerCost: 0, managementCost: 0 },
     '썸네일': { partnerCost: 0, managementCost: 0 },
+    'OAP': { partnerCost: 0, managementCost: 0 },
   });
 
   const [deleteEpisodeId, setDeleteEpisodeId] = useState<string | null>(null);
@@ -310,7 +311,7 @@ export default function ProjectDetailPage() {
 
     // 비용이 0보다 크면 작업 내용에 자동으로 추가
     if (numericValue > 0) {
-      const workTypeValue = workType as '롱폼' | '기획 숏폼' | '본편 숏폼' | '썸네일';
+      const workTypeValue = workType as WorkContentType;
       if (!tempWorkContent.includes(workTypeValue)) {
         setTempWorkContent([...tempWorkContent, workTypeValue]);
       }
@@ -609,6 +610,7 @@ export default function ProjectDetailPage() {
       projectId: projectId,
       episodeNumber: nextEpisodeNumber,
       title: '',
+      clientId: project?.clientId,
       client: project?.client,
       workContent: projectWorkContent,
       status: 'waiting',
@@ -620,8 +622,8 @@ export default function ProjectDetailPage() {
         partnerPayment: episodePartnerTotal,
         managementFee: episodeManagementTotal,
       },
-      workBudgets: episodeWorkBudgets as any,
-      workSteps: episodeWorkSteps as any,
+      workBudgets: episodeWorkBudgets as Record<WorkContentType, WorkTypeBudget>,
+      workSteps: episodeWorkSteps as Record<WorkContentType, WorkStep[]>,
       createdAt: now,
       updatedAt: now,
     };

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Client, Project, Partner, Episode } from '@/types';
+import { Client, Project, Partner, Episode, WorkContentType } from '@/types';
 import { ArrowLeft, Mail, Phone, Building2, MapPin, User, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { getClients, getProjects, getPartners, getAllEpisodes, insertProject, insertClient, upsertEpisodes, updateClient } from '@/lib/supabase/db';
@@ -105,7 +105,7 @@ export default function ClientDetailPage() {
           projectId: saved.id,
           episodeNumber: i + 1,
           title: '',
-          workContent: [] as any[],
+          workContent: [] as WorkContentType[],
           status: 'waiting' as const,
           assignee: data.project.partnerIds[0] || '',
           manager: '',

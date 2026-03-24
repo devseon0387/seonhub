@@ -84,7 +84,7 @@ export default function ManagementPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]);
+  const [allEpisodes, setAllEpisodes] = useState<(Episode & { projectId: string })[]>([]);
   const [activeTab, setActiveTab] = useState<'today' | 'week' | 'checklist'>('today');
   const [tabDirection, setTabDirection] = useState(1);
 
@@ -494,8 +494,8 @@ export default function ManagementPage() {
   }).filter(pw => pw.total > 0).sort((a, b) => b.total - a.total);
 
   // 헬퍼 함수: 회차의 프로젝트와 파트너 찾기
-  const getEpisodeDetails = (episode: Episode) => {
-    const project = projects.find(p => p.id === (episode as any).projectId);
+  const getEpisodeDetails = (episode: Episode & { projectId: string }) => {
+    const project = projects.find(p => p.id === episode.projectId);
     const partner = partners.find(p => p.id === episode.assignee);
     return { project, partner };
   };
@@ -678,7 +678,7 @@ export default function ManagementPage() {
             <span className="text-xs text-gray-400">
               {(() => {
                 const eps = allEpisodes.filter(ep => {
-                  const proj = projects.find(p => p.id === (ep as any).projectId);
+                  const proj = projects.find(p => p.id === ep.projectId);
                   return proj && (proj.status === 'in_progress' || proj.status === 'planning');
                 });
                 return `${eps.filter(e => e.status !== 'completed').length}개 회차 진행 중`;
@@ -689,7 +689,7 @@ export default function ManagementPage() {
             {(() => {
               const activeEpisodes = allEpisodes
                 .filter(ep => {
-                  const proj = projects.find(p => p.id === (ep as any).projectId);
+                  const proj = projects.find(p => p.id === ep.projectId);
                   return proj && (proj.status === 'in_progress' || proj.status === 'planning');
                 })
                 .sort((a, b) => {
@@ -720,7 +720,7 @@ export default function ManagementPage() {
               };
 
               return activeEpisodes.map(ep => {
-                const proj = projects.find(p => p.id === (ep as any).projectId);
+                const proj = projects.find(p => p.id === ep.projectId);
                 const partner = partners.find(p => p.id === ep.assignee);
                 const st = statusLabel[ep.status] || statusLabel.waiting;
                 const isOverdue = ep.dueDate && new Date(ep.dueDate) < new Date() && ep.status !== 'completed';
@@ -1442,9 +1442,9 @@ export default function ManagementPage() {
                 {activeLinkPicker === 'episode' && (() => {
                   const filtered = allEpisodes.filter(ep => !linkSearch || ep.title.includes(linkSearch) || String(ep.episodeNumber).includes(linkSearch)).slice(0, 12);
                   return filtered.length > 0 ? filtered.map(ep => {
-                    const proj = projects.find(p => p.id === (ep as any).projectId);
+                    const proj = projects.find(p => p.id === ep.projectId);
                     return (
-                      <button key={ep.id} onClick={() => selectEpisode(ep as any)}
+                      <button key={ep.id} onClick={() => selectEpisode(ep)}
                         className="w-full text-left px-4 py-3 hover:bg-orange-50 transition-colors flex items-center gap-3">
                         <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center">
                           <span className="text-xs font-bold text-orange-600">{ep.episodeNumber}편</span>

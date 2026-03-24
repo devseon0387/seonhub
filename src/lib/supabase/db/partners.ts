@@ -68,7 +68,7 @@ export function partnerToInsert(partner: Omit<Partner, 'id' | 'createdAt'>) {
 }
 
 export function partnerToUpdate(partner: Partial<Partner>) {
-  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  const row: Record<string, unknown> = {};
   if (partner.name !== undefined) row.name = partner.name;
   if (partner.email !== undefined) row.email = partner.email;
   if (partner.phone !== undefined) row.phone = partner.phone;

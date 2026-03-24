@@ -61,7 +61,7 @@ export interface Project {
 export type EpisodeStatus = 'waiting' | 'in_progress' | 'review' | 'completed';
 
 // 작업 내용 타입
-export type WorkContentType = '롱폼' | '기획 숏폼' | '본편 숏폼' | '썸네일';
+export type WorkContentType = '롱폼' | '기획 숏폼' | '본편 숏폼' | '썸네일' | 'OAP';
 
 // 작업 항목 상세 타입
 export interface EpisodeWorkItem {
@@ -120,6 +120,23 @@ export interface Episode {
   invoiceDate?: string; // 세금계산서 발행일
   invoiceStatus?: 'pending' | 'completed'; // 발행 상태 (pending: 미발행, completed: 발행 완료)
   completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 지출 카테고리
+export type ExpenseCategory = '운영비' | '장비' | '교통' | '식비' | '숙박' | '소프트웨어' | '기타';
+
+// 지출 타입
+export interface Expense {
+  id: string;
+  title: string;
+  amount: number;
+  category: ExpenseCategory;
+  expenseDate: string;
+  description?: string;
+  projectId?: string;
+  spenderName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -185,6 +202,19 @@ export interface Feedback {
   content: string;
   pagePath: string;
   status: FeedbackStatus;
+  createdAt: string;
+}
+
+// 보낸 메일 타입
+export interface SentEmail {
+  id: string;
+  senderEmail: string;
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject: string;
+  content: string;
+  status: 'sent';
   createdAt: string;
 }
 

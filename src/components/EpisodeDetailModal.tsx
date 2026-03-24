@@ -5,7 +5,7 @@ import { Episode, Partner, EpisodeWorkItem, WorkContentType } from '@/types';
 import { X, Edit2, Plus, Calendar, DollarSign, ChevronDown, ChevronRight, User } from 'lucide-react';
 
 // 모든 작업 타입 정의
-const ALL_WORK_TYPES: WorkContentType[] = ['롱폼', '기획 숏폼', '본편 숏폼', '썸네일'];
+const ALL_WORK_TYPES: WorkContentType[] = ['롱폼', '기획 숏폼', '본편 숏폼', '썸네일', 'OAP'];
 
 interface EpisodeDetailModalProps {
   episode: Episode;
@@ -51,6 +51,7 @@ export default function EpisodeDetailModal({
     '기획 숏폼': [],
     '본편 숏폼': [],
     '썸네일': [],
+    'OAP': [],
   });
 
   // 각 작업 타입별 비용 관리
@@ -59,6 +60,7 @@ export default function EpisodeDetailModal({
     '기획 숏폼': { partnerPayment: 0, managementFee: 0 },
     '본편 숏폼': { partnerPayment: 0, managementFee: 0 },
     '썸네일': { partnerPayment: 0, managementFee: 0 },
+    'OAP': { partnerPayment: 0, managementFee: 0 },
   });
 
   // 비용 상세 펼침/접힘 상태
@@ -67,6 +69,7 @@ export default function EpisodeDetailModal({
     '기획 숏폼': false,
     '본편 숏폼': false,
     '썸네일': false,
+    'OAP': false,
   });
 
   // 작업 타입 펼침/접힘 상태
@@ -75,6 +78,7 @@ export default function EpisodeDetailModal({
     '기획 숏폼': true,
     '본편 숏폼': true,
     '썸네일': true,
+    'OAP': true,
   });
 
   // episode prop이 바뀌면 편집 상태 초기화

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { useToast } from '@/contexts/ToastContext';
 import { X, ChevronRight, ChevronLeft, ChevronDown, Check, Sparkles, Building2, Zap, Briefcase, Film, CheckCircle, Youtube, Camera, BookOpen, MoreHorizontal, Users, User, Search } from 'lucide-react';
 import { FloatingLabelInput } from '@/components/FloatingLabelInput';
@@ -47,7 +47,7 @@ const CATEGORIES = [
   { label: '기타', icon: MoreHorizontal, color: 'text-gray-500', bg: 'bg-gray-100' },
 ];
 
-const stepVariants = {
+const stepVariants: Variants = {
   enter: (direction: number) => ({
     x: direction > 0 ? 48 : -48,
     opacity: 0,
@@ -389,7 +389,7 @@ export default function ProjectWizardModal({
                 <motion.div
                   key={currentStep}
                   custom={direction}
-                  variants={stepVariants as any}
+                  variants={stepVariants}
                   initial="enter"
                   animate="center"
                   exit="exit"
