@@ -27,6 +27,30 @@ const STORAGE_KEY = 'video-moment-changelog';
 
 const defaultChangelogs: ChangelogItem[] = [
   {
+    id: '5',
+    version: 'v0.1.5',
+    date: '2026-03-25',
+    title: '회차 작업 체크리스트 개선 및 코드 품질 보완',
+    description: '숏폼/OAP 작업 타입 추가, 드래그 앤 드롭 순서 변경, 매니저 정산 원천징수 적용 등',
+    type: 'feature',
+    details: [
+      'OAP 작업 타입 추가 (고정 카테고리, OAP 제작 라벨)',
+      '숏폼 개수 모달 — 콘텐츠 추가 및 작업 단계 추가 시 생성 개수 선택',
+      '숏폼 카테고리 고정 (가편/종편 드롭다운 제거)',
+      '작업 목록 타임라인 컴팩트 UI (한 줄 표시)',
+      '작업 타입 드래그 앤 드롭 순서 변경',
+      '매니저 정산 기본 3.3% 원천징수 적용',
+      '재무 메뉴에 준비중 태그 추가',
+      '메일 미리보기 모달 추가',
+      '에러 바운더리 추가 (dashboard, mail, projects, strategy)',
+      '타입 안전성 개선 (as any 캐스트 제거)',
+      'dead code 정리 (storage.ts 삭제)',
+      '에피소드 생성 시 clientId 누락 수정',
+      '파트너 수정 시 updated_at 컬럼 오류 수정',
+      '계약 관리 페이지 추가 (준비중)',
+    ],
+  },
+  {
     id: '4',
     version: 'v0.1.3',
     date: '2026-03-08',
