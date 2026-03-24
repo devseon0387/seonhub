@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Project, Client, Episode, Partner, WorkContentType } from '@/types';
+import { Project, Client, Episode, Partner, WorkContentType, WorkStep, WorkTypeBudget } from '@/types';
 import { ArrowLeft, Calendar, User, DollarSign, Tag, Edit, Trash2, TrendingUp, ChevronRight, X, UserCircle, FileText, Users, Video, Palette, Image, CheckCircle2, Clock, Pause, Target, ChevronDown, ClipboardCheck, Building2, Tv, Youtube, Monitor, Camera } from 'lucide-react';
 import { addToTrash } from '@/lib/trash';
 import { getProjectById, updateProject, deleteProject, getClients as fetchClients, getProjectEpisodes, getPartners, upsertEpisode, updateEpisodeFields, deleteEpisode, deleteProjectEpisodes } from '@/lib/supabase/db';
@@ -610,6 +610,7 @@ export default function ProjectDetailPage() {
       projectId: projectId,
       episodeNumber: nextEpisodeNumber,
       title: '',
+      clientId: project?.clientId,
       client: project?.client,
       workContent: projectWorkContent,
       status: 'waiting',
@@ -621,8 +622,8 @@ export default function ProjectDetailPage() {
         partnerPayment: episodePartnerTotal,
         managementFee: episodeManagementTotal,
       },
-      workBudgets: episodeWorkBudgets as any,
-      workSteps: episodeWorkSteps as any,
+      workBudgets: episodeWorkBudgets as Record<WorkContentType, WorkTypeBudget>,
+      workSteps: episodeWorkSteps as Record<WorkContentType, WorkStep[]>,
       createdAt: now,
       updatedAt: now,
     };

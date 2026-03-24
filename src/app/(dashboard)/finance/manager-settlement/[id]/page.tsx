@@ -12,14 +12,13 @@ const fmt = (n: number) => n.toLocaleString('ko-KR') + '원';
 
 function calcNetAmount(amount: number, partnerType?: 'freelancer' | 'business') {
   if (partnerType === 'business') return Math.round(amount * 1.1);
-  if (partnerType === 'freelancer') return Math.round(amount * (1 - 0.033));
-  return amount;
+  // 매니저는 기본 3.3% 원천징수 적용
+  return Math.round(amount * (1 - 0.033));
 }
 
 function getNetLabel(partnerType?: 'freelancer' | 'business') {
   if (partnerType === 'business') return '부가세 10%';
-  if (partnerType === 'freelancer') return '3.3% 원천징수';
-  return '';
+  return '3.3% 원천징수';
 }
 
 function getDday(dateStr: string) {
@@ -177,15 +176,13 @@ export default function ManagerSettlementDetailPage() {
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="text-3xl font-bold text-gray-900">{manager.name}</h1>
-              {manager.partnerType && (
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  manager.partnerType === 'business'
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'bg-purple-50 text-purple-600'
-                }`}>
-                  {manager.partnerType === 'business' ? '사업자' : '프리랜서'}
-                </span>
-              )}
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                manager.partnerType === 'business'
+                  ? 'bg-blue-50 text-blue-600'
+                  : 'bg-purple-50 text-purple-600'
+              }`}>
+                {manager.partnerType === 'business' ? '사업자' : '프리랜서'}
+              </span>
               {manager.jobTitle && (
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600">
                   {manager.jobTitle}
@@ -220,7 +217,7 @@ export default function ManagerSettlementDetailPage() {
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <p className="text-xs text-gray-400 mb-1 whitespace-nowrap">
-            실 지급액{manager.partnerType && <span className="text-blue-400 ml-1">({getNetLabel(manager.partnerType)})</span>}
+            실 지급액<span className="text-blue-400 ml-1">({getNetLabel(manager.partnerType)})</span>
           </p>
           <p className="text-xl font-bold text-blue-600 whitespace-nowrap">{fmt(totalNetAmount)}</p>
         </div>
