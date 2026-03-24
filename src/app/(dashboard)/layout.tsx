@@ -16,6 +16,7 @@ import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import NotificationDropdown from '@/components/NotificationDropdown';
 
 import FeedbackModal from '@/components/FeedbackModal';
+import UpdateNoticeModal from '@/components/UpdateNoticeModal';
 import { APP_VERSION, APP_LAST_UPDATED } from '@/config/version';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -889,6 +890,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <GlobalFAB />
       <TutorialOverlay />
       <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      <UpdateNoticeModal />
     </div>
     </TutorialProvider>
   );

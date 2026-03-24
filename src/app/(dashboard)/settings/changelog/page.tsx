@@ -3,18 +3,7 @@
 import { useState } from 'react';
 import { ArrowLeft, Plus, X, ChevronDown, ChevronUp, Sparkles, Wrench, Zap, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
-
-type UpdateType = 'feature' | 'fix' | 'improvement' | 'breaking';
-
-interface ChangelogItem {
-  id: string;
-  version: string;
-  date: string;
-  title: string;
-  description: string;
-  type: UpdateType;
-  details: string[];
-}
+import { defaultChangelogs, type UpdateType, type ChangelogItem } from '@/config/changelog';
 
 const TYPE_CONFIG: Record<UpdateType, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
   feature: { label: '새 기능', color: 'text-orange-700', bg: 'bg-orange-100', icon: <Sparkles size={14} /> },
@@ -24,91 +13,6 @@ const TYPE_CONFIG: Record<UpdateType, { label: string; color: string; bg: string
 };
 
 const STORAGE_KEY = 'video-moment-changelog';
-
-const defaultChangelogs: ChangelogItem[] = [
-  {
-    id: '5',
-    version: 'v0.1.5',
-    date: '2026-03-25',
-    title: '회차 작업 체크리스트 개선 및 코드 품질 보완',
-    description: '숏폼/OAP 작업 타입 추가, 드래그 앤 드롭 순서 변경, 매니저 정산 원천징수 적용 등',
-    type: 'feature',
-    details: [
-      'OAP 작업 타입 추가 (고정 카테고리, OAP 제작 라벨)',
-      '숏폼 개수 모달 — 콘텐츠 추가 및 작업 단계 추가 시 생성 개수 선택',
-      '숏폼 카테고리 고정 (가편/종편 드롭다운 제거)',
-      '작업 목록 타임라인 컴팩트 UI (한 줄 표시)',
-      '작업 타입 드래그 앤 드롭 순서 변경',
-      '매니저 정산 기본 3.3% 원천징수 적용',
-      '재무 메뉴에 준비중 태그 추가',
-      '메일 미리보기 모달 추가',
-      '에러 바운더리 추가 (dashboard, mail, projects, strategy)',
-      '타입 안전성 개선 (as any 캐스트 제거)',
-      'dead code 정리 (storage.ts 삭제)',
-      '에피소드 생성 시 clientId 누락 수정',
-      '파트너 수정 시 updated_at 컬럼 오류 수정',
-      '계약 관리 페이지 추가 (준비중)',
-    ],
-  },
-  {
-    id: '4',
-    version: 'v0.1.3',
-    date: '2026-03-08',
-    title: '프로젝트 상태 자동 분류 체계 전환',
-    description: '수동 상태 설정 대신 에피소드 completedAt 기준으로 active/standby/dormant/inactive 상태를 자동 계산',
-    type: 'feature',
-    details: [
-      '에피소드 완료일 기준 프로젝트 상태 자동 계산 (active/standby/dormant/inactive)',
-      '프로젝트 목록 탭을 진행 중/대기/휴면/비활성으로 변경',
-      '진행 중 프로젝트는 마감일순, 나머지는 최신 완료일순 정렬',
-      '프로젝트 상세 및 대시보드 StatusBadge 일괄 업데이트',
-    ],
-  },
-  {
-    id: '3',
-    version: 'v0.1.2',
-    date: '2026-02-24',
-    title: '회원가입 제거 → 관리자 계정 생성 방식 전환',
-    description: '사내 ERP 특성에 맞게 셀프 가입을 제거하고, 관리자가 직접 계정을 생성하는 방식으로 변경',
-    type: 'breaking',
-    details: [
-      '회원가입 페이지(/signup) 제거 — 접근 시 로그인으로 리다이렉트',
-      '계정 관리 페이지에 "새 계정 생성" 폼 추가 (이름, 이메일, 역할, 임시 비밀번호)',
-      '임시 비밀번호 자동 생성 버튼 및 생성 완료 시 비밀번호 확인 모달 추가',
-      '첫 로그인 시 비밀번호 변경 강제 (/change-password)',
-      '미들웨어에서 needs_password_change 체크 → 비밀번호 미변경 시 다른 페이지 접근 차단',
-      '설정 페이지에서 자유롭게 비밀번호 재변경 가능',
-    ],
-  },
-  {
-    id: '2',
-    version: 'v0.1.1',
-    date: '2026-02-23',
-    title: '인증 보안 강화',
-    description: '미승인 사용자 접근 차단 및 회원가입 오류 메시지 개선',
-    type: 'fix',
-    details: [
-      '미들웨어에서 승인 여부 검증 추가 — 미승인 사용자 대시보드 접근 차단',
-      '회원가입 시 "User already registered" 오류를 한글 안내 메시지로 개선',
-      '로그인/회원가입 페이지 리다이렉트 시 승인 상태 확인 로직 추가',
-    ],
-  },
-  {
-    id: '1',
-    version: 'v0.1.0',
-    date: '2026-02-18',
-    title: '초기 대시보드 출시',
-    description: '프로젝트, 파트너, 클라이언트 관리 기능을 포함한 초기 버전 출시',
-    type: 'feature',
-    details: [
-      '프로젝트 관리 페이지 추가',
-      '파트너 관리 페이지 추가',
-      '클라이언트 관리 페이지 추가',
-      '대시보드 통계 카드 추가',
-      '로그인 / 로그아웃 기능',
-    ],
-  },
-];
 
 function getChangelogs(): ChangelogItem[] {
   if (typeof window === 'undefined') return defaultChangelogs;
