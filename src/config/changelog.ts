@@ -8,6 +8,8 @@ export interface ChangelogItem {
   description: string;
   type: UpdateType;
   details: string[];
+  features?: string[];  // 기능 추가/개선 (모달 상단)
+  fixes?: string[];     // 코드 품질/버그 수정 (모달 하단)
 }
 
 export const defaultChangelogs: ChangelogItem[] = [
@@ -33,6 +35,19 @@ export const defaultChangelogs: ChangelogItem[] = [
       '에피소드 생성 시 clientId 누락 수정',
       '파트너 수정 시 updated_at 컬럼 오류 수정',
       '계약 관리 페이지 추가 (준비중)',
+    ],
+    features: [
+      'OAP 작업 타입 추가',
+      '숏폼 개수 선택 모달 (여러 편 한번에 추가)',
+      '작업 타입 드래그 앤 드롭 순서 변경',
+      '매니저 정산 3.3% 원천징수 적용',
+      '메일 미리보기 모달',
+      '버전 업데이트 알림 모달',
+    ],
+    fixes: [
+      '파트너 수정 오류 수정',
+      '에피소드-클라이언트 연결 누락 수정',
+      '타입 안전성 개선',
     ],
   },
   {
