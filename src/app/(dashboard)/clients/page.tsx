@@ -11,6 +11,26 @@ import { EmptyClients, EmptySearch } from '@/components/EmptyState';
 import { getClients, insertClient, updateClient, deleteClient, getProjects } from '@/lib/supabase/db';
 import { useToast } from '@/contexts/ToastContext';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
+import { getComputedProjectStatus } from '@/lib/utils';
+import { Episode } from '@/types';
+import { getAllEpisodes } from '@/lib/supabase/db';
+
+// 클라이언트의 프로젝트 기반 활성/비활성 자동 판별
+function getClientComputedStatus(
+  clientName: string,
+  projects: Project[],
+  allEpisodes: (Episode & { projectId: string })[]
+): 'active' | 'inactive' {
+  const clientProjects = projects.filter(p => p.client === clientName);
+  if (clientProjects.length === 0) return 'inactive';
+
+  for (const proj of clientProjects) {
+    const projEpisodes = allEpisodes.filter(e => e.projectId === proj.id);
+    const status = getComputedProjectStatus(projEpisodes);
+    if (status === 'active' || status === 'standby') return 'active';
+  }
+  return 'inactive';
+}
 
 export default function ClientsPage() {
   const router = useRouter();
@@ -18,15 +38,17 @@ export default function ClientsPage() {
 
   const [clients, setClients] = useState<Client[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [allEpisodes, setAllEpisodes] = useState<(Episode & { projectId: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   const loadData = useCallback(() => {
     setError(false);
     setLoading(true);
-    Promise.all([getClients(), getProjects()]).then(([c, p]) => {
+    Promise.all([getClients(), getProjects(), getAllEpisodes()]).then(([c, p, e]) => {
       setClients(c);
       setAllProjects(p);
+      setAllEpisodes(e);
       setLoading(false);
     }).catch(() => { setError(true); setLoading(false); });
   }, []);
@@ -182,7 +204,16 @@ export default function ClientsPage() {
     setClientToDelete(null);
   };
 
-  // 검색 필터링
+  // 프로젝트 기반 클라이언트 상태 맵
+  const clientStatusMap = new Map<string, 'active' | 'inactive'>();
+  clients.forEach(c => {
+    clientStatusMap.set(c.id, getClientComputedStatus(c.name, allProjects, allEpisodes));
+  });
+
+  const activeCount = clients.filter(c => clientStatusMap.get(c.id) === 'active').length;
+  const inactiveCount = clients.filter(c => clientStatusMap.get(c.id) === 'inactive').length;
+
+  // 검색 필터링 + 활성 먼저 정렬
   const filteredClients = clients.filter(client => {
     if (!searchQuery.trim()) return true;
 
@@ -195,6 +226,11 @@ export default function ClientsPage() {
       client.company?.toLowerCase().includes(query) ||
       client.address?.toLowerCase().includes(query)
     );
+  }).sort((a, b) => {
+    const aStatus = clientStatusMap.get(a.id) || 'inactive';
+    const bStatus = clientStatusMap.get(b.id) || 'inactive';
+    if (aStatus !== bStatus) return aStatus === 'active' ? -1 : 1;
+    return a.name.localeCompare(b.name);
   });
 
   if (loading) {
@@ -268,7 +304,7 @@ export default function ClientsPage() {
             </div>
           </div>
           <p className="text-3xl font-bold text-green-600">
-            {clients.filter(c => c.status === 'active').length}
+            {activeCount}
           </p>
           <p className="text-xs text-gray-400 mt-1">현재 거래 중</p>
         </div>
@@ -280,7 +316,7 @@ export default function ClientsPage() {
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-400">
-            {clients.filter(c => c.status === 'inactive').length}
+            {inactiveCount}
           </p>
           <p className="text-xs text-gray-400 mt-1">비활성 상태</p>
         </div>
@@ -329,9 +365,6 @@ export default function ClientsPage() {
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   상태
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  등록일
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   작업
@@ -414,16 +447,13 @@ export default function ClientsPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        client.status === 'active'
+                        clientStatusMap.get(client.id) === 'active'
                           ? 'bg-green-100 text-green-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}
                     >
-                      {client.status === 'active' ? '활성' : '비활성'}
+                      {clientStatusMap.get(client.id) === 'active' ? '활성' : '비활성'}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(client.createdAt).toLocaleDateString('ko-KR')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <div className="flex items-center gap-1">
@@ -541,9 +571,6 @@ export default function ClientsPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="text-xs text-gray-500 mr-1">
-                    {new Date(client.createdAt).toLocaleDateString('ko-KR')}
-                  </div>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

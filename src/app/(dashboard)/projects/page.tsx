@@ -60,7 +60,7 @@ export default function ProjectsPage() {
     window.addEventListener('fab:action', handler);
     return () => window.removeEventListener('fab:action', handler);
   }, []);
-  const [activeFilter, setActiveFilter] = useState<'all' | ComputedProjectStatus>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | ComputedProjectStatus>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'amount' | 'name'>('recent');
 

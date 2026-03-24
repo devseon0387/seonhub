@@ -49,7 +49,7 @@ function computePartnerStats(
   const completedEpisodes = partnerEpisodes.filter(e => e.status === 'completed');
   const inProgressEpisodes = partnerEpisodes.filter(e => e.status === 'in_progress');
   const thisMonthEpisodes = completedEpisodes.filter(e =>
-    e.updatedAt && new Date(e.updatedAt) >= thisMonthStart
+    e.completedAt && new Date(e.completedAt) >= thisMonthStart
   );
 
   const totalRevenue = partnerEpisodes.reduce((sum, e) => sum + (e.budget?.partnerPayment || 0), 0);
@@ -57,8 +57,10 @@ function computePartnerStats(
 
   const lastActivityDate = partnerEpisodes.length > 0
     ? partnerEpisodes.reduce((latest, e) => {
-        const d = new Date(e.updatedAt || e.createdAt);
-        return d > latest ? d : latest;
+        // 완료된 건은 completedAt, 진행 중인 건은 dueDate 또는 startDate
+        const dateStr = e.completedAt || (e.status !== 'completed' ? (e.dueDate || e.startDate) : null);
+        const d = dateStr ? new Date(dateStr) : null;
+        return d && d > latest ? d : latest;
       }, new Date(0))
     : null;
 
@@ -286,6 +288,11 @@ export default function PartnersPage() {
       partner.phone?.toLowerCase().includes(query) ||
       partner.company?.toLowerCase().includes(query)
     );
+  }).sort((a, b) => {
+    // 활성 → 비활성 순, 같은 상태 내에서는 운영진 먼저, 그 다음 이름순
+    if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
+    if (a.role !== b.role) return a.role === 'admin' ? -1 : 1;
+    return a.name.localeCompare(b.name);
   }), [partners, statusFilter, searchQuery]);
 
   if (loading) {
@@ -454,8 +461,13 @@ export default function PartnersPage() {
                           </span>
                         </div>
                         <div className="ml-3 min-w-0">
-                          <div className="text-sm font-medium text-gray-900 truncate">
+                          <div className="text-sm font-medium text-gray-900 truncate flex items-center gap-1.5">
                             {partner.name}
+                            {partner.role === 'admin' ? (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">운영진</span>
+                            ) : partner.generation ? (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 font-medium">{partner.generation}기</span>
+                            ) : null}
                           </div>
                           <div className="text-xs text-gray-400 truncate">
                             {[partner.email, partner.phone ? formatPhoneNumber(partner.phone) : ''].filter(Boolean).join(' · ')}
@@ -549,8 +561,13 @@ export default function PartnersPage() {
                       <User size={26} className="text-orange-500" />
                     </div>
                     <div className="ml-3 flex-1 min-w-0">
-                      <h3 className="text-base font-semibold text-gray-900 truncate">
+                      <h3 className="text-base font-semibold text-gray-900 truncate flex items-center gap-2">
                         {partner.name}
+                        {partner.role === 'admin' ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">운영진</span>
+                        ) : partner.generation ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-medium">{partner.generation}기</span>
+                        ) : null}
                       </h3>
                       <div className="flex items-center text-sm text-gray-500 mt-1">
                         <Mail size={12} className="mr-1 flex-shrink-0" />
