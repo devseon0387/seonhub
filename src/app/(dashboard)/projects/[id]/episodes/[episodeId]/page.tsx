@@ -1210,8 +1210,10 @@ export default function EpisodeDetailPage() {
                                 )}
                               </div>
                               <span className="text-xs font-medium text-gray-500">
-                                {count > 1 && <span className="text-gray-400 mr-1">단가 {((workBudgets[workType]?.partnerPayment || 0) + (workBudgets[workType]?.managementFee || 0)).toLocaleString()}원 ×{count} =</span>}
-                                합계 {getTotalBudget(workType).toLocaleString()}원
+                                {count > 1
+                                  ? <>단가 {((workBudgets[workType]?.partnerPayment || 0) + (workBudgets[workType]?.managementFee || 0)).toLocaleString()}원 × {count}편 = <span className="text-gray-900">{getTotalBudget(workType).toLocaleString()}원</span></>
+                                  : <>합계 {getTotalBudget(workType).toLocaleString()}원</>
+                                }
                               </span>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
