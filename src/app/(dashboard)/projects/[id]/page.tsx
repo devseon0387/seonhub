@@ -1130,7 +1130,7 @@ export default function ProjectDetailPage() {
               {/* 작업별 비용 */}
               <div className="pt-3 border-t border-gray-100">
                 <p className="text-sm font-medium text-gray-700 mb-3">작업별 비용</p>
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-5 gap-3">
                   {/* 롱폼 */}
                   <div className={`rounded-lg p-3 ${workTypeCosts['롱폼'].partnerCost === 0 && workTypeCosts['롱폼'].managementCost === 0 ? 'bg-gray-50' : 'bg-orange-50'}`}>
                     <p className={`text-xs font-semibold mb-2 ${workTypeCosts['롱폼'].partnerCost === 0 && workTypeCosts['롱폼'].managementCost === 0 ? 'text-gray-400' : 'text-gray-600'}`}>롱폼</p>
@@ -1202,6 +1202,25 @@ export default function ProjectDetailPage() {
                         <label className="text-xs text-gray-600">매니징 비용</label>
                         <p className={`text-sm font-semibold mt-1 ${workTypeCosts['썸네일'].managementCost === 0 ? 'text-gray-400' : 'text-gray-900'}`}>
                           {formatCurrency(workTypeCosts['썸네일'].managementCost)}원
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* OAP */}
+                  <div className={`rounded-lg p-3 ${workTypeCosts['OAP'].partnerCost === 0 && workTypeCosts['OAP'].managementCost === 0 ? 'bg-gray-50' : 'bg-purple-50'}`}>
+                    <p className={`text-xs font-semibold mb-2 ${workTypeCosts['OAP'].partnerCost === 0 && workTypeCosts['OAP'].managementCost === 0 ? 'text-gray-400' : 'text-gray-600'}`}>OAP</p>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs text-gray-600">파트너 비용</label>
+                        <p className={`text-sm font-semibold mt-1 ${workTypeCosts['OAP'].partnerCost === 0 ? 'text-gray-400' : 'text-gray-900'}`}>
+                          {formatCurrency(workTypeCosts['OAP'].partnerCost)}원
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600">매니징 비용</label>
+                        <p className={`text-sm font-semibold mt-1 ${workTypeCosts['OAP'].managementCost === 0 ? 'text-gray-400' : 'text-gray-900'}`}>
+                          {formatCurrency(workTypeCosts['OAP'].managementCost)}원
                         </p>
                       </div>
                     </div>
@@ -2763,6 +2782,55 @@ export default function ProjectDetailPage() {
                                 <span className="text-xs font-semibold text-gray-600">소계</span>
                                 <span className="text-sm font-bold text-gray-900">
                                   {formatCurrency(tempWorkTypeCosts['썸네일'].partnerCost + tempWorkTypeCosts['썸네일'].managementCost)}원
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* OAP */}
+                        <div className="bg-purple-50/50 rounded-xl p-4 border border-purple-100">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-2 h-2 rounded-full bg-purple-500" />
+                            <h4 className="text-sm font-bold text-gray-800">OAP</h4>
+                            {tempWorkContent.includes('OAP') ? (
+                              <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">선택됨</span>
+                            ) : (
+                              <span className="ml-auto text-xs text-gray-400 italic">미선택</span>
+                            )}
+                          </div>
+                          <div className="space-y-3">
+                            <div>
+                              <label className="text-xs font-medium text-gray-600 block mb-1.5">파트너 비용</label>
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={formatCurrency(tempWorkTypeCosts['OAP'].partnerCost)}
+                                  onChange={(e) => updateTempWorkTypeCost('OAP', 'partnerCost', e.target.value)}
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
+                                  placeholder="0"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-gray-600 block mb-1.5">매니징 비용</label>
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={formatCurrency(tempWorkTypeCosts['OAP'].managementCost)}
+                                  onChange={(e) => updateTempWorkTypeCost('OAP', 'managementCost', e.target.value)}
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
+                                  placeholder="0"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
+                              </div>
+                            </div>
+                            <div className="pt-2 mt-2 border-t-2 border-gray-200">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs font-semibold text-gray-600">소계</span>
+                                <span className="text-sm font-bold text-gray-900">
+                                  {formatCurrency(tempWorkTypeCosts['OAP'].partnerCost + tempWorkTypeCosts['OAP'].managementCost)}원
                                 </span>
                               </div>
                             </div>
