@@ -44,6 +44,7 @@ export default function ProjectDetailPage() {
     '기획 숏폼': { partnerCost: 0, managementCost: 0 },
     '본편 숏폼': { partnerCost: 0, managementCost: 0 },
     '썸네일': { partnerCost: 0, managementCost: 0 },
+    'OAP': { partnerCost: 0, managementCost: 0 },
   });
   const [totalAmount, setTotalAmount] = useState<number>(0);
   // 통합 프로젝트 수정 모달
@@ -122,6 +123,7 @@ export default function ProjectDetailPage() {
         '기획 숏폼': { partnerCost: 0, managementCost: 0 },
         '본편 숏폼': { partnerCost: 0, managementCost: 0 },
         '썸네일': { partnerCost: 0, managementCost: 0 },
+        'OAP': { partnerCost: 0, managementCost: 0 },
       };
       const costs = foundProject.workTypeCosts ? { ...defaultCosts, ...foundProject.workTypeCosts } : defaultCosts;
       setWorkTypeCosts(costs);

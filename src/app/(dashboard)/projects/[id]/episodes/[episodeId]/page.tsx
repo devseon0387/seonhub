@@ -88,6 +88,7 @@ export default function EpisodeDetailPage() {
     '기획 숏폼': { partnerPayment: 0, managementFee: 0 },
     '본편 숏폼': { partnerPayment: 0, managementFee: 0 },
     '썸네일': { partnerPayment: 0, managementFee: 0 },
+    'OAP': { partnerPayment: 0, managementFee: 0 },
   });
 
   // 사용자 수정용 setter (dirty 플래그 자동 설정)
@@ -106,6 +107,7 @@ export default function EpisodeDetailPage() {
     '기획 숏폼': false,
     '본편 숏폼': false,
     '썸네일': false,
+    'OAP': false,
   });
 
   // 작업 타입 펼침/접힘 상태
@@ -114,6 +116,7 @@ export default function EpisodeDetailPage() {
     '기획 숏폼': true,
     '본편 숏폼': true,
     '썸네일': true,
+    'OAP': true,
   });
 
   // 드래그 앤 드롭 상태
@@ -315,6 +318,7 @@ export default function EpisodeDetailPage() {
           '기획 숏폼': { partnerPayment: 0, managementFee: 0 },
           '본편 숏폼': { partnerPayment: 0, managementFee: 0 },
           '썸네일': { partnerPayment: 0, managementFee: 0 },
+          'OAP': { partnerPayment: 0, managementFee: 0 },
         };
         foundEpisode.workContent.forEach(workType => {
           if (foundProject.workTypeCosts![workType]) {
