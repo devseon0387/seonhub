@@ -1231,9 +1231,9 @@ export default function EpisodeDetailPage() {
 
                         {/* OAP 비용 — 작업 타입 추가 여부와 무관하게 항상 표시 */}
                         {!activeWorkTypes.includes('OAP') && (
-                          <div className="bg-purple-50/50 rounded-xl border border-purple-100 p-4">
+                          <div className="bg-white rounded-xl border border-gray-100 p-4">
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-sm font-medium text-purple-700">OAP</span>
+                              <span className="text-sm font-medium text-gray-900">OAP</span>
                               <span className="text-xs font-medium text-gray-500">
                                 합계 {((workBudgets['OAP']?.partnerPayment || 0) + (workBudgets['OAP']?.managementFee || 0)).toLocaleString()}원
                               </span>
@@ -1248,7 +1248,7 @@ export default function EpisodeDetailPage() {
                                     value={formatCurrency(workBudgets['OAP']?.partnerPayment || 0)}
                                     onChange={(e) => handleUpdateBudget('OAP', 'partnerPayment', parseCurrency(e.target.value))}
                                     placeholder="0"
-                                    className="w-full text-sm px-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white"
+                                    className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white"
                                   />
                                   <span className="ml-1.5 text-xs text-gray-400">원</span>
                                 </div>
@@ -1262,7 +1262,7 @@ export default function EpisodeDetailPage() {
                                     value={formatCurrency(workBudgets['OAP']?.managementFee || 0)}
                                     onChange={(e) => handleUpdateBudget('OAP', 'managementFee', parseCurrency(e.target.value))}
                                     placeholder="0"
-                                    className="w-full text-sm px-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white"
+                                    className="w-full text-sm px-3 py-2 border border-gray-200 rounded-md focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white"
                                   />
                                   <span className="ml-1.5 text-xs text-gray-400">원</span>
                                 </div>
