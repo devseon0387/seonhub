@@ -365,8 +365,9 @@ export default function EpisodeDetailPage() {
 
       // workBudgets 합계를 budget에 반영 (합산이 0이면 기존 값 유지)
       const activeTypes = editedEpisode.workContent || [];
-      const calcPartner = activeTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.partnerPayment || 0), 0);
-      const calcManagement = activeTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.managementFee || 0), 0);
+      const stepCount = (wt: WorkContentType) => Math.max(1, (workSteps[wt] || []).length);
+      const calcPartner = activeTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.partnerPayment || 0) * stepCount(wt), 0);
+      const calcManagement = activeTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.managementFee || 0) * stepCount(wt), 0);
       const updatedEpisode = {
         ...editedEpisode,
         budget: {
@@ -633,10 +634,16 @@ export default function EpisodeDetailPage() {
     }));
   };
 
-  // 작업 타입별 총 비용 계산
+  // 작업 타입별 편수 (work_steps 개수)
+  const getStepCount = (workType: WorkContentType): number => {
+    return Math.max(1, (workSteps[workType] || []).length);
+  };
+
+  // 작업 타입별 총 비용 계산 (단가 × 편수)
   const getTotalBudget = (workType: WorkContentType): number => {
     const budget = workBudgets[workType];
-    return budget.partnerPayment + budget.managementFee;
+    const count = getStepCount(workType);
+    return (budget.partnerPayment + budget.managementFee) * count;
   };
 
 
@@ -958,8 +965,8 @@ export default function EpisodeDetailPage() {
                   <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                     {(() => {
                       const oapExtra = activeWorkTypes.includes('OAP') ? 0 : 1;
-                      const totalPartner = activeWorkTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.partnerPayment || 0), 0) + oapExtra * (workBudgets['OAP']?.partnerPayment || 0);
-                      const totalManagement = activeWorkTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.managementFee || 0), 0) + oapExtra * (workBudgets['OAP']?.managementFee || 0);
+                      const totalPartner = activeWorkTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.partnerPayment || 0) * getStepCount(wt), 0) + oapExtra * (workBudgets['OAP']?.partnerPayment || 0);
+                      const totalManagement = activeWorkTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.managementFee || 0) * getStepCount(wt), 0) + oapExtra * (workBudgets['OAP']?.managementFee || 0);
                       const totalAmount = editedEpisode.budget!.totalAmount;
                       return (
                         <>
@@ -1188,17 +1195,25 @@ export default function EpisodeDetailPage() {
                           </div>
                         </div>
 
-                        {activeWorkTypes.map(workType => (
+                        {activeWorkTypes.map(workType => {
+                          const count = getStepCount(workType);
+                          return (
                           <div key={workType} className="bg-white rounded-xl border border-gray-100 p-4">
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-sm font-medium text-gray-900">{workType}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-900">{workType}</span>
+                                {count > 1 && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">{count}편</span>
+                                )}
+                              </div>
                               <span className="text-xs font-medium text-gray-500">
+                                {count > 1 && <span className="text-gray-400 mr-1">단가 {((workBudgets[workType]?.partnerPayment || 0) + (workBudgets[workType]?.managementFee || 0)).toLocaleString()}원 ×{count} =</span>}
                                 합계 {getTotalBudget(workType).toLocaleString()}원
                               </span>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <label className="text-xs text-gray-400 block mb-1">파트너 지급</label>
+                                <label className="text-xs text-gray-400 block mb-1">파트너 지급{count > 1 ? ' (단가)' : ''}</label>
                                 <div className="flex items-center">
                                   <input
                                     type="text"
@@ -1212,7 +1227,7 @@ export default function EpisodeDetailPage() {
                                 </div>
                               </div>
                               <div>
-                                <label className="text-xs text-gray-400 block mb-1">매니징 비용</label>
+                                <label className="text-xs text-gray-400 block mb-1">매니징 비용{count > 1 ? ' (단가)' : ''}</label>
                                 <div className="flex items-center">
                                   <input
                                     type="text"
@@ -1227,7 +1242,8 @@ export default function EpisodeDetailPage() {
                               </div>
                             </div>
                           </div>
-                        ))}
+                        );
+                        })}
 
                         {/* OAP 비용 — 작업 타입 추가 여부와 무관하게 항상 표시 */}
                         {!activeWorkTypes.includes('OAP') && (
