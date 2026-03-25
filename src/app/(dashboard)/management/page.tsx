@@ -9,7 +9,7 @@ import {
   ChecklistRow,
 } from '@/lib/supabase/db';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
-import { Calendar, Clock, AlertCircle, CheckCircle, Users, Sparkles, Plus, Trash2, Bell, BellOff, X, Link2, Search, Repeat2, ChevronLeft, ChevronRight, User, FolderOpen } from 'lucide-react';
+import { Calendar, Clock, AlertCircle, CheckCircle, Users, Sparkles, Plus, Trash2, Bell, BellOff, X, Link2, Search, Repeat2, ChevronLeft, ChevronRight, User, FolderOpen, Building2 } from 'lucide-react';
 import { Project, Episode, Partner, Client, WorkContentType } from '@/types';
 import ProjectWizardModal from '@/components/ProjectWizardModal';
 import DateTimePicker, { RepeatType } from '@/components/DateTimePicker';
@@ -962,9 +962,9 @@ export default function ManagementPage() {
             </div>
           )}
 
-          {/* 일반 아이템 목록 */}
+          {/* 미완료 아이템 */}
           <AnimatePresence initial={false}>
-            {oneTimeItems.map(item => (
+            {oneTimeItems.filter(i => !i.completed).map(item => (
               <motion.div
                 key={item.id}
                 initial={{ opacity: 0, height: 0, y: -6 }}
@@ -999,17 +999,17 @@ export default function ManagementPage() {
                         )}
                         {item.linkedProjectId && (
                           <span className="px-1.5 py-0.5 bg-orange-50 text-orange-600 rounded text-[11px] border border-orange-100">
-                            📁 {item.linkedProjectTitle}
+                            <FolderOpen size={10} className="inline -mt-0.5" /> {item.linkedProjectTitle}
                           </span>
                         )}
                         {item.linkedClientName && (
                           <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[11px] border border-emerald-100">
-                            🏢 {item.linkedClientName}
+                            <Building2 size={10} className="inline -mt-0.5" /> {item.linkedClientName}
                           </span>
                         )}
                         {item.linkedPartnerId && (
                           <span className="px-1.5 py-0.5 bg-orange-50 text-orange-600 rounded text-[11px] border border-orange-100">
-                            👤 {item.linkedPartnerName}
+                            <User size={10} className="inline -mt-0.5" /> {item.linkedPartnerName}
                           </span>
                         )}
                       </div>
@@ -1034,6 +1034,49 @@ export default function ManagementPage() {
               </motion.div>
             ))}
           </AnimatePresence>
+
+          {/* 완료된 아이템 */}
+          {oneTimeItems.filter(i => i.completed).length > 0 && (
+            <>
+              <div className="mx-5 border-t border-gray-100 my-1" />
+              <div className="flex items-center gap-2 px-5 py-2.5">
+                <CheckCircle size={13} className="text-gray-300" />
+                <span className="text-xs font-semibold text-gray-400 tracking-wide">완료됨 ({oneTimeItems.filter(i => i.completed).length})</span>
+              </div>
+              <AnimatePresence initial={false}>
+                {oneTimeItems.filter(i => i.completed).map(item => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, height: 0, y: -6 }}
+                    animate={{ opacity: 1, height: 'auto', y: 0 }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    className="border-b border-gray-50 last:border-b-0"
+                  >
+                    <div className="flex items-start gap-3 sm:gap-4 px-4 sm:px-5 py-2.5 hover:bg-gray-50 transition-colors group opacity-50">
+                      <button
+                        onClick={() => toggleChecklistItem(item.id)}
+                        className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all bg-green-500 border-green-500"
+                      >
+                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                          <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium line-through text-gray-400">{item.text}</p>
+                      </div>
+                      <button
+                        onClick={() => deleteChecklistItem(item.id)}
+                        className="sm:opacity-0 sm:group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all flex-shrink-0"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </>
+          )}
 
           {/* 반복 중인 체크리스트 섹션 */}
           <>
