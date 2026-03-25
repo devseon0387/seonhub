@@ -634,9 +634,12 @@ export default function EpisodeDetailPage() {
     }));
   };
 
-  // 작업 타입별 편수 (work_steps 개수)
+  // 작업 타입별 편수 (숏폼만 work_steps 개수 반영, 나머지는 1)
   const getStepCount = (workType: WorkContentType): number => {
-    return Math.max(1, (workSteps[workType] || []).length);
+    if (workType === '기획 숏폼' || workType === '본편 숏폼') {
+      return Math.max(1, (workSteps[workType] || []).length);
+    }
+    return 1;
   };
 
   // 작업 타입별 총 비용 계산 (단가 × 편수)
