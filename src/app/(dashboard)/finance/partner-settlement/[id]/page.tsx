@@ -71,6 +71,8 @@ export default function PartnerSettlementDetailPage() {
     );
   };
 
+  const isMinMonth = selectedDate.year === 2026 && selectedDate.month === 3;
+
   const nextMonth = () => {
     setSelectedDate(prev => prev.month === 12
       ? { year: prev.year + 1, month: 1 }
@@ -78,7 +80,7 @@ export default function PartnerSettlementDetailPage() {
     );
   };
 
-  const copyAccount = () => {
+  const copyAccount =() => {
     if (!partner?.bank || !partner?.bankAccount) return;
     navigator.clipboard.writeText(`${partner.bank} ${partner.bankAccount}`);
     setCopiedId(true);
@@ -200,9 +202,9 @@ export default function PartnerSettlementDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-1 py-1 shadow-sm">
-          <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <ChevronLeft size={16} className="text-gray-500" />
-          </button>
+          <button onClick={prevMonth} disabled={isMinMonth} className={`p-2 rounded-lg transition-colors ${isMinMonth ? 'invisible' : 'hover:bg-gray-100'}`}>
+              <ChevronLeft size={16} className="text-gray-500" />
+            </button>
           <span className="px-3 py-1.5 text-sm font-semibold text-gray-800 min-w-[120px] text-center">
             {selectedDate.year}년 {selectedDate.month}월
           </span>
