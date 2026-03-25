@@ -139,9 +139,25 @@ export default function ManagerSettlementDetailPage() {
       }));
   }, [manager, projects, episodesMap, selectedYM]);
 
+  // 매니저가 assignee(작업자)인 에피소드도 집계
+  const workItems = useMemo(() => {
+    if (!manager) return [];
+    const items: EpisodeWithProject[] = [];
+    projects.forEach(project => {
+      const episodes = (episodesMap[project.id] || []).filter(
+        ep => ep.assignee === manager.id && ep.paymentDueDate?.slice(0, 7) === selectedYM
+      );
+      episodes.forEach(ep => items.push({ episode: ep, project }));
+    });
+    return items;
+  }, [manager, projects, episodesMap, selectedYM]);
+
   const allItems = dateGroups.flatMap(g => g.items);
-  const totalAmount = allItems.reduce((s, i) => s + (i.episode.budget?.managementFee ?? 0), 0);
-  const paidAmount = allItems.filter(i => i.episode.paymentStatus === 'completed').reduce((s, i) => s + (i.episode.budget?.managementFee ?? 0), 0);
+  const totalManagementAmount = allItems.reduce((s, i) => s + (i.episode.budget?.managementFee ?? 0), 0);
+  const totalWorkAmount = workItems.reduce((s, i) => s + (i.episode.budget?.partnerPayment ?? 0), 0);
+  const totalAmount = totalManagementAmount + totalWorkAmount;
+  const paidAmount = allItems.filter(i => i.episode.paymentStatus === 'completed').reduce((s, i) => s + (i.episode.budget?.managementFee ?? 0), 0)
+    + workItems.filter(i => i.episode.paymentStatus === 'completed').reduce((s, i) => s + (i.episode.budget?.partnerPayment ?? 0), 0);
   const unpaidAmount = totalAmount - paidAmount;
   const totalNetAmount = calcNetAmount(totalAmount, manager?.partnerType);
 
@@ -208,13 +224,19 @@ export default function ManagerSettlementDetailPage() {
       </div>
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs text-gray-400 mb-1">작업 수</p>
-          <p className="text-xl font-bold text-gray-900 whitespace-nowrap">{allItems.length}<span className="text-sm font-medium text-gray-400 ml-0.5">건</span></p>
+          <p className="text-xs text-gray-400 mb-1">매니징 비용</p>
+          <p className="text-xl font-bold text-gray-900 whitespace-nowrap">{fmt(totalManagementAmount)}</p>
+          <p className="text-[10px] text-gray-400 mt-1">{allItems.length}건</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs text-gray-400 mb-1">총 매니징 비용</p>
+          <p className="text-xs text-gray-400 mb-1">작업 비용</p>
+          <p className="text-xl font-bold text-gray-900 whitespace-nowrap">{fmt(totalWorkAmount)}</p>
+          <p className="text-[10px] text-gray-400 mt-1">{workItems.length}건</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <p className="text-xs text-gray-400 mb-1">정산 금액</p>
           <p className="text-xl font-bold text-gray-900 whitespace-nowrap">{fmt(totalAmount)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -323,6 +345,64 @@ export default function ManagerSettlementDetailPage() {
               </div>
             );
           })}
+
+          {/* 작업 내역 (매니저가 직접 작업한 에피소드) */}
+          {workItems.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+              <div className="px-5 py-4 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-gray-900">작업 내역</span>
+                  <span className="text-xs text-gray-400">{workItems.length}건</span>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-gray-400">
+                      <th className="px-5 py-2 text-left font-semibold">프로젝트</th>
+                      <th className="px-3 py-2 text-left font-semibold w-[50px]">회차</th>
+                      <th className="px-3 py-2 text-left font-semibold">회차 제목</th>
+                      <th className="px-3 py-2 text-right font-semibold">금액</th>
+                      <th className="w-[20px]" />
+                      <th className="px-3 py-2 text-right font-semibold">{manager.partnerType === 'business' ? '부가세' : '원천징수'}</th>
+                      <th className="w-[20px]" />
+                      <th className="pl-3 pr-6 py-2 text-right font-semibold">실 수령액</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {workItems.map(({ episode: ep, project }) => {
+                      const epAmount = ep.budget?.partnerPayment ?? 0;
+                      const epNet = calcNetAmount(epAmount, manager.partnerType);
+                      return (
+                        <tr key={ep.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-5 py-3 text-sm text-gray-700 whitespace-nowrap">{project.title}</td>
+                          <td className="px-3 py-3 text-sm text-orange-500 font-semibold whitespace-nowrap">{ep.episodeNumber}편</td>
+                          <td className="px-3 py-3 text-sm text-gray-500">{ep.title || '-'}</td>
+                          <td className="px-3 py-3 text-sm font-medium text-gray-800 text-right whitespace-nowrap">{fmt(epAmount)}</td>
+                          <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">{manager.partnerType === 'business' ? '+' : '−'}</td>
+                          <td className="px-3 py-3 text-sm text-gray-400 text-right whitespace-nowrap">{fmt(Math.abs(epNet - epAmount))}</td>
+                          <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">=</td>
+                          <td className="px-3 py-3 text-sm font-bold text-gray-900 text-right whitespace-nowrap pr-6">{fmt(epNet)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-gray-50 border-t border-gray-100">
+                      <td className="px-5 py-3 text-xs font-semibold text-gray-400">소계</td>
+                      <td />
+                      <td />
+                      <td className="px-3 py-3 text-sm font-bold text-gray-900 text-right whitespace-nowrap">{fmt(totalWorkAmount)}</td>
+                      <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">{manager.partnerType === 'business' ? '+' : '−'}</td>
+                      <td className="px-3 py-3 text-sm font-bold text-gray-400 text-right whitespace-nowrap">{fmt(Math.abs(calcNetAmount(totalWorkAmount, manager.partnerType) - totalWorkAmount))}</td>
+                      <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">=</td>
+                      <td className="px-3 py-3 text-sm font-bold text-blue-600 text-right whitespace-nowrap pr-6">{fmt(calcNetAmount(totalWorkAmount, manager.partnerType))}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* 전체 합계 */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-5">
