@@ -1788,7 +1788,7 @@ export default function EpisodeDetailPage() {
                                               >
                                                 <span className="text-sm text-gray-500">선택 안함</span>
                                               </button>
-                                              {partners.filter(p => p.status === 'active' && (!p.position || p.position === 'partner') && p.name.toLowerCase().includes(partnerSearch.toLowerCase())).map(p => (
+                                              {partners.filter(p => p.status === 'active' && p.name.toLowerCase().includes(partnerSearch.toLowerCase())).map(p => (
                                                 <button
                                                   key={p.id}
                                                   onClick={() => {
