@@ -957,8 +957,9 @@ export default function EpisodeDetailPage() {
                 <div className="px-6 pb-6">
                   <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                     {(() => {
-                      const totalPartner = activeWorkTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.partnerPayment || 0), 0);
-                      const totalManagement = activeWorkTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.managementFee || 0), 0);
+                      const oapExtra = activeWorkTypes.includes('OAP') ? 0 : 1;
+                      const totalPartner = activeWorkTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.partnerPayment || 0), 0) + oapExtra * (workBudgets['OAP']?.partnerPayment || 0);
+                      const totalManagement = activeWorkTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.managementFee || 0), 0) + oapExtra * (workBudgets['OAP']?.managementFee || 0);
                       const totalAmount = editedEpisode.budget!.totalAmount;
                       return (
                         <>
@@ -1227,6 +1228,48 @@ export default function EpisodeDetailPage() {
                             </div>
                           </div>
                         ))}
+
+                        {/* OAP 비용 — 작업 타입 추가 여부와 무관하게 항상 표시 */}
+                        {!activeWorkTypes.includes('OAP') && (
+                          <div className="bg-purple-50/50 rounded-xl border border-purple-100 p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-sm font-medium text-purple-700">OAP</span>
+                              <span className="text-xs font-medium text-gray-500">
+                                합계 {((workBudgets['OAP']?.partnerPayment || 0) + (workBudgets['OAP']?.managementFee || 0)).toLocaleString()}원
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs text-gray-400 block mb-1">파트너 지급</label>
+                                <div className="flex items-center">
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={formatCurrency(workBudgets['OAP']?.partnerPayment || 0)}
+                                    onChange={(e) => handleUpdateBudget('OAP', 'partnerPayment', parseCurrency(e.target.value))}
+                                    placeholder="0"
+                                    className="w-full text-sm px-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white"
+                                  />
+                                  <span className="ml-1.5 text-xs text-gray-400">원</span>
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-400 block mb-1">매니징 비용</label>
+                                <div className="flex items-center">
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={formatCurrency(workBudgets['OAP']?.managementFee || 0)}
+                                    onChange={(e) => handleUpdateBudget('OAP', 'managementFee', parseCurrency(e.target.value))}
+                                    placeholder="0"
+                                    className="w-full text-sm px-3 py-2 border border-purple-200 rounded-md focus:border-purple-400 focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white"
+                                  />
+                                  <span className="ml-1.5 text-xs text-gray-400">원</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
