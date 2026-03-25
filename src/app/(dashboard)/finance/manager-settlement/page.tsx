@@ -13,6 +13,8 @@ interface ManagerSummary {
   manager: Partner;
   projectCount: number;
   episodeCount: number;
+  managementTotal: number;
+  workTotal: number;
   totalAmount: number;
   paidAmount: number;
   unpaidAmount: number;
@@ -83,12 +85,14 @@ export default function ManagerSettlementPage() {
           p => p.managerIds?.includes(manager.id)
         );
 
-        let totalAmount = 0;
+        let managementTotal = 0;
+        let workTotal = 0;
         let paidAmount = 0;
         let episodeCount = 0;
         const projectIds = new Set<string>();
         const unpaidDueDates: string[] = [];
 
+        // 매니징 비용
         managerAllProjects.forEach(project => {
           const episodes = (episodesMap[project.id] || []).filter(
             ep => (ep.manager === manager.id || ep.manager === manager.name) && ep.paymentDueDate?.slice(0, 7) === selectedYM
@@ -98,7 +102,7 @@ export default function ManagerSettlementPage() {
             projectIds.add(project.id);
             episodes.forEach(ep => {
               const amt = ep.budget?.managementFee ?? 0;
-              totalAmount += amt;
+              managementTotal += amt;
               if (ep.paymentStatus === 'completed') {
                 paidAmount += amt;
               } else if (ep.paymentDueDate) {
@@ -108,6 +112,23 @@ export default function ManagerSettlementPage() {
           }
         });
 
+        // 작업 비용 (매니저가 assignee인 에피소드)
+        projects.forEach(project => {
+          const episodes = (episodesMap[project.id] || []).filter(
+            ep => ep.assignee === manager.id && ep.paymentDueDate?.slice(0, 7) === selectedYM
+          );
+          episodes.forEach(ep => {
+            const amt = ep.budget?.partnerPayment ?? 0;
+            workTotal += amt;
+            projectIds.add(project.id);
+            if (ep.paymentStatus === 'completed') {
+              paidAmount += amt;
+            }
+          });
+        });
+
+        const totalAmount = managementTotal + workTotal;
+
         const today = new Date().toISOString().slice(0, 10);
         const sorted = unpaidDueDates.sort((a, b) => Math.abs(new Date(a).getTime() - new Date(today).getTime()) - Math.abs(new Date(b).getTime() - new Date(today).getTime()));
         const nearestDueDate = sorted[0] ?? null;
@@ -116,6 +137,8 @@ export default function ManagerSettlementPage() {
           manager,
           projectCount: projectIds.size,
           episodeCount,
+          managementTotal,
+          workTotal,
           totalAmount,
           paidAmount,
           unpaidAmount: totalAmount - paidAmount,
@@ -163,11 +186,19 @@ export default function ManagerSettlementPage() {
       </div>
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs text-gray-400 mb-1">총 매니징 비용</p>
-          <p className="text-2xl font-bold text-gray-900">{fmt(grandTotal)}</p>
+          <p className="text-xs text-gray-400 mb-1">매니징 비용</p>
+          <p className="text-2xl font-bold text-gray-900">{fmt(summaries.reduce((s, ms) => s + ms.managementTotal, 0))}</p>
           <p className="text-xs text-gray-400 mt-1">{summaries.length}명 매니저</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <p className="text-xs text-gray-400 mb-1">작업 비용</p>
+          <p className="text-2xl font-bold text-gray-900">{fmt(summaries.reduce((s, ms) => s + ms.workTotal, 0))}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <p className="text-xs text-gray-400 mb-1">정산 금액</p>
+          <p className="text-2xl font-bold text-gray-900">{fmt(grandTotal)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <p className="text-xs text-gray-400 mb-1">지급 완료</p>
