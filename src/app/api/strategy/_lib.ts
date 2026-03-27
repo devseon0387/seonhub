@@ -1,4 +1,23 @@
 import { createClient } from '@/lib/supabase/server';
+import { NextResponse } from 'next/server';
+
+/** 인증 + 역할 확인. 실패 시 NextResponse 에러를 반환 */
+export async function requireAuth(): Promise<{ ok: true } | { ok: false; response: NextResponse }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, response: NextResponse.json({ error: '인증 필요' }, { status: 401 }) };
+
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('role, approved')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile || (profile.role !== 'admin' && profile.approved !== true)) {
+    return { ok: false, response: NextResponse.json({ error: '권한 없음' }, { status: 403 }) };
+  }
+  return { ok: true };
+}
 
 export interface StrategyGroup {
   id: string;

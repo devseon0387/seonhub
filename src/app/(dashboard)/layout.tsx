@@ -194,7 +194,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (cached) {
         try {
           const p = JSON.parse(cached);
-          if (p.role !== 'admin' && p.approved !== true) {
+          if (!p || (p.role !== 'admin' && p.approved !== true)) {
             supabase.auth.signOut();
             router.push('/login');
             return;

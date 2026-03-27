@@ -30,7 +30,10 @@ export async function POST(req: NextRequest) {
   );
 
   // user_profiles 삭제
-  await adminSupabase.from('user_profiles').delete().eq('id', userId);
+  const { error: profileError } = await adminSupabase.from('user_profiles').delete().eq('id', userId);
+  if (profileError) {
+    return NextResponse.json({ error: '프로필 삭제 실패: ' + profileError.message }, { status: 500 });
+  }
 
   // auth.users 삭제
   const { error } = await adminSupabase.auth.admin.deleteUser(userId);

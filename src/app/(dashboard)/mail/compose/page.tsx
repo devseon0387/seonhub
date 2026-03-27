@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import DOMPurify from 'dompurify';
 import { Mail, Send, AlertCircle, CheckCircle2, Plus, X, Eye } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import RichTextEditor from './_components/RichTextEditor';
@@ -317,7 +318,7 @@ export default function ComposeMailPage() {
 
               {/* 본문 미리보기 */}
               <div
-                dangerouslySetInnerHTML={{ __html: contentRef.current || '<p style="color:#a8a29e">본문이 비어있습니다.</p>' }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(contentRef.current || '<p style="color:#a8a29e">본문이 비어있습니다.</p>') }}
                 style={{ fontSize: '14px', lineHeight: '1.6', color: '#1c1917' }}
               />
             </div>
