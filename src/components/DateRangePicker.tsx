@@ -390,7 +390,7 @@ export default function DateRangePicker({
       if (v === 'tbd') return '미정';
       const [y, m, d] = v.split('-').map(Number);
       if (isNaN(m) || isNaN(d)) return '';
-      return `${y % 100}년 ${m}월 ${d}일`;
+      return `${String(m).padStart(2, '\u2007')}/${String(d).padStart(2, '0')}`;
     };
 
     return (
@@ -406,7 +406,7 @@ export default function DateRangePicker({
             }`}
           >
             <Calendar size={12} className={`flex-shrink-0 ${formatShort(startDate) ? 'text-orange-500' : 'text-gray-400'}`} />
-            <span className={`truncate ${formatShort(startDate) ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
+            <span className={`truncate tabular-nums ${formatShort(startDate) ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
               {formatShort(startDate) || '시작일'}
             </span>
           </button>
@@ -421,7 +421,7 @@ export default function DateRangePicker({
             }`}
           >
             <Calendar size={12} className={`flex-shrink-0 ${endDate === 'tbd' ? 'text-orange-400' : endDate ? 'text-orange-500' : 'text-gray-400'}`} />
-            <span className={`truncate ${endDate === 'tbd' ? 'text-orange-500 font-medium' : endDate ? 'text-orange-600 font-medium' : 'text-gray-400'}`}>
+            <span className={`truncate tabular-nums ${endDate === 'tbd' ? 'text-orange-500 font-medium' : endDate ? 'text-orange-600 font-medium' : 'text-gray-400'}`}>
               {formatShort(endDate) || '마감일'}
             </span>
           </button>

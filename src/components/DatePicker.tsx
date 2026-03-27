@@ -16,8 +16,8 @@ const MONTHS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', 
 
 function formatDisplay(value: string): string {
   if (!value) return '';
-  const [y, m, d] = value.split('-').map(Number);
-  return `${y}년 ${m}월 ${d}일`;
+  const [, m, d] = value.split('-').map(Number);
+  return `${m}/${d}`;
 }
 
 export default function DatePicker({ value, onChange, placeholder, minDate }: DatePickerProps) {
@@ -105,15 +105,15 @@ export default function DatePicker({ value, onChange, placeholder, minDate }: Da
       <button
         type="button"
         onClick={handleOpen}
-        className={`w-full h-12 px-4 border-2 rounded-xl text-left flex items-center justify-between transition-all ${
+        className={`w-full min-w-[130px] px-3 py-2 border-[1.5px] rounded-[10px] text-left flex items-center justify-between transition-all text-sm ${
           isOpen
-            ? 'border-orange-500 ring-2 ring-orange-100'
-            : 'border-gray-200 hover:border-gray-300'
+            ? 'border-[#44403c] ring-[3px] ring-black/[0.04]'
+            : 'border-[#ede9e6] hover:border-[#d6d3d1]'
         }`}
       >
-        <div className="flex items-center gap-2">
-          <Calendar size={16} className={value ? 'text-orange-500' : 'text-gray-400'} />
-          <span className={value ? 'text-gray-900 font-medium' : 'text-gray-400'}>
+        <div className="flex items-center gap-1.5">
+          <Calendar size={13} className={`flex-shrink-0 ${value ? 'text-orange-500' : 'text-gray-400'}`} />
+          <span className={value ? 'text-gray-900 font-semibold' : 'text-[#d6d3d1]'}>
             {value ? formatDisplay(value) : placeholder}
           </span>
         </div>
@@ -131,7 +131,7 @@ export default function DatePicker({ value, onChange, placeholder, minDate }: Da
                 onChange('');
               }
             }}
-            className="text-gray-300 hover:text-gray-500 transition-colors text-sm leading-none cursor-pointer"
+            className="text-gray-300 hover:text-gray-500 transition-colors text-xs leading-none cursor-pointer ml-1"
           >
             ✕
           </span>
