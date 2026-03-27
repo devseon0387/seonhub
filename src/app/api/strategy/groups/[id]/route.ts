@@ -7,10 +7,14 @@ export async function GET(
 ) {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
-  const { id } = await context.params;
-  const group = await dbGetGroup(id);
-  if (!group) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  return NextResponse.json(group);
+  try {
+    const { id } = await context.params;
+    const group = await dbGetGroup(id);
+    if (!group) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json(group);
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
 
 export async function PUT(
@@ -19,10 +23,14 @@ export async function PUT(
 ) {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
-  const { id } = await context.params;
-  const body = await req.json();
-  const group = await dbUpdateGroup(id, body);
-  return NextResponse.json(group);
+  try {
+    const { id } = await context.params;
+    const body = await req.json();
+    const group = await dbUpdateGroup(id, body);
+    return NextResponse.json(group);
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
 
 export async function DELETE(
@@ -31,7 +39,11 @@ export async function DELETE(
 ) {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
-  const { id } = await context.params;
-  await dbDeleteGroup(id);
-  return NextResponse.json({ ok: true });
+  try {
+    const { id } = await context.params;
+    await dbDeleteGroup(id);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }

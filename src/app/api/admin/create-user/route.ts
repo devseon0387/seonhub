@@ -24,6 +24,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '이름, 이메일, 비밀번호는 필수입니다' }, { status: 400 });
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      return NextResponse.json({ error: '올바른 이메일 형식이 아닙니다' }, { status: 400 });
+    }
+
     if (password.length < 8) {
       return NextResponse.json({ error: '비밀번호는 8자 이상이어야 합니다' }, { status: 400 });
     }
