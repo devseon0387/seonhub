@@ -35,33 +35,41 @@ export default function LoginPage() {
         setError(authError.message);
         toast.error('로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.');
         setIsLoading(false);
+        return;
+      }
+
+      // 관리자 승인 여부 확인
+      const { data: profile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('approved, role, needs_password_change')
+        .eq('email', email)
+        .single();
+
+      if (profileError || !profile) {
+        await supabase.auth.signOut();
+        setError('프로필 정보를 가져올 수 없습니다. 관리자에게 문의하세요.');
+        setIsLoading(false);
+        return;
+      }
+
+      if (profile.role !== 'admin' && profile.approved !== true) {
+        await supabase.auth.signOut();
+        setError('관리자 승인 대기 중입니다. 승인 후 로그인할 수 있습니다.');
+        toast.error('관리자 승인 대기 중입니다.');
+        setIsLoading(false);
+        return;
+      }
+
+      if (rememberMe) localStorage.setItem('vm_stay_logged_in', '1');
+      else localStorage.removeItem('vm_stay_logged_in');
+      sessionStorage.setItem('vm_active_session', '1');
+      sessionStorage.setItem('vm_just_logged_in', '1');
+
+      // 비밀번호 변경 필요 여부 확인
+      if (profile.needs_password_change === true) {
+        window.location.href = '/change-password';
       } else {
-        // 관리자 승인 여부 확인
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('approved, role, needs_password_change')
-          .eq('email', email)
-          .single();
-
-        if (profile && profile.role !== 'admin' && profile.approved !== true) {
-          await supabase.auth.signOut();
-          setError('관리자 승인 대기 중입니다. 승인 후 로그인할 수 있습니다.');
-          toast.error('관리자 승인 대기 중입니다.');
-          setIsLoading(false);
-          return;
-        }
-
-        if (rememberMe) localStorage.setItem('vm_stay_logged_in', '1');
-        else localStorage.removeItem('vm_stay_logged_in');
-        sessionStorage.setItem('vm_active_session', '1');
-        sessionStorage.setItem('vm_just_logged_in', '1');
-
-        // 비밀번호 변경 필요 여부 확인
-        if (profile && profile.needs_password_change === true) {
-          window.location.href = '/change-password';
-        } else {
-          window.location.href = '/management';
-        }
+        window.location.href = '/management';
       }
     } catch (err) {
       setError(String(err));

@@ -88,12 +88,13 @@ export async function dbGetGroup(id: string): Promise<StrategyGroup | null> {
 export async function dbCreateGroup(group: { id: string; name: string; emoji: string }): Promise<StrategyGroup> {
   const supabase = await createClient();
   const now = new Date().toISOString();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('strategy_groups')
     .insert({ id: group.id, name: group.name, emoji: group.emoji, created_at: now, updated_at: now })
     .select()
     .single();
-  return toGroup(data!);
+  if (error || !data) throw new Error(error?.message ?? 'Group 생성 실패');
+  return toGroup(data);
 }
 
 export async function dbUpdateGroup(id: string, updates: { name?: string; emoji?: string }): Promise<StrategyGroup> {
@@ -101,13 +102,14 @@ export async function dbUpdateGroup(id: string, updates: { name?: string; emoji?
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (updates.name  !== undefined) patch.name  = updates.name;
   if (updates.emoji !== undefined) patch.emoji = updates.emoji;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('strategy_groups')
     .update(patch)
     .eq('id', id)
     .select()
     .single();
-  return toGroup(data!);
+  if (error || !data) throw new Error(error?.message ?? 'Group 수정 실패');
+  return toGroup(data);
 }
 
 export async function dbDeleteGroup(id: string): Promise<void> {
@@ -138,7 +140,7 @@ export async function dbGetDoc(id: string): Promise<StrategyDoc | null> {
 export async function dbCreateDoc(doc: StrategyDoc): Promise<StrategyDoc> {
   const supabase = await createClient();
   const now = new Date().toISOString();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('strategy_docs')
     .insert({
       id: doc.id,
@@ -151,7 +153,8 @@ export async function dbCreateDoc(doc: StrategyDoc): Promise<StrategyDoc> {
     })
     .select()
     .single();
-  return toDoc(data!);
+  if (error || !data) throw new Error(error?.message ?? 'Doc 생성 실패');
+  return toDoc(data);
 }
 
 export async function dbUpdateDoc(id: string, updates: Partial<StrategyDoc>): Promise<StrategyDoc> {
@@ -160,13 +163,14 @@ export async function dbUpdateDoc(id: string, updates: Partial<StrategyDoc>): Pr
   if (updates.title !== undefined) patch.title = updates.title;
   if (updates.emoji !== undefined) patch.emoji = updates.emoji;
   if (updates.blocks !== undefined) patch.blocks = updates.blocks;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('strategy_docs')
     .update(patch)
     .eq('id', id)
     .select()
     .single();
-  return toDoc(data!);
+  if (error || !data) throw new Error(error?.message ?? 'Doc 수정 실패');
+  return toDoc(data);
 }
 
 export async function dbDeleteDoc(id: string): Promise<void> {

@@ -96,8 +96,8 @@ export default function UsersSettingsPage() {
       setMyId(profile.id);
 
       const [all, roles, activityRes] = await Promise.all([
-        getAllUserProfiles(),
-        getCustomRoles(),
+        getAllUserProfiles().catch(() => [] as Awaited<ReturnType<typeof getAllUserProfiles>>),
+        getCustomRoles().catch(() => [] as Awaited<ReturnType<typeof getCustomRoles>>),
         fetch('/api/admin/users-activity').then(r => r.ok ? r.json() : null).catch(() => null),
       ]);
       setProfiles(all);

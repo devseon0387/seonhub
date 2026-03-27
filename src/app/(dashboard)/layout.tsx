@@ -214,6 +214,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           }
           setMyRole(p.role);
         }
+      }).catch(() => {
+        // 네트워크 에러 등 — 캐시된 프로필로 유지, 다음 요청에서 재시도
       });
     };
     checkAuth();

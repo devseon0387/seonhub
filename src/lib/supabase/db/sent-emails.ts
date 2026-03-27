@@ -62,7 +62,8 @@ export async function getSentEmails(): Promise<SentEmail[]> {
   const { data, error } = await supabase
     .from('sent_emails')
     .select('*')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(200);
   if (error) { console.error('[DB] getSentEmails:', error.message); return []; }
   if (!data) return [];
   return (data as SentEmailRow[]).map(sentEmailFromRow);
