@@ -86,6 +86,7 @@ export default function ManagementPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [allEpisodes, setAllEpisodes] = useState<(Episode & { projectId: string })[]>([]);
   const [activeTab, setActiveTab] = useState<'today' | 'week' | 'checklist'>('today');
+  const [mobileChecklistOpen, setMobileChecklistOpen] = useState(false);
   const [tabDirection, setTabDirection] = useState(1);
 
   const TAB_ORDER = ['checklist', 'today', 'week'] as const;
@@ -524,10 +525,68 @@ export default function ManagementPage() {
         </button>
       </div>
 
+      {/* 모바일: 체크리스트 접기/펼치기 */}
+      <div className="lg:hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <button
+            onClick={() => setMobileChecklistOpen(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] font-bold">체크리스트</span>
+              <span className="text-[11px] text-orange-500 font-semibold">{checklistItems.filter(i => !i.completed).length}개 남음</span>
+            </div>
+            <ChevronRight size={16} className={`text-[#a8a29e] transition-transform duration-200 ${mobileChecklistOpen ? 'rotate-90' : ''}`} />
+          </button>
+          {mobileChecklistOpen && (
+            <div className="px-4 pb-4 border-t border-[#f0ece9]">
+              <div className="flex flex-col gap-1 mt-3">
+                {oneTimeItems.filter(i => !i.completed).map(item => (
+                  <div key={item.id} className={`flex items-center gap-2 p-2 rounded-lg ${item.reminderTime ? 'bg-red-50 border border-red-200' : ''}`}>
+                    <button
+                      onClick={() => toggleChecklistItem(item.id)}
+                      className="w-[18px] h-[18px] rounded-[5px] border-2 border-[#d6d3d1] flex-shrink-0 flex items-center justify-center hover:border-orange-500 transition-colors"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[12px] font-medium block truncate">{item.text}</span>
+                      <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                        {item.reminderTime && (
+                          <span className="text-[10px] font-semibold text-red-500 bg-red-100 px-1.5 py-0.5 rounded">🔴 {new Date(item.reminderTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+                        )}
+                        {item.linkedProjectTitle && (
+                          <span className="text-[10px] text-[#78716c] bg-[#f5f5f4] px-1.5 py-0.5 rounded">📁 {item.linkedProjectTitle}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {oneTimeItems.filter(i => i.completed).length > 0 && (
+                  <div className="border-t border-[#f0ece9] pt-2 mt-1">
+                    <p className="text-[10px] text-[#a8a29e] mb-1">완료 · {oneTimeItems.filter(i => i.completed).length}개</p>
+                    {oneTimeItems.filter(i => i.completed).map(item => (
+                      <div key={item.id} className="flex items-center gap-2 p-1.5 opacity-40">
+                        <button onClick={() => toggleChecklistItem(item.id)} className="w-[18px] h-[18px] rounded-[5px] bg-green-500 border-2 border-green-500 flex-shrink-0 flex items-center justify-center text-white text-[10px]">✓</button>
+                        <span className="text-[12px] line-through text-[#a8a29e]">{item.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="w-full mt-2 p-2 border-[1.5px] border-dashed border-[#ede9e6] rounded-lg text-[12px] text-[#a8a29e] hover:border-[#d6d3d1] transition-colors"
+              >
+                + 할 일 추가
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* C3 레이아웃: 타임라인 + 사이드 */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_430px] gap-4">
         {/* 왼쪽: 타임라인 */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
           {/* 지연 */}
           {overdueEpisodes.length > 0 && (
             <div className="mb-5">
@@ -639,8 +698,8 @@ export default function ManagementPage() {
           )}
         </div>
 
-        {/* 오른쪽: 파트너 현황 + 달력 + 체크리스트 */}
-        <div className="space-y-3 self-start" data-tour="tour-mgmt-checklist">
+        {/* 오른쪽: 파트너 현황 + 달력 + 체크리스트 (데스크탑만) */}
+        <div className="hidden lg:block space-y-3 self-start" data-tour="tour-mgmt-checklist">
           {/* 파트너 현황 — 인라인 칩 */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4">
             <div className="flex items-center justify-between mb-2.5">

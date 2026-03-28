@@ -113,6 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [myRole,        setMyRole       ] = useState('manager');
   const [expanded,      setExpanded     ] = useState<string | null>(null);
   const [mobileMenu,    setMobileMenu  ] = useState(false);
+  const [mobileSection, setMobileSection] = useState<string | null>(null);
   const [feedbackOpen,  setFeedbackOpen] = useState(false);
 
   // breadcrumb 동적 이름
@@ -236,7 +237,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <TutorialProvider>
     <div style={{ minHeight: '100vh', background: '#f5f4f2' }}>
       {/* 글로벌 검색 (Cmd+K / FAB로 열림, 버튼 UI는 숨기고 모달 리스너만 유지) */}
-      <div style={{ position: 'fixed', width: 0, height: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 0 }}>
+      <div className="hidden md:block" style={{ position: 'fixed', width: 0, height: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 0 }}>
         <div style={{ pointerEvents: 'auto' }}><GlobalSearch /></div>
       </div>
       {/* 커스텀 툴팁 + 모바일 반응형 CSS */}
@@ -669,7 +670,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* 모바일 햄버거 */}
         <button
           className="vm-hamburger"
-          onClick={() => setMobileMenu(v => !v)}
+          onClick={() => {
+            // 현재 페이지가 속한 섹션 자동 선택
+            const currentSec = SECTIONS.find(s => s.items.filter(isLink).some(i => pathname === i.href || pathname.startsWith(i.href + '/')));
+            setMobileSection(currentSec?.key ?? SECTIONS[0]?.key ?? null);
+            setMobileMenu(v => !v);
+          }}
           style={{
             display:    'none',
             background: 'none',
@@ -772,103 +778,135 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ══════════════════════════════════════════
           모바일 오버레이 메뉴
       ══════════════════════════════════════════ */}
+      {/* 모바일 오버레이 메뉴 — 레일 + 패널 */}
       <AnimatePresence>
         {mobileMenu && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            style={{
-              position:   'fixed',
-              inset:      0,
-              zIndex:     60,
-              background: '#ffffff',
-              overflowY:  'auto',
-              padding:    '0',
-            }}
-          >
-            {/* 닫기 헤더 */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid #f0ece9' }}>
-              <span style={{ fontSize: '15px', fontWeight: 700, color: '#1c1917' }}>메뉴</span>
-              <button onClick={() => setMobileMenu(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#78716c', padding: '4px' }}>
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* 섹션들 */}
-            <div style={{ padding: '12px 16px' }}>
-              {SECTIONS.map(sec => (
-                <div key={sec.key} style={{ marginBottom: '16px' }}>
-                  <p style={{ fontSize: '12px', fontWeight: 700, color: '#a8a29e', letterSpacing: '0.08em', padding: '4px 8px', textTransform: 'uppercase' }}>{sec.label}</p>
-                  {sec.items.filter(isLink).map(item => {
+          <>
+            {/* 배경 오버레이 */}
+            <motion.div
+              key="mobile-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileMenu(false)}
+              style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.3)' }}
+            />
+            {/* 메뉴 패널 */}
+            <motion.div
+              key="mobile-panel"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+              style={{ position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 61, display: 'flex', width: 'auto', maxWidth: '85vw' }}
+            >
+              {/* 레일 (아이콘 바) */}
+              <div style={{ width: '56px', background: '#1c1917', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '8px', paddingBottom: '8px', flexShrink: 0 }}>
+                {/* 닫기 */}
+                <button
+                  onClick={() => setMobileMenu(false)}
+                  style={{ width: '40px', height: '40px', borderRadius: '10px', border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginBottom: '8px' }}
+                >
+                  <X size={18} />
+                </button>
+                {/* 섹션 아이콘 */}
+                {SECTIONS.map(sec => {
+                  const Icon = sec.icon;
+                  const isSel = mobileSection === sec.key;
+                  const hasActive = sec.items.filter(isLink).some(i => pathname === i.href || pathname.startsWith(i.href + '/'));
+                  return (
+                    <button
+                      key={sec.key}
+                      onClick={() => setMobileSection(isSel ? null : sec.key)}
+                      style={{
+                        width: '40px', height: '40px', borderRadius: '10px', border: 'none',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                        background: isSel ? 'rgba(234,88,12,0.18)' : 'transparent',
+                        color: isSel ? '#ea580c' : hasActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)',
+                        marginBottom: '4px',
+                      }}
+                    >
+                      <Icon size={18} />
+                    </button>
+                  );
+                })}
+                {/* 하단: 시스템 */}
+                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                  {SYSTEM_ITEMS.map(item => {
                     const Icon = item.icon;
                     const active = pathname === item.href || pathname.startsWith(item.href + '/');
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
+                        onClick={() => setMobileMenu(false)}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: '10px',
-                          padding: '10px 8px', borderRadius: '10px', textDecoration: 'none',
-                          background: active ? '#ea580c' : 'transparent',
-                          color: active ? '#fff' : '#44403c',
-                          fontSize: '14px', fontWeight: active ? 600 : 400,
-                          marginBottom: '2px',
+                          width: '40px', height: '40px', borderRadius: '10px', textDecoration: 'none',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: active ? '#ea580c' : 'rgba(255,255,255,0.35)',
                         }}
                       >
-                        <Icon size={16} style={{ opacity: active ? 1 : 0.5 }} />
-                        <span>{item.label}</span>
-                        {item.badge && <PanelBadge label={item.badge} active={active} />}
+                        <Icon size={18} />
                       </Link>
                     );
                   })}
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      width: '40px', height: '40px', borderRadius: '10px', border: 'none',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                      background: 'transparent', color: 'rgba(255,255,255,0.35)',
+                    }}
+                  >
+                    <LogOut size={18} />
+                  </button>
                 </div>
-              ))}
-
-              {/* 시스템 */}
-              <div style={{ borderTop: '1px solid #f0ece9', paddingTop: '12px', marginTop: '4px' }}>
-                <p style={{ fontSize: '12px', fontWeight: 700, color: '#a8a29e', letterSpacing: '0.08em', padding: '4px 8px', textTransform: 'uppercase' }}>시스템</p>
-                {SYSTEM_ITEMS.map(item => {
-                  const Icon = item.icon;
-                  const active = pathname === item.href || pathname.startsWith(item.href + '/');
+              </div>
+              {/* 패널 (선택된 섹션의 메뉴) */}
+              <AnimatePresence mode="wait">
+                {mobileSection && (() => {
+                  const sec = SECTIONS.find(s => s.key === mobileSection);
+                  if (!sec) return null;
                   return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '10px',
-                        padding: '10px 8px', borderRadius: '10px', textDecoration: 'none',
-                        background: active ? '#ea580c' : 'transparent',
-                        color: active ? '#fff' : '#44403c',
-                        fontSize: '14px', fontWeight: active ? 600 : 400,
-                        marginBottom: '2px',
-                      }}
+                    <motion.div
+                      key={mobileSection}
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -12 }}
+                      transition={{ duration: 0.15 }}
+                      style={{ width: '220px', background: '#fff', borderRight: '1px solid #f0ece9', overflowY: 'auto', padding: '16px 12px' }}
                     >
-                      <Icon size={16} style={{ opacity: active ? 1 : 0.5 }} />
-                      <span>{item.label}</span>
-                    </Link>
+                      <p style={{ fontSize: '13px', fontWeight: 700, color: '#1c1917', padding: '4px 8px', marginBottom: '8px' }}>{sec.label}</p>
+                      {sec.items.filter(isLink).map(item => {
+                        const Icon = item.icon;
+                        const active = pathname === item.href || pathname.startsWith(item.href + '/');
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => setMobileMenu(false)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '10px',
+                              padding: '10px 10px', borderRadius: '10px', textDecoration: 'none',
+                              background: active ? '#ea580c' : 'transparent',
+                              color: active ? '#fff' : '#44403c',
+                              fontSize: '14px', fontWeight: active ? 600 : 400,
+                              marginBottom: '2px',
+                            }}
+                          >
+                            <Icon size={16} style={{ opacity: active ? 1 : 0.6 }} />
+                            <span>{item.label}</span>
+                            {item.badge && <PanelBadge label={item.badge} active={active} />}
+                          </Link>
+                        );
+                      })}
+                    </motion.div>
                   );
-                })}
-              </div>
-
-              {/* 로그아웃 */}
-              <div style={{ borderTop: '1px solid #f0ece9', paddingTop: '12px', marginTop: '12px' }}>
-                <button
-                  onClick={handleLogout}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '10px',
-                    padding: '10px 8px', borderRadius: '10px',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: '#ef4444', fontSize: '14px', fontWeight: 500, width: '100%',
-                  }}
-                >
-                  <LogOut size={16} />
-                  <span>로그아웃</span>
-                </button>
-              </div>
-            </div>
-          </motion.div>
+                })()}
+              </AnimatePresence>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
