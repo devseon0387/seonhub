@@ -5,12 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   getProjects, getPartners, getClients, getAllEpisodes,
   getMyChecklists, insertChecklist, updateChecklist, deleteChecklist, clearCompletedChecklists,
-  insertProject, insertClient, upsertEpisodes,
+  insertProject, insertClient, upsertEpisodes, updateEpisodeFields,
   ChecklistRow,
 } from '@/lib/supabase/db';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
-import { Calendar, Clock, AlertCircle, CheckCircle, Users, Sparkles, Plus, Trash2, Bell, BellOff, X, Link2, Search, Repeat2, ChevronLeft, ChevronRight, User, FolderOpen } from 'lucide-react';
-import { Project, Episode, Partner, Client, WorkContentType } from '@/types';
+import { Calendar, Clock, AlertCircle, CheckCircle, Users, Sparkles, Plus, Trash2, Bell, BellOff, X, Link2, Search, Repeat2, ChevronLeft, ChevronRight, User, FolderOpen, Building2 } from 'lucide-react';
+import { Project, Episode, Partner, Client, WorkContentType, WorkStep } from '@/types';
+import Link from 'next/link';
 import ProjectWizardModal from '@/components/ProjectWizardModal';
 import DateTimePicker, { RepeatType } from '@/components/DateTimePicker';
 import { useTutorial } from '@/components/tutorial/useTutorial';
@@ -86,6 +87,8 @@ export default function ManagementPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [allEpisodes, setAllEpisodes] = useState<(Episode & { projectId: string })[]>([]);
   const [activeTab, setActiveTab] = useState<'today' | 'week' | 'checklist'>('today');
+  const [mobileChecklistOpen, setMobileChecklistOpen] = useState(false);
+  const [quickViewEpisode, setQuickViewEpisode] = useState<(Episode & { projectId: string }) | null>(null);
   const [tabDirection, setTabDirection] = useState(1);
 
   const TAB_ORDER = ['checklist', 'today', 'week'] as const;
@@ -511,705 +514,367 @@ export default function ManagementPage() {
   return (
     <div className="space-y-5 sm:space-y-8">
       {/* 헤더 */}
-      <div>
-        <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center justify-between">
+        <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">매니지먼트</h1>
-          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full font-medium">{APP_VERSION_LABEL}</span>
+          <p className="text-gray-500 mt-1 text-sm">{now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</p>
         </div>
-        <p className="text-gray-500 mt-1 sm:mt-2 text-sm sm:text-base">오늘과 이번 주의 업무를 한눈에 관리하세요</p>
+        <button
+          onClick={() => setIsWizardOpen(true)}
+          className="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors"
+        >
+          + 새 프로젝트
+        </button>
       </div>
 
-      {/* 탭 네비게이션 */}
-      <div data-tour="tour-mgmt-tabs" className="bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-2 shadow-sm border border-gray-200 inline-flex gap-1 sm:gap-2 overflow-x-auto scrollbar-hide">
-        {([
-          {
-            key: 'checklist' as const,
-            icon: CheckCircle,
-            label: '체크리스트',
-            shortLabel: '체크',
-            badge: checklistItems.filter(i => !i.completed).length,
-            badgeClass: 'bg-orange-100 text-orange-600',
-          },
-          {
-            key: 'today' as const,
-            icon: Clock,
-            label: '오늘의 업무',
-            shortLabel: '오늘',
-            badge: todayDeadlines.length + tomorrowDeadlines.length,
-            badgeClass: 'bg-red-100 text-red-600',
-          },
-          {
-            key: 'week' as const,
-            icon: Calendar,
-            label: '이번 주 업무',
-            shortLabel: '이번 주',
-            badge: thisWeekDeadlines.length,
-            badgeClass: 'bg-green-100 text-green-600',
-          },
-        ] as const).map(({ key, icon: Icon, label, shortLabel, badge, badgeClass }) => (
+      {/* 모바일: 체크리스트 접기/펼치기 */}
+      <div className="lg:hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <button
-            key={key}
-            onClick={() => switchTab(key)}
-            className="relative px-3 py-2.5 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl font-semibold flex-shrink-0"
+            onClick={() => setMobileChecklistOpen(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3"
           >
-            {activeTab === key && (
-              <motion.div
-                layoutId="tab-pill"
-                className="absolute inset-0 bg-orange-500 rounded-lg sm:rounded-xl shadow-lg shadow-orange-500/30"
-                transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              />
-            )}
-            <div className={`relative flex items-center gap-1.5 sm:gap-2 transition-colors duration-200 text-sm sm:text-base ${
-              activeTab === key ? 'text-white' : 'text-gray-600 hover:text-gray-900'
-            }`}>
-              <Icon size={16} className="sm:hidden" />
-              <Icon size={18} className="hidden sm:block" />
-              <span className="sm:hidden">{shortLabel}</span>
-              <span className="hidden sm:inline">{label}</span>
-              {badge > 0 && (
-                <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-bold transition-colors duration-200 ${
-                  activeTab === key ? 'bg-white/20 text-white' : badgeClass
-                }`}>
-                  {badge}
-                </span>
-              )}
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] font-bold">체크리스트</span>
+              <span className="text-[11px] text-orange-500 font-semibold">{checklistItems.filter(i => !i.completed).length}개 남음</span>
             </div>
+            <ChevronRight size={16} className={`text-[#a8a29e] transition-transform duration-200 ${mobileChecklistOpen ? 'rotate-90' : ''}`} />
           </button>
-        ))}
-      </div>
-
-      {/* 탭 콘텐츠 */}
-      <div style={{ overflowX: 'clip' }}>
-      <AnimatePresence mode="wait" custom={tabDirection}>
-      <motion.div
-        key={activeTab}
-        custom={tabDirection}
-        variants={{
-          initial: (dir: number) => ({ opacity: 0, x: dir > 0 ? 48 : -48 }),
-          animate: { opacity: 1, x: 0 },
-          exit: (dir: number) => ({ opacity: 0, x: dir > 0 ? -48 : 48 }),
-        }}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        transition={{ duration: 0.26, ease: [0.25, 0.46, 0.45, 0.94] }}
-      >
-
-      {/* 오늘의 업무 탭 */}
-      {activeTab === 'today' && (
-      <div className="space-y-6">
-        {/* 오늘의 통계 */}
-        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">오늘의 현황</h2>
-            <span className="text-xs sm:text-sm bg-gray-100 text-gray-700 px-2.5 sm:px-3 py-1 rounded-full font-medium">
-              {now.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {/* 오늘 마감 */}
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
-              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                <p className="text-xs sm:text-sm text-gray-600">오늘 마감</p>
-                <AlertCircle className="text-red-500" size={18} />
-              </div>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-900">{todayDeadlines.length}</p>
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-1">개의 회차</p>
-            </div>
-
-            {/* 내일 마감 */}
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
-              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                <p className="text-xs sm:text-sm text-gray-600">내일 마감</p>
-                <Clock className="text-orange-500" size={18} />
-              </div>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-900">{tomorrowDeadlines.length}</p>
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-1">개의 회차</p>
-            </div>
-          </div>
-        </div>
-
-        {/* 오늘 마감 상세 */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-4 sm:p-6 border-b border-gray-200">
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900">오늘 마감 회차</h3>
-          </div>
-          <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
-            {todayDeadlines.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                <AlertCircle className="mx-auto mb-2 text-gray-400" size={32} />
-                <p>오늘 마감인 회차가 없습니다</p>
-              </div>
-            ) : (
-              todayDeadlines.map((episode) => {
-                const { project, partner } = getEpisodeDetails(episode);
-                return (
-                  <div key={episode.id} className="p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="text-sm font-medium text-gray-900">{episode.title}</h4>
-                        {project && (
-                          <p className="text-xs text-gray-500 mt-1">프로젝트: {project.title}</p>
+          {mobileChecklistOpen && (
+            <div className="px-4 pb-4 border-t border-[#f0ece9]">
+              <div className="flex flex-col gap-1 mt-3">
+                {oneTimeItems.filter(i => !i.completed).map(item => (
+                  <div key={item.id} className={`flex items-center gap-2 p-2 rounded-lg ${item.reminderTime ? 'bg-red-50 border border-red-200' : ''}`}>
+                    <button
+                      onClick={() => toggleChecklistItem(item.id)}
+                      className="w-[18px] h-[18px] rounded-[5px] border-2 border-[#d6d3d1] flex-shrink-0 flex items-center justify-center hover:border-orange-500 transition-colors"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[12px] font-medium block truncate">{item.text}</span>
+                      <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                        {item.reminderTime && (
+                          <span className="text-[10px] font-semibold text-red-500 bg-red-100 px-1.5 py-0.5 rounded">🔴 {new Date(item.reminderTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
                         )}
-                        {partner && (
-                          <div className="flex items-center mt-2">
-                            <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mr-1.5">
-                              <User size={10} className="text-orange-500" />
-                            </div>
-                            <span className="text-xs text-gray-600">{partner.name}</span>
-                          </div>
+                        {item.linkedProjectTitle && (
+                          <span className="text-[10px] text-[#78716c] bg-[#f5f5f4] px-1.5 py-0.5 rounded">📁 {item.linkedProjectTitle}</span>
                         )}
                       </div>
-                      <span className="ml-3 px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium whitespace-nowrap">
-                        {new Date(episode.dueDate!).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 마감
-                      </span>
                     </div>
                   </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* 프로젝트 진행 현황 */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-4 sm:p-6 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900">프로젝트 진행 현황</h3>
-            <span className="text-xs text-gray-400">
-              {(() => {
-                const eps = allEpisodes.filter(ep => {
-                  const proj = projects.find(p => p.id === ep.projectId);
-                  return proj && (proj.status === 'in_progress' || proj.status === 'planning');
-                });
-                return `${eps.filter(e => e.status !== 'completed').length}개 회차 진행 중`;
-              })()}
-            </span>
-          </div>
-          <div className="divide-y divide-gray-200 max-h-[480px] overflow-y-auto">
-            {(() => {
-              const activeEpisodes = allEpisodes
-                .filter(ep => {
-                  const proj = projects.find(p => p.id === ep.projectId);
-                  return proj && (proj.status === 'in_progress' || proj.status === 'planning');
-                })
-                .sort((a, b) => {
-                  const statusOrder: Record<string, number> = { in_progress: 0, review: 1, waiting: 2, completed: 3 };
-                  const sa = statusOrder[a.status] ?? 9;
-                  const sb = statusOrder[b.status] ?? 9;
-                  if (sa !== sb) return sa - sb;
-                  if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
-                  if (a.dueDate) return -1;
-                  if (b.dueDate) return 1;
-                  return 0;
-                });
-
-              if (activeEpisodes.length === 0) {
-                return (
-                  <div className="p-8 text-center text-gray-500">
-                    <FolderOpen className="mx-auto mb-2 text-gray-400" size={32} />
-                    <p>진행 중인 회차가 없습니다</p>
-                  </div>
-                );
-              }
-
-              const statusLabel: Record<string, { text: string; color: string }> = {
-                waiting: { text: '대기', color: 'bg-gray-100 text-gray-600' },
-                in_progress: { text: '진행', color: 'bg-orange-100 text-orange-700' },
-                review: { text: '검수', color: 'bg-blue-100 text-blue-700' },
-                completed: { text: '완료', color: 'bg-green-100 text-green-700' },
-              };
-
-              return activeEpisodes.map(ep => {
-                const proj = projects.find(p => p.id === ep.projectId);
-                const partner = partners.find(p => p.id === ep.assignee);
-                const st = statusLabel[ep.status] || statusLabel.waiting;
-                const isOverdue = ep.dueDate && new Date(ep.dueDate) < new Date() && ep.status !== 'completed';
-
-                return (
-                  <div key={ep.id} className="p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-semibold flex-shrink-0 ${st.color}`}>
-                          {st.text}
-                        </span>
-                        <h4 className="text-sm font-medium text-gray-900 truncate">
-                          {proj?.title} · {ep.episodeNumber}편
-                        </h4>
+                ))}
+                {oneTimeItems.filter(i => i.completed).length > 0 && (
+                  <div className="border-t border-[#f0ece9] pt-2 mt-1">
+                    <p className="text-[10px] text-[#a8a29e] mb-1">완료 · {oneTimeItems.filter(i => i.completed).length}개</p>
+                    {oneTimeItems.filter(i => i.completed).map(item => (
+                      <div key={item.id} className="flex items-center gap-2 p-1.5 opacity-40">
+                        <button onClick={() => toggleChecklistItem(item.id)} className="w-[18px] h-[18px] rounded-[5px] bg-green-500 border-2 border-green-500 flex-shrink-0 flex items-center justify-center text-white text-[10px]">✓</button>
+                        <span className="text-[12px] line-through text-[#a8a29e]">{item.text}</span>
                       </div>
-                      {ep.dueDate && (
-                        <span className={`text-xs ml-3 flex-shrink-0 ${isOverdue ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
-                          {isOverdue && '⚠ '}{new Date(ep.dueDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      {partner && (
-                        <div className="flex items-center gap-1">
-                          <div className="w-4 h-4 bg-orange-100 rounded-full flex items-center justify-center">
-                            <User size={8} className="text-orange-500" />
-                          </div>
-                          <span className="text-xs text-gray-500">{partner.name}</span>
-                        </div>
-                      )}
-                      {proj?.client && (
-                        <>
-                          <span className="text-gray-300">·</span>
-                          <span className="text-xs text-gray-500">{proj.client}</span>
-                        </>
-                      )}
-                      {ep.workContent && ep.workContent.length > 0 && (
-                        <>
-                          <span className="text-gray-300">·</span>
-                          <span className="text-xs text-gray-400">{ep.workContent.join(', ')}</span>
-                        </>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                );
-              });
-            })()}
-          </div>
+                )}
+              </div>
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="w-full mt-2 p-2 border-[1.5px] border-dashed border-[#ede9e6] rounded-lg text-[12px] text-[#a8a29e] hover:border-[#d6d3d1] transition-colors"
+              >
+                + 할 일 추가
+              </button>
+            </div>
+          )}
         </div>
       </div>
-      )}
 
-      {/* 이번 주 업무 탭 */}
-      {activeTab === 'week' && (
-      <div className="space-y-6">
-
-        {/* 주간 통계 */}
-        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">이번 주 현황</h2>
-            <span className="text-xs sm:text-sm bg-gray-100 text-gray-700 px-2 sm:px-3 py-1 rounded-full font-medium">
-              {thisWeekStart.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })} - {thisWeekEnd.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
-              <p className="text-xs sm:text-sm text-gray-600 mb-1">이번 주 마감</p>
-              <p className="text-xl sm:text-3xl font-bold text-gray-800">{thisWeekDeadlines.length}</p>
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-1">회차</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
-              <p className="text-xs sm:text-sm text-gray-600 mb-1">완료</p>
-              <p className="text-xl sm:text-3xl font-bold text-gray-800">{thisWeekCompleted.length}</p>
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-1">회차</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
-              <p className="text-xs sm:text-sm text-gray-600 mb-1">진행 중</p>
-              <p className="text-xl sm:text-3xl font-bold text-gray-800">{activeProjects.length}</p>
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-1">프로젝트</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
-              <p className="text-xs sm:text-sm text-gray-600 mb-1">완료율</p>
-              <p className="text-xl sm:text-3xl font-bold text-gray-800">
-                {thisWeekDeadlines.length + thisWeekCompleted.length > 0
-                  ? Math.round((thisWeekCompleted.length / (thisWeekDeadlines.length + thisWeekCompleted.length)) * 100)
-                  : 0}%
-              </p>
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-1">이번 주</p>
-            </div>
-          </div>
-        </div>
-
-        {/* 주간 상세 업무 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* 이번 주 마감 예정 */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-4 sm:p-6 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900">이번 주 마감 예정</h3>
-              <Calendar className="text-gray-400" size={18} />
-            </div>
-            <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
-              {thisWeekDeadlines.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  <Calendar className="mx-auto mb-2 text-gray-400" size={32} />
-                  <p>이번 주 마감 예정인 회차가 없습니다</p>
-                </div>
-              ) : (
-                thisWeekDeadlines.slice(0, 10).map((episode) => {
-                  const { project, partner } = getEpisodeDetails(episode);
-                  const dueDate = new Date(episode.dueDate!);
-                  const daysUntil = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      {/* C3 레이아웃: 타임라인 + 사이드 */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_430px] gap-4">
+        {/* 왼쪽: 타임라인 */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
+          {/* 지연 */}
+          {overdueEpisodes.length > 0 && (
+            <div className="mb-5">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 rounded-full bg-red-500" />
+                <span className="text-[13px] font-bold text-red-600">지연</span>
+                <span className="text-[11px] text-red-500 font-semibold">{overdueEpisodes.length}</span>
+              </div>
+              <div className="ml-4 border-l-2 border-red-200 pl-3.5 flex flex-col gap-1.5">
+                {overdueEpisodes.map(ep => {
+                  const { project, partner } = getEpisodeDetails(ep);
+                  const days = Math.ceil((todayStart.getTime() - new Date(ep.dueDate!).getTime()) / (1000*60*60*24));
                   return (
-                    <div key={episode.id} className="p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="text-sm font-medium text-gray-900">{episode.title}</h4>
-                          {project && (
-                            <p className="text-xs text-gray-500 mt-1">프로젝트: {project.title}</p>
-                          )}
-                          {partner && (
-                            <div className="flex items-center mt-2">
-                              <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mr-1.5">
-                                <User size={10} className="text-orange-500" />
-                              </div>
-                              <span className="text-xs text-gray-600">{partner.name}</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="ml-3 text-right">
-                          <span className="inline-block px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">
-                            {daysUntil}일 남음
-                          </span>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {dueDate.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' })}
-                          </p>
-                        </div>
+                    <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-red-200 bg-red-50 cursor-pointer hover:border-red-300 transition-colors" onClick={() => setQuickViewEpisode(ep)}>
+                      <div className="flex items-center justify-between">
+                        <div><div className="flex items-baseline gap-1.5"><span className="text-[12px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold">{ep.title || '제목 없음'}</span></div><div className="text-[11px] text-[#a8a29e] mt-0.5">{project?.title} · {partner?.name || '미정'}</div></div>
+                        <span className="text-[11px] font-semibold text-red-500 bg-red-100 px-2 py-0.5 rounded-full">{days}일 지남</span>
                       </div>
                     </div>
                   );
-                })
-              )}
-            </div>
-          </div>
-
-          {/* 오른쪽: 파트너 현황 + 체크리스트 */}
-          <div className="space-y-6">
-
-          {/* 파트너별 이번 주 작업 현황 */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-4 sm:p-6 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900">파트너별 주간 현황</h3>
-              <Users className="text-gray-400" size={18} />
-            </div>
-            <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
-              {partnerWeeklyWorkload.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  <Users className="mx-auto mb-2 text-gray-400" size={32} />
-                  <p>이번 주 작업 중인 파트너가 없습니다</p>
-                </div>
-              ) : (
-                partnerWeeklyWorkload.map(({ partner, total, completed, inProgress, waiting }) => (
-                  <div key={partner.id} className="p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mr-3">
-                          <User size={22} className="text-orange-500" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{partner.name}</p>
-                          <p className="text-xs text-gray-500">이번 주 {total}개 회차</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-green-600">
-                          {total > 0 ? Math.round((completed / total) * 100) : 0}%
-                        </p>
-                        <p className="text-xs text-gray-500">완료율</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      {completed > 0 && (
-                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
-                          완료 {completed}
-                        </span>
-                      )}
-                      {inProgress > 0 && (
-                        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">
-                          진행 중 {inProgress}
-                        </span>
-                      )}
-                      {waiting > 0 && (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-medium">
-                          대기 {waiting}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          </div>{/* end 오른쪽 column */}
-        </div>
-      </div>
-      )}
-
-      {/* 체크리스트 탭 */}
-      {activeTab === 'checklist' && (
-      <div className="space-y-3">
-
-        {/* 상단 메타 */}
-        <div className="flex items-center justify-between px-1">
-          <p className="text-sm text-gray-400">
-            {checklistItems.filter(i => !i.completed).length > 0
-              ? `${checklistItems.filter(i => !i.completed).length}개 남음`
-              : checklistItems.length > 0 ? '모두 완료!' : ''}
-          </p>
-          {typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'granted' && (
-            <button
-              onClick={requestNotificationPermission}
-              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-orange-500 transition-colors"
-            >
-              <BellOff size={13} />
-              알림 허용
-            </button>
-          )}
-        </div>
-
-        {/* 체크리스트 카드 */}
-        <div data-tour="tour-mgmt-checklist" className="bg-white rounded-2xl shadow-sm border border-gray-100">
-
-          {/* 빈 상태 (항목도 없고 인라인도 닫혀있을 때) */}
-          {checklistItems.length === 0 && !showAddForm && (
-            <div className="py-16 text-center text-gray-400">
-              <CheckCircle className="mx-auto mb-3 text-gray-200" size={44} />
-              <p className="font-medium text-gray-500">오늘 할 일을 적어보세요</p>
-              <p className="text-xs mt-1 text-gray-400">아래 + 버튼을 눌러 추가할 수 있어요</p>
-            </div>
-          )}
-
-          {/* 일반 아이템 목록 */}
-          <AnimatePresence initial={false}>
-            {oneTimeItems.map(item => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, height: 0, y: -6 }}
-                animate={{ opacity: 1, height: 'auto', y: 0 }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
-                className="border-b border-gray-100 last:border-b-0"
-              >
-                <div className={`flex items-start gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-4 hover:bg-gray-50 transition-colors group ${item.completed ? 'opacity-50' : ''}`}>
-                  <button
-                    onClick={() => toggleChecklistItem(item.id)}
-                    className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                      item.completed ? 'bg-green-500 border-green-500' : 'border-gray-300 hover:border-orange-400'
-                    }`}
-                  >
-                    {item.completed && (
-                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                        <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${item.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                      {item.text}
-                    </p>
-                    {(item.linkedEpisodeId || item.linkedProjectId || item.linkedClientName || item.linkedPartnerId) && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {item.linkedEpisodeId && (
-                          <span className="px-1.5 py-0.5 bg-orange-50 text-orange-600 rounded text-[11px] border border-orange-100">
-                            {item.linkedEpisodeNumber}회차 {item.linkedEpisodeTitle}
-                          </span>
-                        )}
-                        {item.linkedProjectId && (
-                          <span className="px-1.5 py-0.5 bg-orange-50 text-orange-600 rounded text-[11px] border border-orange-100">
-                            📁 {item.linkedProjectTitle}
-                          </span>
-                        )}
-                        {item.linkedClientName && (
-                          <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[11px] border border-emerald-100">
-                            🏢 {item.linkedClientName}
-                          </span>
-                        )}
-                        {item.linkedPartnerId && (
-                          <span className="px-1.5 py-0.5 bg-orange-50 text-orange-600 rounded text-[11px] border border-orange-100">
-                            👤 {item.linkedPartnerName}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {item.reminderTime && (
-                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                        <Bell size={11} className={item.notified ? 'text-gray-300' : 'text-orange-400'} />
-                        <span className="text-xs text-gray-400">
-                          {new Date(item.reminderTime).toLocaleString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        {item.notified && <span className="text-xs text-gray-300">· 완료</span>}
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => deleteChecklistItem(item.id)}
-                    className="sm:opacity-0 sm:group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all flex-shrink-0"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {/* 반복 중인 체크리스트 섹션 */}
-          <>
-            <div className="mx-5 border-t-2 border-dashed border-orange-100 my-1" />
-            <div className="flex items-center gap-2 px-5 py-2.5">
-              <Repeat2 size={13} className="text-orange-400" />
-              <span className="text-xs font-semibold text-orange-400 tracking-wide">반복 중인 체크리스트</span>
-            </div>
-            {recurringItems.length === 0 && (
-              <div className="px-5 py-3 text-xs text-gray-300 text-center pb-4">비어 있음</div>
-            )}
-            <AnimatePresence initial={false}>
-              {recurringItems.map(item => (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, height: 0, y: -6 }}
-                      animate={{ opacity: 1, height: 'auto', y: 0 }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
-                      className="border-b border-orange-50 last:border-b-0"
-                    >
-                      <div className={`flex items-start gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-4 hover:bg-orange-50/50 transition-colors group ${item.completed ? 'opacity-50' : ''}`}>
-                        <button
-                          onClick={() => toggleChecklistItem(item.id)}
-                          className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                            item.completed ? 'bg-green-500 border-green-500' : 'border-orange-200 hover:border-orange-400'
-                          }`}
-                        >
-                          {item.completed && (
-                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                              <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          )}
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium ${item.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                            {item.text}
-                          </p>
-                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                            {item.reminderTime && (
-                              <>
-                                <Bell size={11} className="text-orange-400" />
-                                <span className="text-xs text-gray-400">
-                                  {new Date(item.reminderTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              </>
-                            )}
-                            <span className="text-xs text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-full border border-orange-100">
-                              {item.repeatType === 'daily' && '매일'}
-                              {item.repeatType === 'weekly' && '매주'}
-                              {item.repeatType === 'days' && item.repeatDays && ['일','월','화','수','목','금','토'].filter((_, i) => item.repeatDays!.includes(i)).join('·')}
-                            </span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => deleteChecklistItem(item.id)}
-                          className="sm:opacity-0 sm:group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all flex-shrink-0"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </motion.div>
-                  ))}
-            </AnimatePresence>
-          </>
-
-          {/* 항목 추가 트리거 */}
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="w-full flex items-center gap-3 px-5 py-4 text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors group/add border-t border-gray-100"
-          >
-            <div className="w-5 h-5 rounded-full border-2 border-dashed border-gray-200 group-hover/add:border-gray-400 flex items-center justify-center flex-shrink-0 transition-colors">
-              <Plus size={11} />
-            </div>
-            <span className="text-sm">항목 추가</span>
-          </button>
-        </div>
-
-        {/* 완료 항목 정리 */}
-        {checklistItems.some(i => i.completed) && (
-          <button
-            onClick={async () => { await clearCompletedChecklists(); await refreshChecklists(); }}
-            className="w-full text-xs text-gray-400 hover:text-red-500 transition-colors py-2"
-          >
-            완료된 항목 모두 지우기
-          </button>
-        )}
-
-        {/* 달력 블록 */}
-        <div data-tour="tour-mgmt-calendar" className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mt-2">
-          {/* 달력 헤더 */}
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-gray-900">
-              {calYear}년 {calMonth + 1}월
-            </h3>
-            <div className="flex items-center gap-0.5">
-              <button
-                onClick={() => {
-                  if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); }
-                  else setCalMonth(m => m - 1);
-                }}
-                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <button
-                onClick={() => { setCalYear(new Date().getFullYear()); setCalMonth(new Date().getMonth()); }}
-                className="px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors text-xs text-gray-400 hover:text-gray-700"
-              >
-                오늘
-              </button>
-              <button
-                onClick={() => {
-                  if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); }
-                  else setCalMonth(m => m + 1);
-                }}
-                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
-
-          {/* 요일 헤더 */}
-          <div className="grid grid-cols-7 mb-1">
-            {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
-              <div key={d} className={`text-center text-[11px] font-medium pb-2 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-orange-400' : 'text-gray-400'}`}>
-                {d}
+                })}
               </div>
-            ))}
+            </div>
+          )}
+          {/* 오늘 */}
+          <div className="mb-5">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 rounded-full bg-orange-500" />
+              <span className="text-[13px] font-bold">오늘</span>
+              <span className="text-[11px] text-orange-500 font-semibold">{todayDeadlines.length}</span>
+            </div>
+            <div className="ml-4 border-l-2 border-orange-200 pl-3.5 flex flex-col gap-1.5">
+              {todayDeadlines.length === 0 ? (
+                <p className="text-[12px] text-[#a8a29e] py-2">오늘 마감인 회차가 없습니다</p>
+              ) : todayDeadlines.map(ep => {
+                const { project, partner } = getEpisodeDetails(ep);
+                return (
+                  <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-[#f0ece9] cursor-pointer hover:border-[#d6d3d1] transition-colors" onClick={() => setQuickViewEpisode(ep)}>
+                    <div className="flex items-baseline gap-1.5"><span className="text-[12px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold">{ep.title || '제목 없음'}</span></div>
+                    <div className="flex items-center gap-1.5 text-[11px] text-[#a8a29e] mt-0.5"><span>{project?.title}</span><span className="text-[#ede9e6]">·</span><div className="w-[14px] h-[14px] bg-[#f0ece9] rounded-full flex items-center justify-center text-[6px] font-bold text-[#78716c]">{partner?.name?.charAt(0) || '?'}</div><span>{partner?.name || '미정'}</span></div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {/* 내일 */}
+          <div className="mb-5">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="text-[13px] font-bold">내일</span>
+              <span className="text-[11px] text-amber-500 font-semibold">{tomorrowDeadlines.length}</span>
+            </div>
+            <div className="ml-4 border-l-2 border-amber-200 pl-3.5 flex flex-col gap-1.5">
+              {tomorrowDeadlines.length === 0 ? (
+                <p className="text-[12px] text-[#a8a29e] py-2">내일 마감인 회차가 없습니다</p>
+              ) : tomorrowDeadlines.map(ep => {
+                const { project, partner } = getEpisodeDetails(ep);
+                return (
+                  <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-[#f0ece9] cursor-pointer hover:border-[#d6d3d1] transition-colors" onClick={() => setQuickViewEpisode(ep)}>
+                    <div className="flex items-baseline gap-1.5"><span className="text-[12px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold">{ep.title || '제목 없음'}</span></div>
+                    <div className="text-[11px] text-[#a8a29e] mt-0.5">{project?.title} · {partner?.name || '미정'}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {/* 이번 주 */}
+          <div className="mb-5">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 rounded-full bg-gray-300" />
+              <span className="text-[13px] font-bold">이번 주</span>
+              <span className="text-[11px] text-[#78716c] font-semibold">{thisWeekDeadlines.length}</span>
+            </div>
+            <div className="ml-4 border-l-2 border-[#ede9e6] pl-3.5 flex flex-col gap-1.5">
+              {thisWeekDeadlines.length === 0 ? (
+                <p className="text-[12px] text-[#a8a29e] py-2">이번 주 마감 예정이 없습니다</p>
+              ) : thisWeekDeadlines.map(ep => {
+                const { project, partner } = getEpisodeDetails(ep);
+                const dueDate = new Date(ep.dueDate!);
+                return (
+                  <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-[#f0ece9] cursor-pointer hover:border-[#d6d3d1] transition-colors" onClick={() => setQuickViewEpisode(ep)}>
+                    <div className="flex items-baseline gap-1.5"><span className="text-[12px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold">{ep.title || '제목 없음'}</span><span className="text-[11px] text-[#a8a29e]">{dueDate.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span></div>
+                    <div className="text-[11px] text-[#a8a29e] mt-0.5">{project?.title} · {partner?.name || '미정'}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {/* 이번 주 완료 */}
+          {thisWeekCompleted.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="text-[13px] font-bold text-green-600">이번 주 완료</span>
+                <span className="text-[11px] text-green-500 font-semibold">{thisWeekCompleted.length}</span>
+              </div>
+              <div className="ml-4 border-l-2 border-green-200 pl-3.5 flex flex-col gap-1.5">
+                {thisWeekCompleted.map(ep => {
+                  const { project, partner } = getEpisodeDetails(ep);
+                  return (
+                    <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-[#f0ece9] opacity-50 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => setQuickViewEpisode(ep)}>
+                      <div className="text-[13px] font-semibold">{ep.title || '제목 없음'}</div>
+                      <div className="text-[11px] text-[#a8a29e] mt-0.5">{partner?.name || '미정'} · {ep.completedAt ? new Date(ep.completedAt).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }) : ''} 완료</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 오른쪽: 파트너 현황 + 달력 + 체크리스트 (데스크탑만) */}
+        <div className="hidden lg:block space-y-3 self-start" data-tour="tour-mgmt-checklist">
+          {/* 파트너 현황 — 인라인 칩 */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-[13px] font-bold">파트너 현황</span>
+            </div>
+            <div className="flex gap-[5px] flex-wrap">
+              {(() => {
+                const activePartners = partners.filter(p => p.status === 'active');
+                const sorted = activePartners.sort((a, b) => {
+                  const aWork = allEpisodes.some(ep => ep.assignee === a.id && ep.dueDate && new Date(ep.dueDate) >= thisWeekStart && new Date(ep.dueDate) <= thisWeekEnd) ? 0 : 1;
+                  const bWork = allEpisodes.some(ep => ep.assignee === b.id && ep.dueDate && new Date(ep.dueDate) >= thisWeekStart && new Date(ep.dueDate) <= thisWeekEnd) ? 0 : 1;
+                  if (aWork !== bWork) return aWork - bWork;
+                  const aExec = a.position === 'executive' ? 1 : 0;
+                  const bExec = b.position === 'executive' ? 1 : 0;
+                  return aExec - bExec;
+                });
+                return sorted.map(p => {
+                  const weekEps = allEpisodes.filter(ep => ep.assignee === p.id && ep.dueDate && (() => {
+                    const d = new Date(ep.dueDate);
+                    return d >= thisWeekStart && d <= thisWeekEnd;
+                  })());
+                  const total = weekEps.length;
+                  const hasWork = total > 0;
+                  const isExec = p.position === 'executive';
+                  return (
+                    <div key={p.id} className={`flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg text-[11px] transition-colors ${
+                      isExec
+                        ? hasWork ? 'bg-purple-50' : 'bg-[#fafaf9]'
+                        : hasWork ? 'bg-[#fff7ed]' : 'bg-[#fafaf9]'
+                    }`}>
+                      <div className={`w-[20px] h-[20px] rounded-full flex items-center justify-center text-[8px] font-bold flex-shrink-0 ${
+                        isExec
+                          ? hasWork ? 'bg-purple-500 text-white' : 'bg-purple-100 text-purple-400'
+                          : hasWork ? 'bg-orange-500 text-white' : 'bg-[#ede9e6] text-[#a8a29e]'
+                      }`}>
+                        {p.name.charAt(0)}
+                      </div>
+                      <span className={hasWork ? 'font-semibold text-[#1c1917]' : 'text-[#a8a29e]'}>{p.name}</span>
+                      <span className={`font-bold ml-0.5 ${
+                        isExec
+                          ? hasWork ? 'text-purple-500' : 'text-[#d6d3d1]'
+                          : hasWork ? 'text-orange-500' : 'text-[#d6d3d1]'
+                      }`}>{total}</span>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
           </div>
 
-          {/* 날짜 그리드 */}
-          {(() => {
-            const firstDay = new Date(calYear, calMonth, 1).getDay();
-            const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            const cells = [];
-            for (let i = 0; i < firstDay; i++) {
-              cells.push(<div key={`e-${i}`} />);
-            }
-            for (let day = 1; day <= daysInMonth; day++) {
-              const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-              const items = getItemsForDate(dateStr);
-              const hasItems = items.length > 0;
-              const isToday = dateStr === todayStr;
-              const dow = new Date(calYear, calMonth, day).getDay();
-              cells.push(
-                <div key={day} className="flex flex-col items-center gap-0.5 py-0.5">
+          {/* 미니 달력 */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            {/* 달력 헤더 */}
+            <div className="flex items-center justify-between mb-3">
+              <button onClick={() => { if (calMonth === 0) { setCalYear(calYear - 1); setCalMonth(11); } else setCalMonth(calMonth - 1); }} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+                <ChevronLeft size={14} className="text-[#a8a29e]" />
+              </button>
+              <span className="text-[13px] font-bold">{calYear}년 {calMonth + 1}월</span>
+              <button onClick={() => { if (calMonth === 11) { setCalYear(calYear + 1); setCalMonth(0); } else setCalMonth(calMonth + 1); }} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+                <ChevronRight size={14} className="text-[#a8a29e]" />
+              </button>
+            </div>
+            {/* 요일 */}
+            <div className="grid grid-cols-7 mb-1">
+              {['일','월','화','수','목','금','토'].map(d => (
+                <div key={d} className={`text-center text-[10px] font-semibold py-1 ${d === '일' ? 'text-red-400' : d === '토' ? 'text-blue-400' : 'text-[#a8a29e]'}`}>{d}</div>
+              ))}
+            </div>
+            {/* 날짜 그리드 */}
+            {(() => {
+              const firstDay = new Date(calYear, calMonth, 1).getDay();
+              const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+              const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+              const cells = [];
+              for (let i = 0; i < firstDay; i++) cells.push(<div key={`e${i}`} />);
+              for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isToday = dateStr === todayStr;
+                const dayOfWeek = new Date(calYear, calMonth, d).getDay();
+                // 해당 날짜에 마감인 에피소드 수
+                const deadlineCount = allEpisodes.filter(ep => {
+                  if (!ep.dueDate || ep.status === 'completed') return false;
+                  return ep.dueDate.startsWith(dateStr);
+                }).length;
+                cells.push(
                   <button
-                    onClick={() => hasItems && setSelectedCalendarDay(dateStr)}
-                    disabled={!hasItems}
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
+                    key={d}
+                    onClick={() => setSelectedCalendarDay(selectedCalendarDay === dateStr ? null : dateStr)}
+                    className={`relative text-center py-1.5 rounded-lg text-[12px] font-medium transition-all ${
                       isToday
-                        ? 'bg-orange-500 text-white font-bold shadow-sm'
-                        : hasItems
-                          ? `hover:bg-orange-50 cursor-pointer ${dow === 0 ? 'text-red-500' : dow === 6 ? 'text-orange-500' : 'text-gray-800'}`
-                          : `cursor-default ${dow === 0 ? 'text-red-300' : dow === 6 ? 'text-orange-300' : 'text-gray-400'}`
-                    }`}
+                        ? 'bg-orange-500 text-white font-bold'
+                        : selectedCalendarDay === dateStr
+                        ? 'bg-orange-100 text-orange-700'
+                        : 'hover:bg-gray-50'
+                    } ${dayOfWeek === 0 ? 'text-red-400' : dayOfWeek === 6 ? 'text-blue-400' : ''} ${isToday ? '!text-white' : ''}`}
                   >
-                    {day}
+                    {d}
+                    {deadlineCount > 0 && !isToday && (
+                      <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-orange-400" />
+                    )}
                   </button>
-                  {hasItems && (
-                    <div className={`w-1 h-1 rounded-full ${isToday ? 'bg-orange-300' : 'bg-orange-400'}`} />
-                  )}
-                </div>
-              );
-            }
-            return <div className="grid grid-cols-7">{cells}</div>;
-          })()}
-        </div>
-      </div>
-      )}
+                );
+              }
+              return <div className="grid grid-cols-7 gap-0.5">{cells}</div>;
+            })()}
+          </div>
 
-      </motion.div>
-      </AnimatePresence>
+          {/* 체크리스트 */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[13px] font-bold">체크리스트</span>
+              <span className="text-[11px] text-orange-500 font-semibold">{checklistItems.filter(i => !i.completed).length}개 남음</span>
+            </div>
+
+            {/* 체크리스트 아이템 렌더링 */}
+            <div className="flex flex-direction:column gap-1">
+              <AnimatePresence initial={false}>
+                {oneTimeItems.filter(i => !i.completed).map(item => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className={`flex items-center gap-2 p-2 rounded-lg ${item.reminderTime ? 'bg-red-50 border border-red-200' : 'hover:bg-[#fafaf9]'}`}>
+                      <button
+                        onClick={() => toggleChecklistItem(item.id)}
+                        className="w-[18px] h-[18px] rounded-[5px] border-2 border-[#d6d3d1] flex-shrink-0 flex items-center justify-center hover:border-orange-500 transition-colors"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[12px] font-medium block truncate">{item.text}</span>
+                        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                          {item.reminderTime && (
+                            <span className="text-[10px] font-semibold text-red-500 bg-red-100 px-1.5 py-0.5 rounded">🔴 {new Date(item.reminderTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+                          )}
+                          {item.linkedProjectTitle && (
+                            <span className="text-[10px] text-[#78716c] bg-[#f5f5f4] px-1.5 py-0.5 rounded">📁 {item.linkedProjectTitle}</span>
+                          )}
+                          {item.linkedEpisodeTitle && (
+                            <span className="text-[10px] text-[#78716c] bg-[#f5f5f4] px-1.5 py-0.5 rounded">🎬 {item.linkedEpisodeNumber}편</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+
+              {/* 완료 항목 */}
+              {oneTimeItems.filter(i => i.completed).length > 0 && (
+                <div className="border-t border-[#f0ece9] pt-2 mt-2">
+                  <p className="text-[10px] text-[#a8a29e] mb-1.5">완료 · {oneTimeItems.filter(i => i.completed).length}개</p>
+                  {oneTimeItems.filter(i => i.completed).map(item => (
+                    <div key={item.id} className="flex items-center gap-2 p-1.5 opacity-40">
+                      <button
+                        onClick={() => toggleChecklistItem(item.id)}
+                        className="w-[18px] h-[18px] rounded-[5px] bg-green-500 border-2 border-green-500 flex-shrink-0 flex items-center justify-center text-white text-[10px]"
+                      >✓</button>
+                      <span className="text-[12px] line-through text-[#a8a29e]">{item.text}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="w-full mt-2 p-2 border-[1.5px] border-dashed border-[#ede9e6] rounded-lg text-[12px] text-[#a8a29e] hover:border-[#d6d3d1] transition-colors"
+            >
+              + 할 일 추가
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* 항목 추가 모달 */}
@@ -1542,7 +1207,14 @@ export default function ManagementPage() {
 
       {/* 달력 일정 모달 */}
       <AnimatePresence>
-        {selectedCalendarDay && (
+        {selectedCalendarDay && (() => {
+          const dayChecklistItems = getItemsForDate(selectedCalendarDay);
+          const dayEpisodes = allEpisodes.filter(ep => {
+            if (!ep.dueDate || ep.status === 'completed') return false;
+            return ep.dueDate.startsWith(selectedCalendarDay);
+          });
+          const totalCount = dayChecklistItems.length + dayEpisodes.length;
+          return (
           <>
             <motion.div
               key="cal-backdrop"
@@ -1560,70 +1232,304 @@ export default function ManagementPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 16 }}
               transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:w-96 max-h-[80vh] overflow-y-auto bg-white rounded-2xl shadow-2xl overflow-hidden"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] sm:w-[420px] max-h-[80vh] overflow-y-auto bg-white rounded-2xl shadow-2xl"
               style={{ zIndex: 50, boxShadow: '0 24px 64px -8px rgba(0,0,0,0.18), 0 4px 16px -4px rgba(0,0,0,0.08)' }}
             >
               {/* 헤더 */}
-              <div className="flex items-center justify-between px-5 pt-5 pb-4">
+              <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-[#f0ece9]">
                 <div>
-                  <h3 className="text-base font-bold text-gray-900">
-                    {new Date(selectedCalendarDay + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
+                  <h3 className="text-[15px] font-extrabold text-gray-900">
+                    {new Date(selectedCalendarDay + 'T00:00:00').toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
                   </h3>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {getItemsForDate(selectedCalendarDay).length}개의 일정
+                  <p className="text-[11px] text-[#a8a29e] mt-0.5">
+                    {totalCount > 0 ? `${totalCount}개의 일정` : '일정 없음'}
                   </p>
                 </div>
-                <button
-                  onClick={() => setSelectedCalendarDay(null)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-400"
-                >
-                  <X size={16} />
-                </button>
+                <button onClick={() => setSelectedCalendarDay(null)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-400"><X size={16} /></button>
               </div>
 
-              {/* 아이템 목록 */}
-              <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto pb-4">
-                {getItemsForDate(selectedCalendarDay).map(item => (
-                  <div key={item.id} className={`px-5 py-3.5 ${item.repeatType && item.repeatType !== 'none' ? 'bg-orange-50/60' : ''}`}>
-                    <div className="flex items-start gap-3">
-                      <div className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                        item.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'
-                      }`}>
-                        {item.completed && (
-                          <svg width="8" height="6" viewBox="0 0 10 8" fill="none">
-                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium ${item.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                          {item.text}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          {item.reminderTime && (
-                            <>
-                              <Bell size={10} className="text-orange-400" />
-                              <span className="text-xs text-gray-400">
-                                {new Date(item.reminderTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </>
-                          )}
-                          {item.repeatType && item.repeatType !== 'none' && (
-                            <span className="text-[10px] text-orange-500 bg-orange-100 px-1.5 py-0.5 rounded-full">
-                              {item.repeatType === 'daily' && '매일'}
-                              {item.repeatType === 'weekly' && '매주'}
-                              {item.repeatType === 'days' && item.repeatDays && ['일','월','화','수','목','금','토'].filter((_, i) => item.repeatDays!.includes(i)).join('·')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+              <div className="px-5 py-4 max-h-[60vh] overflow-y-auto">
+                {/* 마감 회차 */}
+                {dayEpisodes.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                      <span className="text-[11px] font-semibold text-[#a8a29e]">마감 회차</span>
+                      <span className="text-[11px] text-orange-500 font-semibold">{dayEpisodes.length}</span>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      {dayEpisodes.map(ep => {
+                        const project = projects.find(p => p.id === ep.projectId);
+                        const partner = partners.find(p => p.id === ep.assignee);
+                        return (
+                          <div key={ep.id} className="p-3 rounded-xl border border-[#f0ece9] cursor-pointer hover:border-[#d6d3d1] transition-colors" onClick={() => { setSelectedCalendarDay(null); setQuickViewEpisode(ep); }}>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-[12px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span>
+                              <span className="text-[13px] font-bold">{ep.title || '제목 없음'}</span>
+                            </div>
+                            <div className="text-[11px] text-[#a8a29e] mt-1">{project?.title} · {partner?.name || '미정'}</div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                ))}
+                )}
+
+                {/* 체크리스트 */}
+                {dayChecklistItems.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                      <span className="text-[11px] font-semibold text-[#a8a29e]">체크리스트</span>
+                      <span className="text-[11px] text-green-600 font-semibold">{dayChecklistItems.length}</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      {dayChecklistItems.map(item => (
+                        <div key={item.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-[#fafaf9] transition-colors">
+                          <button
+                            onClick={() => toggleChecklistItem(item.id)}
+                            className={`w-[18px] h-[18px] rounded-[5px] border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                              item.completed ? 'bg-green-500 border-green-500 text-white text-[10px]' : 'border-[#d6d3d1] hover:border-orange-500'
+                            }`}
+                          >{item.completed ? '✓' : ''}</button>
+                          <div className="flex-1 min-w-0">
+                            <span className={`text-[13px] font-medium ${item.completed ? 'line-through text-[#a8a29e]' : ''}`}>{item.text}</span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {item.reminderTime && (
+                                <span className="text-[10px] text-orange-500">🔔 {new Date(item.reminderTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+                              )}
+                              {item.repeatType && item.repeatType !== 'none' && (
+                                <span className="text-[10px] text-orange-500 bg-orange-100 px-1.5 py-0.5 rounded-full">
+                                  {item.repeatType === 'daily' ? '매일' : item.repeatType === 'weekly' ? '매주' : item.repeatDays ? ['일','월','화','수','목','금','토'].filter((_, i) => item.repeatDays!.includes(i)).join('·') : ''}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 빈 상태 */}
+                {totalCount === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-[13px] text-[#a8a29e]">이 날에는 일정이 없습니다</p>
+                  </div>
+                )}
+              </div>
+
+              {/* 할 일 추가 버튼 */}
+              <div className="px-5 pb-4">
+                <button
+                  onClick={() => { setSelectedCalendarDay(null); setShowAddForm(true); }}
+                  className="w-full p-2.5 border-[1.5px] border-dashed border-[#ede9e6] rounded-xl text-[12px] text-[#a8a29e] hover:border-[#d6d3d1] transition-colors"
+                >
+                  + 이 날짜에 할 일 추가
+                </button>
               </div>
             </motion.div>
           </>
-        )}
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* 회차 퀵뷰 모달 */}
+      <AnimatePresence>
+        {quickViewEpisode && (() => {
+          const ep = quickViewEpisode;
+          const project = projects.find(p => p.id === ep.projectId);
+          const assignee = partners.find(p => p.id === ep.assignee);
+          const workTypes = (ep.workContent || []) as WorkContentType[];
+          const workSteps = (ep.workSteps || {}) as Record<WorkContentType, WorkStep[]>;
+
+          // 작업 상태 변경
+          const handleStepStatusChange = async (workType: WorkContentType, stepId: string, newStatus: string) => {
+            const steps = workSteps[workType] || [];
+            const updated = steps.map(s => s.id === stepId ? { ...s, status: newStatus } : s);
+            const newWorkSteps = { ...workSteps, [workType]: updated };
+            setQuickViewEpisode({ ...ep, workSteps: newWorkSteps } as typeof ep);
+            await updateEpisodeFields(ep.id, { workSteps: newWorkSteps });
+            loadData();
+          };
+
+          // 파이프라인 상태 계산
+          const getWorkTypeStatus = (wt: WorkContentType) => {
+            const steps = workSteps[wt] || [];
+            if (steps.length === 0) return 'waiting';
+            if (steps.every(s => s.status === 'completed')) return 'completed';
+            if (steps.some(s => s.status === 'in_progress' || s.status === 'completed')) return 'in_progress';
+            return 'waiting';
+          };
+          const overallCompleted = workTypes.length > 0 && workTypes.every(wt => getWorkTypeStatus(wt) === 'completed');
+
+          // 마감일
+          let finalDueDate: string | null = ep.dueDate || null;
+          workTypes.forEach(wt => (workSteps[wt] || []).forEach(s => {
+            if (s.dueDate && (!finalDueDate || new Date(s.dueDate) > new Date(finalDueDate))) finalDueDate = s.dueDate;
+          }));
+
+          return (
+            <>
+              <motion.div
+                key="qv-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-[50]"
+                onClick={() => setQuickViewEpisode(null)}
+              />
+              <motion.div
+                key="qv-modal"
+                initial={{ opacity: 0, scale: 0.96, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 16 }}
+                transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[51] w-[calc(100%-2rem)] sm:w-[540px] max-h-[85vh] overflow-y-auto bg-white rounded-2xl shadow-2xl"
+              >
+                {/* 헤더 */}
+                <div className="px-6 pt-5 pb-3 border-b border-[#f0ece9]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-[13px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span>
+                        <h3 className="text-[17px] font-extrabold">{ep.title || '제목 없음'}</h3>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1 text-[11px] text-[#a8a29e]">
+                        <span>{project?.title}</span>
+                        {assignee && <><span className="text-[#ede9e6]">·</span><div className="w-[14px] h-[14px] bg-[#f0ece9] rounded-full flex items-center justify-center text-[6px] font-bold text-[#78716c]">{assignee.name.charAt(0)}</div><span>{assignee.name}</span></>}
+                        {finalDueDate && <><span className="text-[#ede9e6]">·</span><span>마감 {(() => { const d = new Date(finalDueDate); return `${d.getMonth()+1}/${d.getDate()}`; })()}</span></>}
+                      </div>
+                    </div>
+                    <button onClick={() => setQuickViewEpisode(null)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-[#a8a29e]">
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 파이프라인 */}
+                {workTypes.length > 0 && (
+                  <div className="mx-6 mt-4 flex items-stretch rounded-2xl bg-[#fafaf9] border border-gray-100 overflow-hidden">
+                    {workTypes.map((workType, index) => {
+                      const status = getWorkTypeStatus(workType);
+                      const stepsCount = (workSteps[workType] || []).length;
+                      const completedCount = (workSteps[workType] || []).filter(s => s.status === 'completed').length;
+                      const isActive = status === 'in_progress' || (status === 'waiting' && workTypes.slice(0, index).some(wt => getWorkTypeStatus(wt) === 'completed'));
+                      const flexValue = overallCompleted ? 1 : isActive ? 1.6 : 0.7;
+                      return (
+                        <div
+                          key={workType}
+                          style={{ flex: flexValue, transition: 'flex 0.6s cubic-bezier(0.4,0,0.2,1), background-color 0.5s ease' }}
+                          className={`flex flex-col items-center justify-center gap-1 py-3 ${
+                            index > 0 ? 'border-l border-gray-100' : ''
+                          } ${status === 'completed' ? 'bg-green-50/60' : isActive ? 'bg-yellow-50/80' : ''}`}
+                        >
+                          <div className={`w-7 h-7 rounded-full border-[2.5px] flex items-center justify-center transition-all text-[10px] font-bold ${
+                            status === 'completed' ? 'border-green-500 bg-green-500 text-white' : isActive ? 'border-yellow-400 bg-yellow-50 text-yellow-700' : 'border-gray-300 bg-white text-gray-400'
+                          }`}>
+                            {status === 'completed' ? <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg> : index + 1}
+                          </div>
+                          <span className={`text-[11px] font-semibold ${status === 'completed' ? 'text-green-800' : isActive ? 'text-gray-900' : 'text-gray-500'}`}>{workType}</span>
+                          <span className={`text-[10px] ${status === 'completed' ? 'text-green-600' : isActive ? 'text-yellow-700' : 'text-gray-400'}`}>
+                            {status === 'completed' ? '완료' : stepsCount > 0 ? `${completedCount}/${stepsCount}` : '대기'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {/* 마감 */}
+                    <div style={{ flex: overallCompleted ? 1 : 0.7, transition: 'flex 0.6s cubic-bezier(0.4,0,0.2,1)' }} className={`flex flex-col items-center justify-center gap-1 py-3 border-l border-gray-100 ${overallCompleted ? 'bg-green-50/60' : ''}`}>
+                      <div className={`w-7 h-7 rounded-full border-[2.5px] flex items-center justify-center text-[11px] ${overallCompleted ? 'border-green-500 bg-green-500 text-white' : 'border-gray-300 bg-white'}`}>
+                        {overallCompleted ? <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg> : <Calendar size={12} className="text-gray-400" />}
+                      </div>
+                      <span className={`text-[11px] font-semibold ${overallCompleted ? 'text-green-800' : 'text-gray-500'}`}>마감</span>
+                      <span className={`text-[10px] ${overallCompleted ? 'text-green-600' : 'text-gray-400'}`}>
+                        {finalDueDate ? (() => { const d = new Date(finalDueDate); return `${d.getMonth()+1}월 ${d.getDate()}일`; })() : '미정'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 작업 타입별 체크리스트 */}
+                <div className="px-6 py-4">
+                  {workTypes.length === 0 ? (
+                    <p className="text-center text-[13px] text-[#a8a29e] py-8">작업이 없습니다</p>
+                  ) : (
+                    <div className="space-y-5">
+                      {workTypes.map(workType => {
+                        const steps = workSteps[workType] || [];
+                        const completed = steps.filter(s => s.status === 'completed').length;
+                        const total = steps.length;
+                        const status = getWorkTypeStatus(workType);
+                        return (
+                          <div key={workType}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-[14px] font-bold">{workType}</span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                                status === 'completed' ? 'bg-green-100 text-green-600' : status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'
+                              }`}>{status === 'completed' ? '완료' : status === 'in_progress' ? '진행 중' : '대기'}</span>
+                              {total > 0 && <span className="text-[11px] text-[#a8a29e]">{completed}/{total}</span>}
+                            </div>
+                            {total === 0 ? (
+                              <p className="text-[12px] text-[#d6d3d1] pl-1">단계 없음</p>
+                            ) : (
+                              <div className="flex flex-col gap-1.5">
+                                {steps.map(step => {
+                                  const stepPartner = partners.find(p => p.id === step.assigneeId);
+                                  return (
+                                    <div key={step.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${
+                                      step.status === 'completed' ? 'border-[#f0ece9] bg-white opacity-40' : step.status === 'in_progress' ? 'border-[#fde68a] bg-[#fffef5]' : 'border-[#f0ece9] bg-white'
+                                    }`}>
+                                      <button
+                                        onClick={() => {
+                                          const next = step.status === 'completed' ? 'waiting' : step.status === 'in_progress' ? 'completed' : 'in_progress';
+                                          handleStepStatusChange(workType, step.id, next);
+                                        }}
+                                        className={`w-[20px] h-[20px] rounded-[6px] border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+                                          step.status === 'completed' ? 'bg-green-500 border-green-500 text-white text-[10px]' : step.status === 'in_progress' ? 'border-yellow-400 bg-yellow-50' : 'border-[#d6d3d1] hover:border-orange-500'
+                                        }`}
+                                      >
+                                        {step.status === 'completed' ? '✓' : step.status === 'in_progress' ? <div className="w-2 h-2 rounded-full bg-yellow-400" /> : ''}
+                                      </button>
+                                      <div className="flex-1 min-w-0">
+                                        <span className={`text-[12px] font-semibold ${step.status === 'completed' ? 'line-through text-[#a8a29e]' : ''}`}>{step.label}</span>
+                                        <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-[#a8a29e]">
+                                          {stepPartner && <><div className="w-[14px] h-[14px] bg-[#f0ece9] rounded-full flex items-center justify-center text-[6px] font-bold text-[#78716c]">{stepPartner.name.charAt(0)}</div><span>{stepPartner.name}</span></>}
+                                          {step.startDate && <><span className="text-[#ede9e6]">·</span><span>{(() => { const d = new Date(step.startDate); return `${d.getMonth()+1}/${d.getDate()}`; })()}</span></>}
+                                          {step.dueDate && <><span className="text-[#d6d3d1]">→</span><span className="text-[#ea580c] font-semibold">{(() => { const d = new Date(step.dueDate); return `${d.getMonth()+1}/${d.getDate()}`; })()}</span></>}
+                                        </div>
+                                      </div>
+                                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${
+                                        step.status === 'completed' ? 'bg-green-100 text-green-600' : step.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'
+                                      }`}>
+                                        {step.status === 'completed' ? '완료' : step.status === 'in_progress' ? '진행' : '대기'}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* 하단: 상세 보기 */}
+                <div className="px-6 pb-5">
+                  <Link
+                    href={`/projects/${ep.projectId}/episodes/${ep.id}`}
+                    className="block w-full text-center py-2.5 bg-orange-500 text-white rounded-xl text-[13px] font-semibold hover:bg-orange-600 transition-colors"
+                    onClick={() => setQuickViewEpisode(null)}
+                  >
+                    상세 보기 →
+                  </Link>
+                </div>
+              </motion.div>
+            </>
+          );
+        })()}
       </AnimatePresence>
 
       {/* 프로젝트 마법사 모달 */}

@@ -313,74 +313,59 @@ export default function ProjectWizardModal({
             transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* 타임라인 헤더 */}
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-8 py-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="text-white" size={24} />
-                  <h2 className="text-2xl font-bold text-white">새 프로젝트 시작</h2>
-                </div>
-                <button
-                  onClick={onClose}
-                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+            {/* D2 스테퍼 헤더 */}
+            <div className="px-6 pt-5 pb-0 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <motion.div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold transition-colors ${
+                    currentStep === 5 ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'
+                  }`}
+                  key={currentStep}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                 >
-                  <X size={20} className="text-white" />
-                </button>
-              </div>
-
-              {/* 스텝 타임라인 */}
-              <div className="flex items-center justify-between">
-                {steps.map((step, index) => (
-                  <div key={step.number} className="flex items-center flex-1">
-                    <div className="flex flex-col items-center">
+                  {currentStep === 5 ? (
+                    <Check size={16} strokeWidth={3} />
+                  ) : (
+                    currentStep
+                  )}
+                </motion.div>
+                <div>
+                  <motion.span
+                    className="text-[15px] font-extrabold text-gray-900 block"
+                    key={`title-${currentStep}`}
+                    initial={{ opacity: 0, x: 8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {steps[currentStep - 1]?.label}
+                  </motion.span>
+                  <div className="flex items-center gap-1 mt-1">
+                    {steps.map((step) => (
                       <motion.div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors ${
+                        key={step.number}
+                        className={`w-4 h-[3px] rounded-full ${
                           currentStep > step.number
-                            ? 'bg-white text-orange-600'
+                            ? 'bg-green-500'
                             : currentStep === step.number
-                            ? 'bg-white text-orange-600'
-                            : 'bg-orange-400/30 text-white'
+                            ? 'bg-orange-500'
+                            : 'bg-gray-200'
                         }`}
-                        animate={
-                          currentStep === step.number
-                            ? { boxShadow: '0 0 0 4px rgba(255,255,255,0.35)' }
-                            : { boxShadow: '0 0 0 0px rgba(255,255,255,0)' }
-                        }
+                        initial={false}
+                        animate={{ backgroundColor: currentStep > step.number ? '#22c55e' : currentStep === step.number ? '#ea580c' : '#e5e5e5' }}
                         transition={{ duration: 0.3 }}
-                      >
-                        {currentStep > step.number ? (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                          >
-                            <Check size={20} strokeWidth={3} />
-                          </motion.div>
-                        ) : (
-                          step.number
-                        )}
-                      </motion.div>
-                      <span
-                        className={`text-xs mt-2 font-medium transition-colors ${
-                          currentStep >= step.number ? 'text-white' : 'text-orange-200'
-                        }`}
-                      >
-                        {step.label}
-                      </span>
-                    </div>
-                    {index < steps.length - 1 && (
-                      <div className="flex-1 h-1 mx-2 rounded-full bg-orange-400/30 overflow-hidden">
-                        <motion.div
-                          className="h-full bg-white rounded-full"
-                          initial={false}
-                          animate={{ width: currentStep > step.number ? '100%' : '0%' }}
-                          transition={{ duration: 0.4, ease: 'easeInOut' }}
-                        />
-                      </div>
-                    )}
+                      />
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
+              >
+                <X size={16} className="text-gray-400" />
+              </button>
             </div>
 
             {/* 컨텐츠 */}
@@ -398,24 +383,24 @@ export default function ProjectWizardModal({
                   {/* 스텝 1: 시작 */}
                   {currentStep === 1 && (
                     <div className="space-y-6">
-                      <div className="text-center mb-8">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-2">새 프로젝트를 시작합니다</h3>
-                        <p className="text-gray-500">어떻게 시작하시겠어요?</p>
+                      <div className="mb-6">
+                        <h3 className="text-lg font-extrabold text-gray-900 mb-1">어떻게 시작할까요?</h3>
+                        <p className="text-sm text-gray-400">프로젝트 생성 방법을 선택하세요</p>
                       </div>
 
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         <motion.button
                           onClick={() => setStartType('with-client')}
-                          className={`w-full p-6 rounded-xl border-2 transition-colors text-left ${
+                          className={`w-full p-4 rounded-xl border-[1.5px] transition-all text-left ${
                             startType === 'with-client'
-                              ? 'border-orange-500 bg-white'
-                              : 'border-gray-200 hover:border-orange-300'
+                              ? 'border-orange-500 bg-orange-50/50 shadow-[0_0_0_3px_rgba(234,88,12,0.08)]'
+                              : 'border-gray-200 hover:border-gray-300'
                           }`}
                           whileTap={{ scale: 0.99 }}
                         >
-                          <div className="flex items-start gap-4">
+                          <div className="flex items-center gap-3">
                             <motion.div
-                              className={`p-3 rounded-lg transition-colors ${startType === 'with-client' ? 'bg-orange-500' : 'bg-gray-100'}`}
+                              className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-colors ${startType === 'with-client' ? 'bg-orange-100' : 'bg-gray-100'}`}
                               animate={{ scale: startType === 'with-client' ? 1.08 : 1 }}
                               transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                             >
@@ -440,30 +425,25 @@ export default function ProjectWizardModal({
                           </div>
                         </motion.button>
 
-                        <div
-                          className={`rounded-xl border-2 transition-colors ${
+                        <motion.button
+                          onClick={() => setStartType('project-only')}
+                          className={`w-full p-4 rounded-xl border-[1.5px] transition-all text-left ${
                             startType === 'project-only'
-                              ? 'border-orange-500 bg-white'
-                              : 'border-gray-200 hover:border-orange-300'
+                              ? 'border-orange-500 bg-orange-50/50 shadow-[0_0_0_3px_rgba(234,88,12,0.08)]'
+                              : 'border-gray-200 hover:border-gray-300'
                           }`}
+                          whileTap={{ scale: 0.99 }}
                         >
-                          <motion.button
-                            onClick={() => setStartType('project-only')}
-                            className="w-full p-6 text-left"
-                            whileTap={{ scale: 0.99 }}
-                          >
-                            <div className="flex items-start gap-4">
-                              <motion.div
-                                className={`p-3 rounded-lg transition-colors ${startType === 'project-only' ? 'bg-orange-500' : 'bg-gray-100'}`}
-                                animate={{ scale: startType === 'project-only' ? 1.08 : 1 }}
-                                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                              >
-                                <Zap className={startType === 'project-only' ? 'text-white' : 'text-gray-600'} size={24} />
-                              </motion.div>
-                              <div className="flex-1">
-                                <h4 className="font-semibold text-gray-900 mb-1">프로젝트만 빠르게</h4>
-                                <p className="text-sm text-gray-600">기존 클라이언트 연결 또는 나중에 추가</p>
-                              </div>
+                          <div className="flex items-center gap-3">
+                            <motion.div
+                              className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-colors ${startType === 'project-only' ? 'bg-orange-100' : 'bg-gray-100'}`}
+                            >
+                              ⚡
+                            </motion.div>
+                            <div className="flex-1">
+                              <h4 className="text-sm font-bold text-gray-900">프로젝트만 빠르게</h4>
+                              <p className="text-xs text-gray-500 mt-0.5">기존 클라이언트 연결 또는 나중에 추가</p>
+                            </div>
                               <AnimatePresence>
                                 {startType === 'project-only' && (
                                   <motion.div
@@ -526,7 +506,8 @@ export default function ProjectWizardModal({
                               </motion.div>
                             )}
                           </AnimatePresence>
-                        </div>
+
+                        {/* 인라인 클라이언트 선택기 — 버튼 밖 */}
                       </div>
                     </div>
                   )}
@@ -534,9 +515,9 @@ export default function ProjectWizardModal({
                   {/* 스텝 2: 클라이언트 */}
                   {currentStep === 2 && (
                     <div className="space-y-6">
-                      <div className="text-center mb-8">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-2">클라이언트 선택</h3>
-                        <p className="text-gray-500">기존 클라이언트를 선택하거나 새로 추가하세요</p>
+                      <div className="mb-6">
+                        <h3 className="text-lg font-extrabold text-gray-900 mb-1">클라이언트 선택</h3>
+                        <p className="text-sm text-gray-400">기존 클라이언트를 선택하거나 새로 추가하세요</p>
                       </div>
 
                       <div className="space-y-3">
@@ -701,9 +682,9 @@ export default function ProjectWizardModal({
                   {/* 스텝 3: 프로젝트 정보 */}
                   {currentStep === 3 && (
                     <div className="space-y-6">
-                      <div className="text-center mb-8">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-2">프로젝트 정보</h3>
-                        <p className="text-gray-500">
+                      <div className="mb-6">
+                        <h3 className="text-lg font-extrabold text-gray-900 mb-1">프로젝트 정보</h3>
+                        <p className="text-sm text-gray-400">
                           {clientOption === 'existing'
                             ? '프로젝트의 기본 정보를 입력하세요'
                             : '프로젝트의 기본 정보를 입력하세요'}
@@ -946,9 +927,9 @@ export default function ProjectWizardModal({
                   {/* 스텝 4: 회차 설정 */}
                   {currentStep === 4 && (
                     <div className="space-y-6">
-                      <div className="text-center mb-8">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-2">회차를 추가하시겠어요?</h3>
-                        <p className="text-gray-500">지금 회차를 추가하거나 나중에 추가할 수 있습니다</p>
+                      <div className="mb-6">
+                        <h3 className="text-lg font-extrabold text-gray-900 mb-1">회차를 추가하시겠어요?</h3>
+                        <p className="text-sm text-gray-400">지금 회차를 추가하거나 나중에 추가할 수 있습니다</p>
                       </div>
 
                       <div className="space-y-4">
@@ -1166,106 +1147,51 @@ export default function ProjectWizardModal({
                     </div>
                   )}
 
-                  {/* 스텝 5: 완료 & 요약 */}
+                  {/* 스텝 5: 완료 (초심플) */}
                   {currentStep === 5 && (
-                    <div className="space-y-6">
-                      <div className="text-center mb-8">
-                        <motion.div
-                          className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ type: 'spring', stiffness: 300, damping: 18, delay: 0.1 }}
-                        >
-                          <motion.div
-                            initial={{ scale: 0, rotate: -30 }}
-                            animate={{ scale: 1, rotate: 0 }}
-                            transition={{ type: 'spring', stiffness: 400, damping: 18, delay: 0.25 }}
-                          >
-                            <CheckCircle className="text-green-600" size={40} />
-                          </motion.div>
-                        </motion.div>
-                        <motion.h3
-                          className="text-2xl font-bold text-gray-900 mb-2"
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.3 }}
-                        >
-                          프로젝트 준비 완료
-                        </motion.h3>
-                        <motion.p
-                          className="text-gray-500"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.4 }}
-                        >
-                          생성될 내용을 확인해주세요
-                        </motion.p>
-                      </div>
-
+                    <div className="py-8 text-center">
                       <motion.div
-                        className="bg-gradient-to-br from-orange-50 to-orange-50 rounded-xl p-6 border border-orange-200"
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.35 }}
+                        className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 18, delay: 0.1 }}
                       >
-                        <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                          <Briefcase size={20} className="text-orange-600" />
-                          생성될 내용
-                        </h4>
-                        <div className="space-y-3">
-                          {startType === 'with-client' && clientOption !== 'skip' && (
-                            <div className="flex items-start gap-3">
-                              <div className="w-1.5 h-1.5 bg-orange-600 rounded-full mt-2" />
-                              <div>
-                                <span className="text-sm font-medium text-gray-700">클라이언트: </span>
-                                <span className="text-sm text-gray-900">
-                                  {clientOption === 'existing'
-                                    ? clients.find(c => c.id === selectedClientId)?.name
-                                    : newClientName
-                                  }
-                                  {clientOption === 'new' && ' (신규)'}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                          <div className="flex items-start gap-3">
-                            <div className="w-1.5 h-1.5 bg-orange-600 rounded-full mt-2" />
-                            <div>
-                              <span className="text-sm font-medium text-gray-700">프로젝트: </span>
-                              <span className="text-sm text-gray-900">
-                                {projectTitle || <span className="text-gray-400 italic">나중에 추가 예정</span>}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-3">
-                            <div className="w-1.5 h-1.5 bg-orange-600 rounded-full mt-2" />
-                            <div>
-                              <span className="text-sm font-medium text-gray-700">카테고리: </span>
-                              <span className="text-sm text-gray-900">{projectCategory}</span>
-                            </div>
-                          </div>
-                          {shouldCreateEpisodes && (
-                            <div className="flex items-start gap-3">
-                              <div className="w-1.5 h-1.5 bg-orange-600 rounded-full mt-2" />
-                              <div>
-                                <span className="text-sm font-medium text-gray-700">회차: </span>
-                                <span className="text-sm text-gray-900">{episodeCount}개 (1~{episodeCount}회)</span>
-                              </div>
-                            </div>
-                          )}
-                          {selectedPartnerIds.length > 0 && (
-                            <div className="flex items-start gap-3">
-                              <div className="w-1.5 h-1.5 bg-orange-600 rounded-full mt-2" />
-                              <div>
-                                <span className="text-sm font-medium text-gray-700">파트너: </span>
-                                <span className="text-sm text-gray-900">
-                                  {selectedPartnerIds.map(id => partners.find(p => p.id === id)?.name).join(', ')}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        <motion.div
+                          initial={{ scale: 0, rotate: -30 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          transition={{ type: 'spring', stiffness: 400, damping: 18, delay: 0.25 }}
+                        >
+                          <CheckCircle className="text-green-500" size={28} />
+                        </motion.div>
                       </motion.div>
+                      <motion.h3
+                        className="text-xl font-extrabold text-gray-900 mb-1.5"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                      >
+                        {projectTitle || '새 프로젝트'}
+                      </motion.h3>
+                      <motion.p
+                        className="text-sm text-[#a8a29e]"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.4 }}
+                      >
+                        {(() => {
+                          const clientName = startType === 'with-client'
+                            ? clientOption === 'existing'
+                              ? clients.find(c => c.id === selectedClientId)?.name
+                              : newClientName
+                            : projectOnlyClientId
+                              ? clients.find(c => c.id === projectOnlyClientId)?.name
+                              : null;
+                          const parts = [];
+                          if (clientName) parts.push(clientName);
+                          if (shouldCreateEpisodes) parts.push(`회차 ${episodeCount}개`);
+                          return parts.join(' · ') || '프로젝트가 생성됩니다';
+                        })()}
+                      </motion.p>
                     </div>
                   )}
                 </motion.div>
@@ -1273,35 +1199,31 @@ export default function ProjectWizardModal({
             </div>
 
             {/* 푸터 버튼 */}
-            <div className="px-8 py-6 bg-gray-50 border-t border-gray-200 flex justify-between">
+            <div className="px-6 py-5 flex justify-between">
               <motion.button
                 onClick={handlePrevious}
                 disabled={currentStep === 1}
-                className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-5 py-2.5 border-[1.5px] border-[#ede9e6] bg-white text-[#78716c] rounded-xl hover:border-[#d6d3d1] transition-colors text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
                 whileTap={currentStep > 1 ? { scale: 0.97 } : {}}
               >
-                <ChevronLeft size={20} />
-                이전
+                ← 이전
               </motion.button>
 
               {currentStep < 5 ? (
                 <motion.button
                   onClick={handleNext}
-                  className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-md font-medium flex items-center gap-2"
+                  className="px-5 py-2.5 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm font-semibold flex items-center gap-1.5"
                   whileTap={{ scale: 0.97 }}
                 >
-                  다음
-                  <ChevronRight size={20} />
+                  다음 →
                 </motion.button>
               ) : (
                 <motion.button
                   onClick={handleComplete}
-                  className="px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all shadow-md font-semibold flex items-center gap-2"
+                  className="w-full px-5 py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm font-bold"
                   whileTap={{ scale: 0.97 }}
-                  whileHover={{ scale: 1.02 }}
                 >
-                  <Sparkles size={20} />
-                  프로젝트 시작!
+                  프로젝트로 이동
                 </motion.button>
               )}
             </div>

@@ -693,9 +693,9 @@ export default function ProjectDetailPage() {
         }
       `}</style>
       {/* 헤더 */}
-      <div data-tour="tour-detail-header" className="bg-white rounded-xl border border-gray-100 p-6">
+      <div data-tour="tour-detail-header" className="bg-white rounded-2xl border border-gray-100 px-6 py-5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-3">
             <Link
               href="/projects"
               className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
@@ -703,16 +703,20 @@ export default function ProjectDetailPage() {
               <ArrowLeft size={20} className="text-gray-400" />
             </Link>
             <div>
-              <span className="text-xs text-gray-400">
-                {selectedClient || '클라이언트 미설정'}
-              </span>
-              <h1 className="text-2xl font-bold text-gray-900 mt-0.5">{project.title}</h1>
-              <div className="mt-1">
+              <div className="flex items-center gap-2">
+                <h1 className="text-[21px] font-extrabold tracking-tight">{project.title}</h1>
                 <StatusBadge status={getComputedProjectStatus(episodes)} />
+              </div>
+              <div className="flex items-center gap-2 mt-1 text-xs text-[#a8a29e]">
+                <span>{selectedClient || '클라이언트 미설정'}</span>
+                <span className="w-px h-3 bg-[#ede9e6]" />
+                <span>회차 <b className="text-[#1c1917]">{episodes.length}</b>개</span>
+                <span className="w-px h-3 bg-[#ede9e6]" />
+                <span>총 <b className="text-[#1c1917]">{episodes.reduce((sum, ep) => sum + (ep.budget?.totalAmount || 0), 0).toLocaleString()}</b>원</span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setIsChecklistModalOpen(true)}
               className="p-2 text-orange-500 hover:bg-orange-50 rounded-xl transition-colors"
@@ -1309,9 +1313,10 @@ export default function ProjectDetailPage() {
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex-1 space-y-3">
-                        {/* 첫 번째 줄: 편 수, 회차 이름, 상태, 작업 개수 */}
-                        <div className="flex items-center space-x-3">
+                        <div className="flex-1">
+                        {/* 첫 번째 줄: 편 수, 회차 이름 + 금액 */}
+                        <div className="flex items-center justify-between">
+                        <div className="flex items-baseline gap-2">
                           {isEpisodeEditMode ? (
                             <div className="flex items-center gap-2 flex-1 min-w-0">
                               <div className="flex items-center flex-shrink-0">
@@ -1341,119 +1346,46 @@ export default function ProjectDetailPage() {
                             </div>
                           ) : (
                             <>
-                              <span className="text-lg font-bold text-gray-900">
-                                {episode.episodeNumber === 0 ? '회차 미정' : `${episode.episodeNumber}편`}
+                              <span className="text-[13px] font-bold text-[#a8a29e]">
+                                {episode.episodeNumber === 0 ? '미정' : `${episode.episodeNumber}편`}
                               </span>
-                              <h3 className="text-base font-semibold text-gray-900">
-                                {episode.title || <span className="text-gray-300 font-normal">제목 없음</span>}
+                              <h3 className="text-[15px] font-bold text-gray-900">
+                                {episode.title || '제목 없음'}
                               </h3>
                             </>
                           )}
-                          <EpisodeStatusBadge status={episode.status} />
+                        </div>
+                        {/* 금액 */}
+                        {!isEpisodeEditMode && (episode.budget?.totalAmount || 0) > 0 && (
+                          <span className="text-[14px] font-bold flex-shrink-0">{(episode.budget?.totalAmount || 0).toLocaleString()}<span className="text-[11px] text-[#78716c] font-medium ml-0.5">원</span></span>
+                        )}
                         </div>
 
-                        {/* 작업 타임라인 */}
-                        {episode.workContent.length > 0 ? (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {episode.workContent.map((workType, wIdx) => {
-                              const steps = episode.workSteps?.[workType as WorkContentType] || [];
-                              const stepsTotal = steps.length;
-                              const stepsCompleted = steps.filter(s => s.status === 'completed').length;
-                              const hasInProgress = steps.some(s => s.status === 'in_progress') || (stepsCompleted > 0 && stepsCompleted < stepsTotal);
-                              const allDone = stepsTotal > 0 && stepsCompleted === stepsTotal;
-
-                              return (
-                                <div key={workType} className="flex items-center gap-1.5">
-                                  {wIdx > 0 && (
-                                    <div className="flex items-center gap-0.5 px-0.5">
-                                      {[0, 1, 2].map(d => (
-                                        <div key={d} className={`w-1 h-1 rounded-full ${
-                                          allDone ? 'bg-green-400' : 'bg-gray-300'
-                                        }`} />
-                                      ))}
-                                    </div>
-                                  )}
-                                  <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg border transition-all ${
-                                    allDone
-                                      ? 'bg-green-50 border-green-200 text-green-700'
-                                      : hasInProgress
-                                      ? 'bg-orange-50 border-orange-200 text-orange-700'
-                                      : 'bg-gray-50 border-gray-200 text-gray-500'
-                                  }`}>
-                                    {workType}
-                                    {stepsTotal > 0 && (
-                                      <span className={`text-[10px] px-1 py-0.5 rounded ${
-                                        allDone
-                                          ? 'bg-green-100 text-green-600'
-                                          : hasInProgress
-                                          ? 'bg-orange-100 text-orange-600'
-                                          : 'bg-gray-100 text-gray-400'
-                                      }`}>
-                                        {stepsCompleted}/{stepsTotal}
-                                      </span>
-                                    )}
-                                  </span>
-                                </div>
-                              );
-                            })}
-
-                            {/* 마감 */}
-                            {(() => {
-                              const allWorkDone = episode.workContent.every(wt => {
-                                const s = episode.workSteps?.[wt as WorkContentType] || [];
-                                return s.length > 0 && s.every(st => st.status === 'completed');
-                              });
-                              return (
-                                <div className="flex items-center gap-1.5">
-                                  <div className="flex items-center gap-0.5 px-0.5">
-                                    {[0, 1, 2].map(d => (
-                                      <div key={d} className={`w-1 h-1 rounded-full ${allWorkDone ? 'bg-green-400' : 'bg-gray-300'}`} />
-                                    ))}
-                                  </div>
-                                  <div className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg border ${
-                                    allWorkDone
-                                      ? 'bg-green-50 border-green-200 text-green-700'
-                                      : 'bg-gray-50 border-gray-200 text-gray-500'
-                                  }`}>
-                                    <Target size={11} />
-                                    <span>마감</span>
-                                    {episode.dueDate ? (
-                                      <span className="font-semibold">
-                                        {new Date(episode.dueDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                                      </span>
-                                    ) : (
-                                      <span className="text-gray-400">미정</span>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg border bg-gray-50 border-gray-200 text-gray-500">
-                              대기
-                            </span>
-                            <div className="flex items-center gap-0.5 px-0.5">
-                              {[0, 1, 2].map(d => (
-                                <div key={d} className="w-1 h-1 rounded-full bg-gray-300" />
-                              ))}
+                        {/* 프로그레스 미니바 */}
+                        {episode.workSteps && (() => {
+                          const allSteps = Object.values(episode.workSteps).flat();
+                          const total = allSteps.length;
+                          const completed = allSteps.filter((s: any) => s.status === 'completed').length;
+                          const inProgress = allSteps.filter((s: any) => s.status === 'in_progress').length;
+                          if (total === 0) return null;
+                          const completedPct = (completed / total) * 100;
+                          const inProgressPct = (inProgress / total) * 100;
+                          return (
+                            <div className="h-[3px] bg-[#f0ece9] rounded-full overflow-hidden mt-1">
+                              <div
+                                className="h-full rounded-full"
+                                style={{
+                                  width: `${completedPct + inProgressPct}%`,
+                                  background: inProgressPct > 0
+                                    ? `linear-gradient(90deg, #22c55e ${(completedPct / (completedPct + inProgressPct)) * 100}%, #facc15 ${(completedPct / (completedPct + inProgressPct)) * 100}%)`
+                                    : '#22c55e',
+                                }}
+                              />
                             </div>
-                            <div className="flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg border bg-gray-50 border-gray-200 text-gray-500">
-                              <Target size={11} />
-                              <span>마감</span>
-                              {episode.dueDate ? (
-                                <span className="font-semibold">
-                                  {new Date(episode.dueDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                                </span>
-                              ) : (
-                                <span className="text-gray-400">미정</span>
-                              )}
-                            </div>
-                          </div>
-                        )}
+                          );
+                        })()}
 
-                        {/* 두 번째 줄: 담당자, 매니저, 시작일, 마감일 */}
+                        {/* 메타 줄: 상태 + 담당자 + 날짜 + 태그 */}
                         {isEpisodeEditMode ? (
                           <div className="flex items-center flex-wrap gap-2 text-sm">
                             {/* 담당 파트너 */}
@@ -1550,26 +1482,32 @@ export default function ProjectDetailPage() {
                             })()}
                           </div>
                         ) : (
-                          <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
-                            <div className="flex items-center">
-                              <User size={14} className="mr-1.5 text-orange-500" />
-                              <span className="font-medium">{assignee?.name || '미정'}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <UserCircle size={14} className="mr-1.5 text-gray-400" />
-                              <span className="font-medium">{manager?.name || '미정'}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <Calendar size={14} className="mr-1.5" />
-                              <span>{episode.startDate && !isNaN(new Date(episode.startDate).getTime()) ? new Date(episode.startDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '시작일 등록 필요'}</span>
-                            </div>
-                            {episode.dueDate && (
-                              <div className="flex items-center">
-                                <span className="text-gray-400 mr-1">→</span>
-                                <span className="text-orange-600 font-medium">
-                                  {new Date(episode.dueDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                                </span>
+                          <div className="flex items-center gap-2 text-[11px] text-[#78716c] mt-1">
+                            <EpisodeStatusBadge status={episode.status} />
+                            <div className="flex items-center gap-1">
+                              <div className="w-[16px] h-[16px] bg-[#f0ece9] rounded-full flex items-center justify-center text-[7px] font-bold text-[#78716c]">
+                                {assignee?.name?.charAt(0) || '?'}
                               </div>
+                              <span>{assignee?.name || '미정'}</span>
+                            </div>
+                            <span className="text-[#ede9e6]">·</span>
+                            <span className="tabular-nums">
+                              {episode.startDate && !isNaN(new Date(episode.startDate).getTime())
+                                ? (() => { const d = new Date(episode.startDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })()
+                                : '미정'}
+                              {episode.dueDate && (
+                                <> <span className="text-[#d6d3d1]">→</span> <span className="text-[#ea580c] font-semibold">{(() => { const d = new Date(episode.dueDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })()}</span></>
+                              )}
+                            </span>
+                            {episode.workContent.length > 0 && (
+                              <>
+                                <span className="text-[#ede9e6]">·</span>
+                                {episode.workContent.map((work, idx) => (
+                                  <span key={idx} className="px-1.5 py-0.5 rounded text-[10px] font-semibold border bg-[#fff7ed] border-[#fed7aa] text-[#ea580c]">
+                                    {work}
+                                  </span>
+                                ))}
+                              </>
                             )}
                           </div>
                         )}
@@ -1577,9 +1515,7 @@ export default function ProjectDetailPage() {
                         </div>
 
                         {!isEpisodeEditMode && (
-                          <div className="ml-4 flex items-center">
-                            <ChevronRight size={20} className="text-gray-400 group-hover:text-orange-500 transition-colors" />
-                          </div>
+                          <ChevronRight size={20} className="text-gray-400 group-hover:text-orange-500 transition-colors flex-shrink-0 ml-4" />
                         )}
                       </div>
                     </div>
@@ -1678,14 +1614,15 @@ export default function ProjectDetailPage() {
                 <div key={episode.id} className="relative group">
                   <div
                     onClick={() => { if (!isEpisodeEditMode) router.push(`/projects/${projectId}/episodes/${episode.id}`); }}
-                    className={`w-full text-left bg-white rounded-xl border border-gray-100 p-4 transition-all ${
-                      isEpisodeEditMode ? 'cursor-default' : 'cursor-pointer hover:border-gray-200 hover:shadow-sm'
+                    className={`w-full text-left bg-white rounded-xl border border-[#f0ece9] p-4 transition-all ${
+                      isEpisodeEditMode ? 'cursor-default' : 'cursor-pointer hover:border-[#d6d3d1] hover:shadow-sm'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex-1 space-y-3">
-                      {/* 첫 번째 줄: 편 수, 회차 이름, 상태, 작업 개수 */}
-                      <div className="flex items-center space-x-3">
+                      <div className="flex-1">
+                      {/* 첫 번째 줄: 편 수, 회차 이름 + 금액 */}
+                      <div className="flex items-center justify-between">
+                      <div className="flex items-baseline gap-2">
                         {isEpisodeEditMode ? (
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <div className="flex items-center flex-shrink-0">
@@ -1715,28 +1652,46 @@ export default function ProjectDetailPage() {
                           </div>
                         ) : (
                           <>
-                            <span className="text-lg font-bold text-gray-900">
-                              {episode.episodeNumber === 0 ? '회차 미정' : `${episode.episodeNumber}편`}
+                            <span className="text-[13px] font-bold text-[#a8a29e]">
+                              {episode.episodeNumber === 0 ? '미정' : `${episode.episodeNumber}편`}
                             </span>
-                            {episode.title && (
-                              <h3 className="text-base font-semibold text-gray-900">
-                                {episode.title}
-                              </h3>
-                            )}
+                            <h3 className="text-[15px] font-bold text-gray-900">
+                              {episode.title || '제목 없음'}
+                            </h3>
                           </>
                         )}
-                        <EpisodeStatusBadge status={episode.status} />
-                        {episode.workContent.length > 0 && episode.workContent.map((work, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-1 bg-orange-50 text-orange-600 rounded text-xs font-medium"
-                          >
-                            {work}
-                          </span>
-                        ))}
+                      </div>
+                      {/* 금액 (비편집 모드) */}
+                      {!isEpisodeEditMode && totalBudget > 0 && (
+                        <span className="text-[14px] font-bold flex-shrink-0">{totalBudget.toLocaleString()}<span className="text-[11px] text-[#78716c] font-medium ml-0.5">원</span></span>
+                      )}
                       </div>
 
-                      {/* 두 번째 줄: 담당자 정보, 날짜, 비용 */}
+                      {/* 프로그레스 미니바 (완료가 아닐 때만) */}
+                      {!isEpisodeEditMode && episode.status !== 'completed' && episode.workSteps && (() => {
+                        const allSteps = Object.values(episode.workSteps).flat();
+                        const total = allSteps.length;
+                        const completed = allSteps.filter((s: any) => s.status === 'completed').length;
+                        const inProgress = allSteps.filter((s: any) => s.status === 'in_progress').length;
+                        if (total === 0) return null;
+                        const completedPct = (completed / total) * 100;
+                        const inProgressPct = (inProgress / total) * 100;
+                        return (
+                          <div className="h-[3px] bg-[#f0ece9] rounded-full overflow-hidden mt-1">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${completedPct + inProgressPct}%`,
+                                background: inProgressPct > 0
+                                  ? `linear-gradient(90deg, #22c55e ${(completedPct / (completedPct + inProgressPct)) * 100}%, #facc15 ${(completedPct / (completedPct + inProgressPct)) * 100}%)`
+                                  : '#22c55e',
+                              }}
+                            />
+                          </div>
+                        );
+                      })()}
+
+                      {/* 메타 줄: 상태 + 담당자 + 날짜 + 태그 */}
                       {isEpisodeEditMode ? (
                         <div className="flex items-center flex-wrap gap-2 text-sm">
                           {/* 담당 파트너 */}
@@ -1833,52 +1788,36 @@ export default function ProjectDetailPage() {
                           })()}
                         </div>
                       ) : (
-                        <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
-                          {/* 담당 파트너 */}
-                          <div className="flex items-center">
-                            <User size={14} className="mr-1.5 text-orange-500" />
-                            <span className="font-medium">{assignee?.name || '미정'}</span>
-                          </div>
-
-                          {/* 담당 매니저 */}
-                          <div className="flex items-center">
-                            <UserCircle size={14} className="mr-1.5 text-gray-400" />
-                            <span className="font-medium">{manager?.name || '미정'}</span>
-                          </div>
-
-                          {/* 시작일 */}
-                          <div className="flex items-center">
-                            <Calendar size={14} className="mr-1.5" />
-                            <span>{episode.startDate && !isNaN(new Date(episode.startDate).getTime()) ? new Date(episode.startDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '시작일 등록 필요'}</span>
-                          </div>
-
-                          {/* 마감일 */}
-                          {episode.dueDate && (
-                            <div className="flex items-center">
-                              <span className="text-gray-400 mr-1">→</span>
-                              <span className="text-orange-600 font-medium">
-                                {new Date(episode.dueDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                              </span>
+                        <div className="flex items-center gap-2 text-[11px] text-[#78716c] mt-1">
+                          <EpisodeStatusBadge status={episode.status} />
+                          <div className="flex items-center gap-1">
+                            <div className="w-[16px] h-[16px] bg-[#f0ece9] rounded-full flex items-center justify-center text-[7px] font-bold text-[#78716c]">
+                              {assignee?.name?.charAt(0) || '?'}
                             </div>
-                          )}
-
-                          {/* 완료일 (완료 상태인 경우) */}
-                          {episode.status === 'completed' && episode.endDate && (
-                            <div className="flex items-center">
-                              <span className="text-green-600 text-xs">
-                                ✓ {new Date(episode.endDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                              </span>
-                            </div>
-                          )}
-
-                          {/* 비용 */}
-                          {totalBudget > 0 && (
-                            <div className="flex items-center">
-                              <DollarSign size={14} className="mr-1 text-green-600" />
-                              <span className="font-semibold text-gray-600">
-                                {totalBudget.toLocaleString('ko-KR')}원
-                              </span>
-                            </div>
+                            <span>{assignee?.name || '미정'}</span>
+                          </div>
+                          <span className="text-[#ede9e6]">·</span>
+                          <span className="tabular-nums">
+                            {episode.startDate && !isNaN(new Date(episode.startDate).getTime())
+                              ? (() => { const d = new Date(episode.startDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })()
+                              : '미정'}
+                            {episode.dueDate && (
+                              <> <span className="text-[#d6d3d1]">→</span> <span className="text-[#ea580c] font-semibold">{(() => { const d = new Date(episode.dueDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })()}</span></>
+                            )}
+                          </span>
+                          {episode.workContent.length > 0 && (
+                            <>
+                              <span className="text-[#ede9e6]">·</span>
+                              {episode.workContent.map((work, idx) => (
+                                <span key={idx} className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
+                                  episode.status === 'completed'
+                                    ? 'bg-[#f5f5f4] border-[#ede9e6] text-[#78716c]'
+                                    : 'bg-[#fff7ed] border-[#fed7aa] text-[#ea580c]'
+                                }`}>
+                                  {work}
+                                </span>
+                              ))}
+                            </>
                           )}
                         </div>
                       )}
@@ -2973,7 +2912,7 @@ function StatusBadge({ status }: { status: string }) {
   const { label, color, bgColor } = statusMap[status] || statusMap.inactive;
 
   return (
-    <span className={`inline-flex px-4 py-2 rounded-full text-sm font-semibold ${color} ${bgColor}`}>
+    <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${color} ${bgColor}`}>
       {label}
     </span>
   );
@@ -2991,7 +2930,7 @@ function EpisodeStatusBadge({ status }: { status: string }) {
   const { label, color, bgColor } = statusMap[status] || statusMap.waiting;
 
   return (
-    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${color} ${bgColor}`}>
+    <span className={`inline-flex items-center justify-center w-[52px] py-1 rounded-full text-[10px] font-semibold ${color} ${bgColor}`}>
       {label}
     </span>
   );

@@ -264,7 +264,7 @@ export default function ProjectsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">프로젝트</h1>
-          <p className="text-gray-500 mt-1 sm:mt-2 text-sm sm:text-base">진행 중인 프로젝트와 회차를 한눈에 관리하세요</p>
+          <p className="text-gray-500 mt-1 text-sm">진행 중인 프로젝트와 회차를 한눈에 관리하세요</p>
         </div>
         <button
           data-tour="tour-proj-new"

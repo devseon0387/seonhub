@@ -24,8 +24,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '이름, 이메일, 비밀번호는 필수입니다' }, { status: 400 });
     }
 
-    if (password.length < 6) {
-      return NextResponse.json({ error: '비밀번호는 6자 이상이어야 합니다' }, { status: 400 });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      return NextResponse.json({ error: '올바른 이메일 형식이 아닙니다' }, { status: 400 });
+    }
+
+    if (password.length < 8) {
+      return NextResponse.json({ error: '비밀번호는 8자 이상이어야 합니다' }, { status: 400 });
+    }
+    if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+      return NextResponse.json({ error: '비밀번호에 영문과 숫자가 모두 포함되어야 합니다' }, { status: 400 });
     }
 
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {

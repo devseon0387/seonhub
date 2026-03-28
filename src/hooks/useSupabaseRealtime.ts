@@ -41,7 +41,7 @@ export function useSupabaseRealtime(
       if (filter) {
         opts.filter = `${filter.column}=eq.${filter.value}`;
       }
-      channel.on('postgres_changes' as any, opts, () => {
+      channel.on('postgres_changes', opts, () => {
         if (timerRef.current) clearTimeout(timerRef.current);
         timerRef.current = setTimeout(() => {
           callbackRef.current();

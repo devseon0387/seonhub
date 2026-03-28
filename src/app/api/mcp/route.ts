@@ -116,6 +116,26 @@ const TOOLS = [
   },
 ];
 
+// ─── input validation ────────────────────────────────────────────────────────
+const MAX_TITLE  = 200;
+const MAX_CONTENT = 50_000;
+const MAX_NAME   = 100;
+
+function requireString(args: Args, key: string, maxLen: number): string {
+  const val = args[key];
+  if (!val || typeof val !== 'string' || !val.trim()) throw new Error(`${key}은(는) 필수입니다.`);
+  if (val.length > maxLen) throw new Error(`${key}은(는) ${maxLen}자 이하여야 합니다.`);
+  return val.trim();
+}
+
+function optionalString(args: Args, key: string, maxLen: number): string | undefined {
+  const val = args[key];
+  if (!val) return undefined;
+  if (typeof val !== 'string') throw new Error(`${key}이(가) 올바르지 않습니다.`);
+  if (val.length > maxLen) throw new Error(`${key}은(는) ${maxLen}자 이하여야 합니다.`);
+  return val.trim();
+}
+
 // ─── tool handler ─────────────────────────────────────────────────────────────
 type Args = Record<string, string>;
 
@@ -132,16 +152,18 @@ async function handleTool(name: string, args: Args) {
     }
 
     case 'strategy_list_pages': {
-      const [group, docs] = await Promise.all([dbGetGroup(args.groupId), dbGetDocs(args.groupId)]);
-      if (!group) return { content: [{ type: 'text', text: `그룹을 찾을 수 없습니다: ${args.groupId}` }] };
+      const groupId = requireString(args, 'groupId', 100);
+      const [group, docs] = await Promise.all([dbGetGroup(groupId), dbGetDocs(groupId)]);
+      if (!group) return { content: [{ type: 'text', text: `그룹을 찾을 수 없습니다: ${groupId}` }] };
       if (!docs.length) return { content: [{ type: 'text', text: `${group.emoji} **${group.name}** — 아직 페이지가 없습니다.` }] };
       const lines = docs.map(d => `${d.emoji} **${d.title}** (id: \`${d.id}\`, 수정: ${new Date(d.updatedAt).toLocaleDateString('ko-KR')})`);
       return { content: [{ type: 'text', text: `## ${group.emoji} ${group.name}\n\n${lines.join('\n')}` }] };
     }
 
     case 'strategy_read_page': {
-      const [doc, groups] = await Promise.all([dbGetDoc(args.pageId), dbGetGroups()]);
-      if (!doc) return { content: [{ type: 'text', text: `페이지를 찾을 수 없습니다: ${args.pageId}` }] };
+      const pageId = requireString(args, 'pageId', 100);
+      const [doc, groups] = await Promise.all([dbGetDoc(pageId), dbGetGroups()]);
+      if (!doc) return { content: [{ type: 'text', text: `페이지를 찾을 수 없습니다: ${pageId}` }] };
       const group = groups.find(g => g.id === doc.groupId);
       const header = [
         `# ${doc.emoji} ${doc.title}`,
@@ -153,30 +175,38 @@ async function handleTool(name: string, args: Args) {
     }
 
     case 'strategy_write_page': {
-      const doc = await dbUpdateDoc(args.pageId, { blocks: markdownToBlocks(args.content) });
+      const pageId = requireString(args, 'pageId', 100);
+      const content = requireString(args, 'content', MAX_CONTENT);
+      const doc = await dbUpdateDoc(pageId, { blocks: markdownToBlocks(content) });
       return { content: [{ type: 'text', text: `✅ **${doc.title}** 페이지가 업데이트되었습니다.` }] };
     }
 
     case 'strategy_append_to_page': {
-      const doc = await dbGetDoc(args.pageId);
-      if (!doc) return { content: [{ type: 'text', text: `페이지를 찾을 수 없습니다: ${args.pageId}` }] };
+      const pageId = requireString(args, 'pageId', 100);
+      const content = requireString(args, 'content', MAX_CONTENT);
+      const doc = await dbGetDoc(pageId);
+      if (!doc) return { content: [{ type: 'text', text: `페이지를 찾을 수 없습니다: ${pageId}` }] };
       const existing = doc.blocks.filter((b, i) =>
         !(i === doc.blocks.length - 1 && b.type === 'paragraph' && !b.content)
       );
-      const updated = await dbUpdateDoc(args.pageId, { blocks: [...existing, ...markdownToBlocks(args.content)] });
+      const updated = await dbUpdateDoc(pageId, { blocks: [...existing, ...markdownToBlocks(content)] });
       return { content: [{ type: 'text', text: `✅ **${updated.title}** 페이지에 내용이 추가되었습니다.` }] };
     }
 
     case 'strategy_create_page': {
-      const group = await dbGetGroup(args.groupId);
-      if (!group) return { content: [{ type: 'text', text: `그룹을 찾을 수 없습니다: ${args.groupId}` }] };
+      const groupId = requireString(args, 'groupId', 100);
+      const title = requireString(args, 'title', MAX_TITLE);
+      const content = optionalString(args, 'content', MAX_CONTENT);
+      const emoji = optionalString(args, 'emoji', 10) || '📝';
+      const group = await dbGetGroup(groupId);
+      if (!group) return { content: [{ type: 'text', text: `그룹을 찾을 수 없습니다: ${groupId}` }] };
       const doc = await dbCreateDoc({
         id: uid(),
-        groupId: args.groupId,
-        title: args.title,
-        emoji: args.emoji || '📝',
-        blocks: args.content
-          ? markdownToBlocks(args.content)
+        groupId,
+        title,
+        emoji,
+        blocks: content
+          ? markdownToBlocks(content)
           : [{ id: uid(), type: 'paragraph', content: '', checked: false }],
         createdAt: '',
         updatedAt: '',
@@ -185,22 +215,28 @@ async function handleTool(name: string, args: Args) {
     }
 
     case 'strategy_create_group': {
-      const group = await dbCreateGroup({ id: uid(), name: args.name, emoji: args.emoji || '📁' });
+      const name = requireString(args, 'name', MAX_NAME);
+      const emoji = optionalString(args, 'emoji', 10) || '📁';
+      const group = await dbCreateGroup({ id: uid(), name, emoji });
       return { content: [{ type: 'text', text: `✅ 새 그룹 **${group.emoji} ${group.name}** 이 생성되었습니다.\n- id: \`${group.id}\`` }] };
     }
 
     case 'strategy_update_page_title': {
+      const pageId = requireString(args, 'pageId', 100);
       const patch: Partial<{ title: string; emoji: string }> = {};
-      if (args.title) patch.title = args.title;
-      if (args.emoji) patch.emoji = args.emoji;
-      const doc = await dbUpdateDoc(args.pageId, patch);
+      const title = optionalString(args, 'title', MAX_TITLE);
+      const emoji = optionalString(args, 'emoji', 10);
+      if (title) patch.title = title;
+      if (emoji) patch.emoji = emoji;
+      const doc = await dbUpdateDoc(pageId, patch);
       return { content: [{ type: 'text', text: `✅ 페이지가 **${doc.emoji} ${doc.title}** 로 업데이트되었습니다.` }] };
     }
 
     case 'strategy_delete_page': {
-      const doc = await dbGetDoc(args.pageId);
-      if (!doc) return { content: [{ type: 'text', text: `페이지를 찾을 수 없습니다: ${args.pageId}` }] };
-      await dbDeleteDoc(args.pageId);
+      const pageId = requireString(args, 'pageId', 100);
+      const doc = await dbGetDoc(pageId);
+      if (!doc) return { content: [{ type: 'text', text: `페이지를 찾을 수 없습니다: ${pageId}` }] };
+      await dbDeleteDoc(pageId);
       return { content: [{ type: 'text', text: `✅ **${doc.emoji} ${doc.title}** 페이지가 삭제되었습니다.` }] };
     }
 
@@ -211,7 +247,12 @@ async function handleTool(name: string, args: Args) {
 
 // ─── route handler ────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } });
+  }
   const { method, params, id } = body;
 
   // Notifications (no id) don't need a response

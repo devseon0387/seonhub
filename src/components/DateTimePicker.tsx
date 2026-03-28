@@ -500,7 +500,7 @@ export default function DateTimePicker({
                 whileTap={{ scale: 0.97 }}
                 onClick={handleSave}
                 disabled={!selectedDate && (!repeat || repeat === 'none')}
-                className="flex-2 px-8 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed shadow-md shadow-orange-200"
+                className="flex-2 px-8 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
                 {selectedDate
                   ? `${selectedDate.slice(5).replace('-', '월 ')}일 ${selectedTime || '09:00'} 저장`
