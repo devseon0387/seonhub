@@ -3,39 +3,46 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Copy, Check, Landmark, Receipt, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Project, Partner, Episode } from '@/types';
 import { getProjects, getPartners, getAllEpisodes } from '@/lib/supabase/db';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import Link from 'next/link';
 
-const fmt = (n: number) => n.toLocaleString('ko-KR') + '원';
-
 function calcNetAmount(amount: number, partnerType?: 'freelancer' | 'business') {
   if (partnerType === 'business') return Math.round(amount * 1.1);
-  // 매니저는 기본 3.3% 원천징수 적용
   return Math.round(amount * (1 - 0.033));
 }
 
 function getNetLabel(partnerType?: 'freelancer' | 'business') {
   if (partnerType === 'business') return '부가세 10%';
-  return '3.3% 원천징수';
+  return '3.3%';
 }
 
 function getDday(dateStr: string) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr);
-  target.setHours(0, 0, 0, 0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr); target.setHours(0, 0, 0, 0);
   const diff = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff === 0) return { label: 'D-day', color: 'text-red-500 font-semibold' };
-  if (diff < 0) return { label: `D+${Math.abs(diff)}`, color: 'text-red-500 font-semibold' };
-  if (diff <= 3) return { label: `D-${diff}`, color: 'text-orange-500 font-semibold' };
-  return { label: `D-${diff}`, color: 'text-gray-400' };
+  if (diff === 0) return { label: 'D-day', urgent: true };
+  if (diff < 0) return { label: `D+${Math.abs(diff)}`, urgent: true };
+  if (diff <= 3) return { label: `D-${diff}`, urgent: false };
+  return { label: `D-${diff}`, urgent: false };
 }
 
-interface EpisodeWithProject {
-  episode: Episode & { projectId: string };
-  project: Project;
+function fmtDate(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+}
+
+interface SettlementRow {
+  id: string;
+  type: 'management' | 'work';
+  projectTitle: string;
+  episodeNumber: number;
+  episodeTitle: string;
+  amount: number;
+  paymentDueDate?: string;
+  paymentStatus?: string;
 }
 
 export default function ManagerSettlementDetailPage() {
@@ -52,44 +59,17 @@ export default function ManagerSettlementDetailPage() {
     const y = searchParams.get('year');
     const m = searchParams.get('month');
     const now = new Date();
-    return {
-      year: y ? parseInt(y) : now.getFullYear(),
-      month: m ? parseInt(m) : now.getMonth() + 1,
-    };
+    return { year: y ? parseInt(y) : now.getFullYear(), month: m ? parseInt(m) : now.getMonth() + 1 };
   });
 
-  const prevMonth = () => {
-    setSelectedDate(prev => prev.month === 1
-      ? { year: prev.year - 1, month: 12 }
-      : { year: prev.year, month: prev.month - 1 }
-    );
-  };
-
+  const prevMonth = () => setSelectedDate(prev => prev.month === 1 ? { year: prev.year - 1, month: 12 } : { year: prev.year, month: prev.month - 1 });
   const isMinMonth = selectedDate.year === 2026 && selectedDate.month === 3;
-
-  const nextMonth = () => {
-    setSelectedDate(prev => prev.month === 12
-      ? { year: prev.year + 1, month: 1 }
-      : { year: prev.year, month: prev.month + 1 }
-    );
-  };
-
-  const copyAccount =() => {
-    if (!manager?.bank || !manager?.bankAccount) return;
-    navigator.clipboard.writeText(`${manager.bank} ${manager.bankAccount}`);
-    setCopiedId(true);
-    setTimeout(() => setCopiedId(false), 2000);
-  };
+  const nextMonth = () => setSelectedDate(prev => prev.month === 12 ? { year: prev.year + 1, month: 1 } : { year: prev.year, month: prev.month + 1 });
 
   const loadData = useCallback(() => {
     setLoading(true);
     Promise.all([getProjects(), getPartners(), getAllEpisodes()]).then(
-      ([p, pa, ep]) => {
-        setProjects(p);
-        setManager(pa.find(partner => partner.id === id) ?? null);
-        setAllEpisodes(ep);
-        setLoading(false);
-      }
+      ([p, pa, ep]) => { setProjects(p); setManager(pa.find(x => x.id === id) ?? null); setAllEpisodes(ep); setLoading(false); }
     ).catch(() => setLoading(false));
   }, [id]);
 
@@ -100,349 +80,205 @@ export default function ManagerSettlementDetailPage() {
 
   const episodesMap = useMemo(() => {
     const map: Record<string, (Episode & { projectId: string })[]> = {};
-    allEpisodes.forEach(ep => {
-      if (!map[ep.projectId]) map[ep.projectId] = [];
-      map[ep.projectId].push(ep);
-    });
+    allEpisodes.forEach(ep => { if (!map[ep.projectId]) map[ep.projectId] = []; map[ep.projectId].push(ep); });
     return map;
   }, [allEpisodes]);
 
-  const dateGroups = useMemo(() => {
+  // 통합 정산 데이터 (매니징 + 작업)
+  const rows: SettlementRow[] = useMemo(() => {
     if (!manager) return [];
-    const managerAllProjects = projects.filter(
-      p => p.managerIds?.includes(manager.id)
-    );
+    const result: SettlementRow[] = [];
 
-    const allEps: EpisodeWithProject[] = [];
-    managerAllProjects.forEach(project => {
-      const episodes = (episodesMap[project.id] || []).filter(
-        ep => (ep.manager === manager.id || ep.manager === manager.name) && ep.paymentDueDate?.slice(0, 7) === selectedYM
-      );
-      episodes.forEach(ep => allEps.push({ episode: ep, project }));
-    });
-
-    const grouped: Record<string, EpisodeWithProject[]> = {};
-    allEps.forEach(item => {
-      const date = item.episode.paymentDueDate ?? 'unknown';
-      if (!grouped[date]) grouped[date] = [];
-      grouped[date].push(item);
-    });
-
-    return Object.entries(grouped)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, items]) => ({
-        date,
-        items,
-        totalAmount: items.reduce((s, i) => s + (i.episode.budget?.managementFee ?? 0), 0),
-        paidCount: items.filter(i => i.episode.paymentStatus === 'completed').length,
-        allPaid: items.every(i => i.episode.paymentStatus === 'completed'),
-      }));
-  }, [manager, projects, episodesMap, selectedYM]);
-
-  // 매니저가 assignee(작업자)인 에피소드도 집계
-  const workItems = useMemo(() => {
-    if (!manager) return [];
-    const items: EpisodeWithProject[] = [];
+    // 매니징 비용
     projects.forEach(project => {
-      const episodes = (episodesMap[project.id] || []).filter(
-        ep => ep.assignee === manager.id && ep.paymentDueDate?.slice(0, 7) === selectedYM
-      );
-      episodes.forEach(ep => items.push({ episode: ep, project }));
+      if (!project.managerIds?.includes(manager.id)) return;
+      (episodesMap[project.id] || []).forEach(ep => {
+        if ((ep.manager !== manager.id && ep.manager !== manager.name) || ep.paymentDueDate?.slice(0, 7) !== selectedYM) return;
+        const amt = ep.budget?.managementFee ?? 0;
+        result.push({ id: `mgmt-${ep.id}`, type: 'management', projectTitle: project.title, episodeNumber: ep.episodeNumber, episodeTitle: ep.title || '', amount: amt, paymentDueDate: ep.paymentDueDate, paymentStatus: ep.paymentStatus });
+      });
     });
-    return items;
+
+    // 작업 비용
+    projects.forEach(project => {
+      (episodesMap[project.id] || []).forEach(ep => {
+        if ((ep.assignee !== manager.id && ep.assignee !== manager.name) || ep.paymentDueDate?.slice(0, 7) !== selectedYM) return;
+        const amt = ep.budget?.partnerPayment ?? 0;
+        result.push({ id: `work-${ep.id}`, type: 'work', projectTitle: project.title, episodeNumber: ep.episodeNumber, episodeTitle: ep.title || '', amount: amt, paymentDueDate: ep.paymentDueDate, paymentStatus: ep.paymentStatus });
+      });
+    });
+
+    return result.sort((a, b) => (a.paymentDueDate ?? '').localeCompare(b.paymentDueDate ?? ''));
   }, [manager, projects, episodesMap, selectedYM]);
 
-  const allItems = dateGroups.flatMap(g => g.items);
-  const totalManagementAmount = allItems.reduce((s, i) => s + (i.episode.budget?.managementFee ?? 0), 0);
-  const totalWorkAmount = workItems.reduce((s, i) => s + (i.episode.budget?.partnerPayment ?? 0), 0);
-  const totalAmount = totalManagementAmount + totalWorkAmount;
-  const paidAmount = allItems.filter(i => i.episode.paymentStatus === 'completed').reduce((s, i) => s + (i.episode.budget?.managementFee ?? 0), 0)
-    + workItems.filter(i => i.episode.paymentStatus === 'completed').reduce((s, i) => s + (i.episode.budget?.partnerPayment ?? 0), 0);
+  const totalAmount = rows.reduce((s, r) => s + r.amount, 0);
+  const paidAmount = rows.filter(r => r.paymentStatus === 'completed').reduce((s, r) => s + r.amount, 0);
   const unpaidAmount = totalAmount - paidAmount;
   const totalNetAmount = calcNetAmount(totalAmount, manager?.partnerType);
+  const paidPct = totalAmount > 0 ? Math.round((paidAmount / totalAmount) * 100) : 0;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
-      </div>
-    );
-  }
+  const managementTotal = rows.filter(r => r.type === 'management').reduce((s, r) => s + r.amount, 0);
+  const workTotal = rows.filter(r => r.type === 'work').reduce((s, r) => s + r.amount, 0);
 
-  if (!manager) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <p className="text-gray-500">매니저를 찾을 수 없습니다.</p>
-        <Link href="/finance/partner-settlement" className="text-sm text-orange-500 hover:text-orange-600">
-          ← 목록으로 돌아가기
-        </Link>
-      </div>
-    );
-  }
+  const copyAccount = () => {
+    if (manager?.bank && manager?.bankAccount) {
+      navigator.clipboard.writeText(`${manager.bank} ${manager.bankAccount}`);
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
+    }
+  };
+
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" /></div>;
+  if (!manager) return <div className="flex flex-col items-center justify-center h-64 gap-4"><p className="text-gray-500">매니저를 찾을 수 없습니다.</p><Link href="/finance/partner-settlement" className="text-sm text-orange-500">← 목록으로</Link></div>;
 
   return (
-    <div className="space-y-6">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link
-            href={`/finance/partner-settlement`}
-            className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-          >
-            <ArrowLeft size={20} className="text-gray-500" />
+    <div className="space-y-5">
+      {/* 헤더 카드 */}
+      <div className="bg-white rounded-2xl border border-gray-100 px-5 py-4">
+        <div className="flex items-center gap-3">
+          <Link href="/finance/partner-settlement" className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+            <ArrowLeft size={18} className="text-[#a8a29e]" />
           </Link>
+          <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-[11px] font-bold text-white">
+            {manager.name.charAt(0)}
+          </div>
           <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-3xl font-bold text-gray-900">{manager.name}</h1>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                manager.partnerType === 'business'
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'bg-purple-50 text-purple-600'
-              }`}>
-                {manager.partnerType === 'business' ? '사업자' : '프리랜서'}
+            <div className="flex items-center gap-2">
+              <h1 className="text-[21px] font-extrabold tracking-tight">{manager.name}</h1>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-purple-50 text-purple-600">
+                매니저 · {manager.partnerType === 'business' ? '사업자' : '프리랜서'} · {getNetLabel(manager.partnerType)}
               </span>
-              {manager.jobTitle && (
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600">
-                  {manager.jobTitle}
-                </span>
-              )}
             </div>
-            <p className="text-gray-500 mt-1">매니징 정산 내역</p>
+            <div className="flex items-center gap-2 text-[12px] text-[#a8a29e] mt-0.5">
+              <span>정산 내역 · {rows.length}건</span>
+              {managementTotal > 0 && <><span className="text-[#ede9e6]">·</span><span>매니징 {managementTotal.toLocaleString()}</span></>}
+              {workTotal > 0 && <><span className="text-[#ede9e6]">·</span><span>작업 {workTotal.toLocaleString()}</span></>}
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-1 py-1 shadow-sm">
-          <button onClick={prevMonth} disabled={isMinMonth} className={`p-2 rounded-lg transition-colors ${isMinMonth ? 'invisible' : 'hover:bg-gray-100'}`}>
-              <ChevronLeft size={16} className="text-gray-500" />
-            </button>
-          <span className="px-3 py-1.5 text-sm font-semibold text-gray-800 min-w-[120px] text-center">
-            {selectedDate.year}년 {selectedDate.month}월
-          </span>
-          <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <ChevronRight size={16} className="text-gray-500" />
+      </div>
+
+      {/* 월 이동 */}
+      <div>
+        <div className="flex items-center gap-1 bg-white border border-[#ede9e6] rounded-[10px] px-1 py-1 w-fit">
+          <button onClick={prevMonth} disabled={isMinMonth} className={`p-1.5 rounded-lg transition-colors ${isMinMonth ? 'invisible' : 'hover:bg-gray-100'}`}>
+            <ChevronLeft size={14} className="text-[#a8a29e]" />
+          </button>
+          <div className="px-2.5 py-1 min-w-[90px] text-center overflow-hidden">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span key={`${selectedDate.year}-${selectedDate.month}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }} className="block text-[13px] font-semibold text-gray-800 tabular-nums">
+                {String(selectedDate.year).slice(2)}년 {String(selectedDate.month).padStart(2, '0')}월
+              </motion.span>
+            </AnimatePresence>
+          </div>
+          <button onClick={nextMonth} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+            <ChevronRight size={14} className="text-[#a8a29e]" />
           </button>
         </div>
       </div>
 
-      {/* 요약 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs text-gray-400 mb-1">매니징 비용</p>
-          <p className="text-xl font-bold text-gray-900 whitespace-nowrap">{fmt(totalManagementAmount)}</p>
-          <p className="text-[10px] text-gray-400 mt-1">{allItems.length}건</p>
+      {/* 통합 카드: 통계 + 테이블 */}
+      <div className="bg-white rounded-2xl border border-gray-100" style={{ overflow: 'clip' }}>
+        {/* 통계 바 */}
+        <div className="px-5 py-4 border-b border-[#f0ece9]">
+          <div className="flex items-baseline justify-between mb-1.5">
+            <motion.span key={`label-${selectedYM}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-[13px] text-[#a8a29e]">
+              총 정산 · 실 지급 <b className="text-blue-600">{totalNetAmount.toLocaleString()}원</b>
+            </motion.span>
+            <motion.span key={`total-${selectedYM}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="text-[22px] font-extrabold tracking-tight">
+              {totalAmount.toLocaleString()}<span className="text-[13px] text-[#78716c] font-medium ml-0.5">원</span>
+            </motion.span>
+          </div>
+          <div className="h-[6px] bg-[#f0ece9] rounded-full overflow-hidden flex gap-0.5 mb-1.5">
+            <motion.div initial={false} animate={{ width: `${paidPct}%` }} transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }} className="h-full bg-green-500 rounded-full" />
+            <motion.div initial={false} animate={{ width: `${100 - paidPct}%` }} transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }} className="h-full bg-orange-500 rounded-full" />
+          </div>
+          <motion.div key={`legend-${selectedYM}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.1 }} className="flex justify-between text-[12px]">
+            <div className="flex items-center gap-1.5"><div className="w-2 h-1 bg-green-500 rounded-sm" /><span className="text-green-600 font-semibold">완료 {paidAmount.toLocaleString()}</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-1 bg-orange-500 rounded-sm" /><span className="text-orange-500 font-semibold">대기 {unpaidAmount.toLocaleString()}</span></div>
+          </motion.div>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs text-gray-400 mb-1">작업 비용</p>
-          <p className="text-xl font-bold text-gray-900 whitespace-nowrap">{fmt(totalWorkAmount)}</p>
-          <p className="text-[10px] text-gray-400 mt-1">{workItems.length}건</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs text-gray-400 mb-1">정산 금액</p>
-          <p className="text-xl font-bold text-gray-900 whitespace-nowrap">{fmt(totalAmount)}</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs text-gray-400 mb-1 whitespace-nowrap">
-            실 지급액<span className="text-blue-400 ml-1">({getNetLabel(manager.partnerType)})</span>
-          </p>
-          <p className="text-xl font-bold text-blue-600 whitespace-nowrap">{fmt(totalNetAmount)}</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs text-gray-400 mb-1">지급 완료</p>
-          <p className="text-xl font-bold text-emerald-600 whitespace-nowrap">{fmt(paidAmount)}</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs text-gray-400 mb-1">지급 대기</p>
-          <p className="text-xl font-bold text-orange-500 whitespace-nowrap">{fmt(unpaidAmount)}</p>
-        </div>
-      </div>
 
-      {/* 입금일별 그룹 */}
-      {dateGroups.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 py-20 text-center">
-          <Receipt className="mx-auto mb-3 text-gray-200" size={36} />
-          <p className="font-medium text-gray-500">정산 내역이 없어요</p>
-          <p className="text-xs text-gray-400 mt-1">{selectedDate.year}년 {selectedDate.month}월에 매니징한 내역이 없습니다</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {dateGroups.map(({ date, items, totalAmount: groupTotal, paidCount, allPaid }) => {
-            const dday = date !== 'unknown' ? getDday(date) : null;
-            const groupNet = calcNetAmount(groupTotal, manager.partnerType);
-            const isUrgent = dday && (dday.label === 'D-day' || dday.label.startsWith('D+'));
-            const isNear = dday && !isUrgent && dday.label.startsWith('D-') && parseInt(dday.label.slice(2)) <= 3;
-            return (
-              <div key={date} className={`bg-white rounded-2xl shadow-sm overflow-hidden ${
-                isUrgent ? 'border-2 border-red-200' : isNear ? 'border-2 border-orange-200' : 'border border-gray-100'
-              }`}>
-                {/* 날짜 그룹 헤더 */}
-                <div className={`px-5 py-4 border-b flex items-center justify-between ${
-                  isUrgent ? 'bg-red-50/50 border-red-100' : isNear ? 'bg-orange-50/30 border-orange-100' : 'border-gray-100'
-                }`}>
-                  <div className="flex items-center gap-3">
-                    <Calendar size={16} className={isUrgent ? 'text-red-400' : 'text-orange-400'} />
-                    <span className="text-sm font-semibold text-gray-900">
-                      {date !== 'unknown' ? date : '입금일 미정'}
-                    </span>
-                    {dday && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                        isUrgent ? 'bg-red-100 text-red-600' : isNear ? 'bg-orange-100 text-orange-600' : 'text-gray-400'
-                      }`}>{dday.label}</span>
-                    )}
-                    {allPaid ? (
-                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 font-medium">지급 완료</span>
-                    ) : (
-                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-500 font-medium">지급 대기</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* 에피소드 테이블 */}
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-gray-400">
-                        <th className="px-5 py-2 text-left font-semibold">프로젝트</th>
-                        <th className="px-3 py-2 text-left font-semibold w-[50px]">회차</th>
-                        <th className="px-3 py-2 text-left font-semibold">회차 제목</th>
-                        <th className="px-3 py-2 text-right font-semibold">금액</th>
-                        <th className="w-[20px]" />
-                        <th className="px-3 py-2 text-right font-semibold">{manager.partnerType === 'business' ? '부가세' : '원천징수'}</th>
-                        <th className="w-[20px]" />
-                        <th className="pl-3 pr-6 py-2 text-right font-semibold">실 수령액</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {items.map(({ episode: ep, project }) => {
-                        const epAmount = ep.budget?.managementFee ?? 0;
-                        const epNet = calcNetAmount(epAmount, manager.partnerType);
-                        return (
-                          <tr key={ep.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-5 py-3 text-sm text-gray-700 whitespace-nowrap">{project.title}</td>
-                            <td className="px-3 py-3 text-sm text-orange-500 font-semibold whitespace-nowrap">{ep.episodeNumber}편</td>
-                            <td className="px-3 py-3 text-sm text-gray-500">{ep.title || '-'}</td>
-                            <td className="px-3 py-3 text-sm font-medium text-gray-800 text-right whitespace-nowrap">{fmt(epAmount)}</td>
-                            <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">{manager.partnerType === 'business' ? '+' : '−'}</td>
-                            <td className="px-3 py-3 text-sm text-gray-400 text-right whitespace-nowrap">{fmt(Math.abs(epNet - epAmount))}</td>
-                            <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">=</td>
-                            <td className="px-3 py-3 text-sm font-bold text-gray-900 text-right whitespace-nowrap pr-6">{fmt(epNet)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-gray-50 border-t border-gray-100">
-                        <td className="px-5 py-3 text-xs font-semibold text-gray-400">소계</td>
-                        <td />
-                        <td />
-                        <td className="px-3 py-3 text-sm font-bold text-gray-900 text-right whitespace-nowrap">{fmt(groupTotal)}</td>
-                        <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">{manager.partnerType === 'business' ? '+' : '−'}</td>
-                        <td className="px-3 py-3 text-sm font-bold text-gray-400 text-right whitespace-nowrap">{fmt(Math.abs(groupNet - groupTotal))}</td>
-                        <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">=</td>
-                        <td className="px-3 py-3 text-sm font-bold text-blue-600 text-right whitespace-nowrap pr-6">{fmt(groupNet)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* 작업 내역 (매니저가 직접 작업한 에피소드) */}
-          {workItems.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-gray-900">작업 내역</span>
-                  <span className="text-xs text-gray-400">{workItems.length}건</span>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-gray-400">
-                      <th className="px-5 py-2 text-left font-semibold">프로젝트</th>
-                      <th className="px-3 py-2 text-left font-semibold w-[50px]">회차</th>
-                      <th className="px-3 py-2 text-left font-semibold">회차 제목</th>
-                      <th className="px-3 py-2 text-right font-semibold">금액</th>
-                      <th className="w-[20px]" />
-                      <th className="px-3 py-2 text-right font-semibold">{manager.partnerType === 'business' ? '부가세' : '원천징수'}</th>
-                      <th className="w-[20px]" />
-                      <th className="pl-3 pr-6 py-2 text-right font-semibold">실 수령액</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {workItems.map(({ episode: ep, project }) => {
-                      const epAmount = ep.budget?.partnerPayment ?? 0;
-                      const epNet = calcNetAmount(epAmount, manager.partnerType);
-                      return (
-                        <tr key={ep.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-5 py-3 text-sm text-gray-700 whitespace-nowrap">{project.title}</td>
-                          <td className="px-3 py-3 text-sm text-orange-500 font-semibold whitespace-nowrap">{ep.episodeNumber}편</td>
-                          <td className="px-3 py-3 text-sm text-gray-500">{ep.title || '-'}</td>
-                          <td className="px-3 py-3 text-sm font-medium text-gray-800 text-right whitespace-nowrap">{fmt(epAmount)}</td>
-                          <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">{manager.partnerType === 'business' ? '+' : '−'}</td>
-                          <td className="px-3 py-3 text-sm text-gray-400 text-right whitespace-nowrap">{fmt(Math.abs(epNet - epAmount))}</td>
-                          <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">=</td>
-                          <td className="px-3 py-3 text-sm font-bold text-gray-900 text-right whitespace-nowrap pr-6">{fmt(epNet)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-gray-50 border-t border-gray-100">
-                      <td className="px-5 py-3 text-xs font-semibold text-gray-400">소계</td>
-                      <td />
-                      <td />
-                      <td className="px-3 py-3 text-sm font-bold text-gray-900 text-right whitespace-nowrap">{fmt(totalWorkAmount)}</td>
-                      <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">{manager.partnerType === 'business' ? '+' : '−'}</td>
-                      <td className="px-3 py-3 text-sm font-bold text-gray-400 text-right whitespace-nowrap">{fmt(Math.abs(calcNetAmount(totalWorkAmount, manager.partnerType) - totalWorkAmount))}</td>
-                      <td className="py-3 text-xs text-gray-300 text-right pr-0 pl-2">=</td>
-                      <td className="px-3 py-3 text-sm font-bold text-blue-600 text-right whitespace-nowrap pr-6">{fmt(calcNetAmount(totalWorkAmount, manager.partnerType))}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+        {/* 테이블 */}
+        <div style={{ overflowX: 'clip' }}>
+          <div className="min-w-[700px]">
+            <div className="grid grid-cols-[1fr_60px_120px_100px_90px_100px] gap-2 px-5 py-2.5 text-[11px] font-semibold text-[#a8a29e] border-b border-[#f0ece9]">
+              <span>프로젝트 · 회차</span>
+              <span>구분</span>
+              <span className="text-right">정산일</span>
+              <span className="text-right">금액</span>
+              <span className="text-right">{manager.partnerType === 'business' ? '부가세' : '원천징수'}</span>
+              <span className="text-right">실 수령</span>
             </div>
-          )}
-
-          {/* 전체 합계 */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold text-gray-700">총 합계</span>
-                {(manager.bank && manager.bankAccount) ? (
-                  <button
-                    onClick={copyAccount}
-                    className="flex items-center gap-2 text-xs px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    <Landmark size={12} className="text-gray-400" />
-                    <span className="text-gray-500">{manager.bank} {manager.bankAccount}</span>
-                    {copiedId ? (
-                      <Check size={12} className="text-emerald-500" />
-                    ) : (
-                      <Copy size={12} className="text-gray-300" />
-                    )}
-                  </button>
-                ) : (
-                  <Link
-                    href={`/partners`}
-                    className="flex items-center gap-2 text-xs px-3 py-1.5 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors text-orange-500"
-                  >
-                    <Landmark size={12} />
-                    <span>계좌 정보 미등록</span>
-                  </Link>
-                )}
+            {rows.length === 0 ? (
+              <div className="py-20 text-center text-gray-400">
+                <Receipt className="mx-auto mb-3 text-gray-200" size={36} />
+                <p className="font-medium text-gray-500">정산 내역이 없어요</p>
+                <p className="text-xs mt-1">{selectedDate.year}년 {selectedDate.month}월에 해당하는 내역이 없습니다</p>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <span className="font-bold text-gray-900">{fmt(totalAmount)}</span>
-                <span className="text-gray-300">{manager.partnerType === 'business' ? '+' : '−'}</span>
-                <span className="text-gray-400">{fmt(Math.abs(totalNetAmount - totalAmount))}</span>
-                <span className="text-gray-300">=</span>
-                <span className="text-lg font-bold text-blue-600">{fmt(totalNetAmount)}</span>
+            ) : (
+              <div className="divide-y divide-[#f8f7f6]">
+                {rows.map((row, idx) => {
+                  const epNet = calcNetAmount(row.amount, manager.partnerType);
+                  const taxAmount = Math.abs(epNet - row.amount);
+                  const dday = row.paymentDueDate ? getDday(row.paymentDueDate) : null;
+                  return (
+                    <motion.div key={row.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: idx * 0.03 }}>
+                      <div className="grid grid-cols-[1fr_60px_120px_100px_90px_100px] gap-2 px-5 py-3 items-center hover:bg-[#fafaf9] transition-colors">
+                        <div className="min-w-0">
+                          <span className="text-[13px] font-semibold">{row.projectTitle}</span>
+                          <span className="text-[12px] text-[#a8a29e] ml-1.5">{row.episodeNumber}편 {row.episodeTitle}</span>
+                        </div>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold text-center ${
+                          row.type === 'management' ? 'bg-purple-50 text-purple-600' : 'bg-[#fff7ed] text-orange-500'
+                        }`}>
+                          {row.type === 'management' ? '매니징' : '작업'}
+                        </span>
+                        <div className="text-right whitespace-nowrap">
+                          {row.paymentDueDate ? (
+                            <div className="flex items-center justify-end gap-1.5">
+                              <span className="text-[12px] tabular-nums text-[#44403c]">{fmtDate(row.paymentDueDate)}</span>
+                              {dday && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${dday.urgent ? 'bg-red-100 text-red-600' : 'bg-[#f5f5f4] text-[#a8a29e]'}`}>{dday.label}</span>}
+                            </div>
+                          ) : <span className="text-[12px] text-[#d6d3d1]">-</span>}
+                        </div>
+                        <span className="text-[14px] font-semibold text-right tabular-nums">{row.amount.toLocaleString()}</span>
+                        <span className="text-[12px] text-[#a8a29e] text-right tabular-nums">{manager.partnerType === 'business' ? '+' : '−'}{taxAmount.toLocaleString()}</span>
+                        <span className="text-[14px] font-bold text-blue-600 text-right tabular-nums">{epNet.toLocaleString()}</span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
-            </div>
+            )}
           </div>
         </div>
-      )}
+
+        {/* 합계 */}
+        {rows.length > 0 && (
+          <div className="px-5 py-3.5 border-t border-[#f0ece9] bg-[#fafaf9] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] font-semibold text-[#78716c]">합계</span>
+              {manager.bank && manager.bankAccount ? (
+                <button onClick={copyAccount} className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 bg-white border border-[#ede9e6] rounded-lg hover:border-[#d6d3d1] transition-colors">
+                  <Landmark size={11} className="text-[#a8a29e]" />
+                  <span className="text-[#78716c]">{manager.bank} {manager.bankAccount}</span>
+                  {copiedId ? <Check size={11} className="text-green-500" /> : <Copy size={11} className="text-[#d6d3d1]" />}
+                </button>
+              ) : (
+                <Link href="/partners" className="text-[11px] px-2.5 py-1 bg-orange-50 text-orange-500 rounded-lg hover:bg-orange-100 transition-colors">계좌 미등록</Link>
+              )}
+            </div>
+            <div className="flex items-center gap-2 tabular-nums">
+              <span className="text-[15px] font-bold">{totalAmount.toLocaleString()}</span>
+              <span className="text-[#d6d3d1]">{manager.partnerType === 'business' ? '+' : '−'}</span>
+              <span className="text-[13px] text-[#a8a29e]">{Math.abs(totalNetAmount - totalAmount).toLocaleString()}</span>
+              <span className="text-[#d6d3d1]">=</span>
+              <span className="text-[18px] font-extrabold text-blue-600">{totalNetAmount.toLocaleString()}<span className="text-[12px] font-medium ml-0.5">원</span></span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
