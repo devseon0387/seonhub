@@ -108,7 +108,7 @@ export default function ManagerSettlementDetailPage() {
       });
     });
 
-    return result.sort((a, b) => (a.paymentDueDate ?? '').localeCompare(b.paymentDueDate ?? ''));
+    return result.filter(r => r.amount > 0).sort((a, b) => (a.paymentDueDate ?? '').localeCompare(b.paymentDueDate ?? ''));
   }, [manager, projects, episodesMap, selectedYM]);
 
   const totalAmount = rows.reduce((s, r) => s + r.amount, 0);
