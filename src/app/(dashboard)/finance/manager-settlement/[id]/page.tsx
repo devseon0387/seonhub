@@ -199,60 +199,107 @@ export default function ManagerSettlementDetailPage() {
           </motion.div>
         </div>
 
-        {/* 테이블 */}
-        <div style={{ overflowX: 'clip' }}>
-          <div className="min-w-[700px]">
-            <div className="grid grid-cols-[1fr_60px_120px_100px_90px_100px] gap-2 px-5 py-2.5 text-[11px] font-semibold text-[#a8a29e] border-b border-[#f0ece9]">
-              <span>프로젝트 · 회차</span>
-              <span>구분</span>
-              <span className="text-right">정산일</span>
-              <span className="text-right">금액</span>
-              <span className="text-right">{manager.partnerType === 'business' ? '부가세' : '원천징수'}</span>
-              <span className="text-right">실 수령</span>
-            </div>
-            {rows.length === 0 ? (
-              <div className="py-20 text-center text-gray-400">
-                <Receipt className="mx-auto mb-3 text-gray-200" size={36} />
-                <p className="font-medium text-gray-500">정산 내역이 없어요</p>
-                <p className="text-xs mt-1">{selectedDate.year}년 {selectedDate.month}월에 해당하는 내역이 없습니다</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-[#f8f7f6]">
-                {rows.map((row, idx) => {
-                  const epNet = calcNetAmount(row.amount, manager.partnerType);
-                  const taxAmount = Math.abs(epNet - row.amount);
-                  const dday = row.paymentDueDate ? getDday(row.paymentDueDate) : null;
-                  return (
-                    <motion.div key={row.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: idx * 0.03 }}>
-                      <div className="grid grid-cols-[1fr_60px_120px_100px_90px_100px] gap-2 px-5 py-3 items-center hover:bg-[#fafaf9] transition-colors">
-                        <div className="min-w-0">
-                          <span className="text-[13px] font-semibold">{row.projectTitle}</span>
-                          <span className="text-[12px] text-[#a8a29e] ml-1.5">{row.episodeNumber}편 {row.episodeTitle}</span>
-                        </div>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold text-center ${
-                          row.type === 'management' ? 'bg-purple-50 text-purple-600' : 'bg-[#fff7ed] text-orange-500'
-                        }`}>
-                          {row.type === 'management' ? '매니징' : '작업'}
-                        </span>
-                        <div className="text-right whitespace-nowrap">
-                          {row.paymentDueDate ? (
-                            <div className="flex items-center justify-end gap-1.5">
-                              <span className="text-[12px] tabular-nums text-[#44403c]">{fmtDate(row.paymentDueDate)}</span>
-                              {dday && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${dday.urgent ? 'bg-red-100 text-red-600' : 'bg-[#f5f5f4] text-[#a8a29e]'}`}>{dday.label}</span>}
-                            </div>
-                          ) : <span className="text-[12px] text-[#d6d3d1]">-</span>}
-                        </div>
-                        <span className="text-[14px] font-semibold text-right tabular-nums">{row.amount.toLocaleString()}</span>
-                        <span className="text-[12px] text-[#a8a29e] text-right tabular-nums">{manager.partnerType === 'business' ? '+' : '−'}{taxAmount.toLocaleString()}</span>
-                        <span className="text-[14px] font-bold text-blue-600 text-right tabular-nums">{epNet.toLocaleString()}</span>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            )}
+        {rows.length === 0 ? (
+          <div className="py-20 text-center text-gray-400">
+            <Receipt className="mx-auto mb-3 text-gray-200" size={36} />
+            <p className="font-medium text-gray-500">정산 내역이 없어요</p>
+            <p className="text-xs mt-1">{selectedDate.year}년 {selectedDate.month}월에 해당하는 내역이 없습니다</p>
           </div>
-        </div>
+        ) : (
+          <>
+            {/* 매니징 비용 섹션 */}
+            {(() => {
+              const mgmtRows = rows.filter(r => r.type === 'management');
+              const mgmtNet = calcNetAmount(managementTotal, manager.partnerType);
+              if (mgmtRows.length === 0) return null;
+              return (
+                <div className="border-b border-[#f0ece9]">
+                  <div className="px-5 py-2.5 flex items-center gap-2 border-b border-[#f0ece9]">
+                    <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                    <span className="text-[13px] font-bold">매니징 비용</span>
+                    <span className="text-[11px] text-[#a8a29e]">{mgmtRows.length}건</span>
+                    <span className="ml-auto text-[13px] font-bold tabular-nums">{managementTotal.toLocaleString()}원</span>
+                  </div>
+                  <div style={{ overflowX: 'clip' }}>
+                    <div className="min-w-[600px]">
+                      <div className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-2 text-[10px] font-semibold text-[#a8a29e] border-b border-[#f5f4f2]">
+                        <span>프로젝트 · 회차</span><span className="text-right">정산일</span><span className="text-right">금액</span><span className="text-right">{manager.partnerType === 'business' ? '부가세' : '원천징수'}</span><span className="text-right">실 수령</span>
+                      </div>
+                      <div className="divide-y divide-[#f8f7f6]">
+                        {mgmtRows.map((row, idx) => {
+                          const epNet = calcNetAmount(row.amount, manager.partnerType);
+                          const taxAmount = Math.abs(epNet - row.amount);
+                          const dday = row.paymentDueDate ? getDday(row.paymentDueDate) : null;
+                          return (
+                            <motion.div key={row.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: idx * 0.03 }}>
+                              <div className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-3 items-center hover:bg-[#fafaf9] transition-colors">
+                                <div className="min-w-0"><span className="text-[13px] font-semibold">{row.projectTitle}</span><span className="text-[12px] text-[#a8a29e] ml-1.5">{row.episodeNumber}편 {row.episodeTitle}</span></div>
+                                <div className="text-right whitespace-nowrap">{row.paymentDueDate ? (<div className="flex items-center justify-end gap-1.5"><span className="text-[12px] tabular-nums text-[#44403c]">{fmtDate(row.paymentDueDate)}</span>{dday && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${dday.urgent ? 'bg-red-100 text-red-600' : 'bg-[#f5f5f4] text-[#a8a29e]'}`}>{dday.label}</span>}</div>) : <span className="text-[12px] text-[#d6d3d1]">-</span>}</div>
+                                <span className="text-[14px] font-semibold text-right tabular-nums">{row.amount.toLocaleString()}</span>
+                                <span className="text-[12px] text-[#a8a29e] text-right tabular-nums">{manager.partnerType === 'business' ? '+' : '−'}{taxAmount.toLocaleString()}</span>
+                                <span className="text-[14px] font-bold text-blue-600 text-right tabular-nums">{epNet.toLocaleString()}</span>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                      {/* 매니징 소계 */}
+                      <div className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-2.5 items-center bg-[#fafaf9] border-t border-[#f0ece9] text-[12px]">
+                        <span className="font-semibold text-[#78716c]">소계</span><span /><span className="font-bold text-right tabular-nums">{managementTotal.toLocaleString()}</span><span className="text-[#a8a29e] text-right tabular-nums">{manager.partnerType === 'business' ? '+' : '−'}{Math.abs(mgmtNet - managementTotal).toLocaleString()}</span><span className="font-bold text-blue-600 text-right tabular-nums">{mgmtNet.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 작업 비용 섹션 */}
+            {(() => {
+              const workRows = rows.filter(r => r.type === 'work');
+              const workNet = calcNetAmount(workTotal, manager.partnerType);
+              if (workRows.length === 0) return null;
+              return (
+                <div>
+                  <div className="px-5 py-2.5 flex items-center gap-2 border-b border-[#f0ece9]">
+                    <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                    <span className="text-[13px] font-bold">작업 비용</span>
+                    <span className="text-[11px] text-[#a8a29e]">{workRows.length}건</span>
+                    <span className="ml-auto text-[13px] font-bold tabular-nums">{workTotal.toLocaleString()}원</span>
+                  </div>
+                  <div style={{ overflowX: 'clip' }}>
+                    <div className="min-w-[600px]">
+                      <div className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-2 text-[10px] font-semibold text-[#a8a29e] border-b border-[#f5f4f2]">
+                        <span>프로젝트 · 회차</span><span className="text-right">정산일</span><span className="text-right">금액</span><span className="text-right">{manager.partnerType === 'business' ? '부가세' : '원천징수'}</span><span className="text-right">실 수령</span>
+                      </div>
+                      <div className="divide-y divide-[#f8f7f6]">
+                        {workRows.map((row, idx) => {
+                          const epNet = calcNetAmount(row.amount, manager.partnerType);
+                          const taxAmount = Math.abs(epNet - row.amount);
+                          const dday = row.paymentDueDate ? getDday(row.paymentDueDate) : null;
+                          return (
+                            <motion.div key={row.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: idx * 0.03 }}>
+                              <div className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-3 items-center hover:bg-[#fafaf9] transition-colors">
+                                <div className="min-w-0"><span className="text-[13px] font-semibold">{row.projectTitle}</span><span className="text-[12px] text-[#a8a29e] ml-1.5">{row.episodeNumber}편 {row.episodeTitle}</span></div>
+                                <div className="text-right whitespace-nowrap">{row.paymentDueDate ? (<div className="flex items-center justify-end gap-1.5"><span className="text-[12px] tabular-nums text-[#44403c]">{fmtDate(row.paymentDueDate)}</span>{dday && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${dday.urgent ? 'bg-red-100 text-red-600' : 'bg-[#f5f5f4] text-[#a8a29e]'}`}>{dday.label}</span>}</div>) : <span className="text-[12px] text-[#d6d3d1]">-</span>}</div>
+                                <span className="text-[14px] font-semibold text-right tabular-nums">{row.amount.toLocaleString()}</span>
+                                <span className="text-[12px] text-[#a8a29e] text-right tabular-nums">{manager.partnerType === 'business' ? '+' : '−'}{taxAmount.toLocaleString()}</span>
+                                <span className="text-[14px] font-bold text-blue-600 text-right tabular-nums">{epNet.toLocaleString()}</span>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                      {/* 작업 소계 */}
+                      <div className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-2.5 items-center bg-[#fafaf9] border-t border-[#f0ece9] text-[12px]">
+                        <span className="font-semibold text-[#78716c]">소계</span><span /><span className="font-bold text-right tabular-nums">{workTotal.toLocaleString()}</span><span className="text-[#a8a29e] text-right tabular-nums">{manager.partnerType === 'business' ? '+' : '−'}{Math.abs(workNet - workTotal).toLocaleString()}</span><span className="font-bold text-blue-600 text-right tabular-nums">{workNet.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </>
+        )}
 
         {/* 합계 */}
         {rows.length > 0 && (
