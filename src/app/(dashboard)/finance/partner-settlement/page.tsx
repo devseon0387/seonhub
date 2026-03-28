@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Project, Partner, Episode } from '@/types';
 import { getProjects, getPartners, getAllEpisodes } from '@/lib/supabase/db';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
@@ -75,8 +75,15 @@ export default function SettlementPage() {
   const rows: SettlementRow[] = useMemo(() => {
     const result: SettlementRow[] = [];
 
-    // 파트너 정산
+    // 매니저 ID 목록 (매니저로 등록된 프로젝트가 있는 사람)
+    const managerIds = new Set(
+      partners.filter(p => projects.some(proj => proj.managerIds?.includes(p.id))).map(p => p.id)
+    );
+
+    // 파트너 정산 — 매니저인 사람은 제외
     partners.forEach(partner => {
+      if (managerIds.has(partner.id)) return; // 매니저는 파트너 행에서 제외
+
       const partnerProjects = projects.filter(p => p.partnerIds?.includes(partner.id) || p.partnerId === partner.id);
       let totalAmount = 0, paidAmount = 0, episodeCount = 0;
       const projectIds = new Set<string>();
@@ -111,14 +118,16 @@ export default function SettlementPage() {
       }
     });
 
-    // 매니저 정산
+    // 매니저 정산 — 매니징 비용 + 작업 비용(assignee) 통합
     partners.forEach(manager => {
-      const managerProjects = projects.filter(p => p.managerIds?.includes(manager.id));
+      if (!managerIds.has(manager.id)) return;
+
       let managementTotal = 0, workTotal = 0, paidAmount = 0, episodeCount = 0;
       const projectIds = new Set<string>();
       const unpaidDueDates: string[] = [];
 
-      managerProjects.forEach(project => {
+      // 매니징 비용 (manager로 배정된 에피소드)
+      projects.forEach(project => {
         const episodes = (episodesMap[project.id] || []).filter(
           ep => (ep.manager === manager.id || ep.manager === manager.name) && ep.paymentDueDate?.slice(0, 7) === selectedYM
         );
@@ -134,16 +143,17 @@ export default function SettlementPage() {
         }
       });
 
-      // 작업 비용 (매니저가 assignee인 에피소드)
+      // 작업 비용 (매니저가 assignee인 모든 에피소드)
       projects.forEach(project => {
         const episodes = (episodesMap[project.id] || []).filter(
-          ep => ep.assignee === manager.id && ep.paymentDueDate?.slice(0, 7) === selectedYM
+          ep => (ep.assignee === manager.id || ep.assignee === manager.name) && ep.paymentDueDate?.slice(0, 7) === selectedYM
         );
         episodes.forEach(ep => {
           const amt = ep.budget?.partnerPayment ?? 0;
           workTotal += amt;
           projectIds.add(project.id);
           if (ep.paymentStatus === 'completed') paidAmount += amt;
+          else if (ep.paymentDueDate && !unpaidDueDates.includes(ep.paymentDueDate)) unpaidDueDates.push(ep.paymentDueDate);
         });
       });
 
@@ -161,7 +171,11 @@ export default function SettlementPage() {
       }
     });
 
-    return result.sort((a, b) => b.totalAmount - a.totalAmount);
+    return result.sort((a, b) => {
+      // 파트너 우선, 같은 구분이면 금액 높은 순
+      if (a.type !== b.type) return a.type === 'partner' ? -1 : 1;
+      return b.totalAmount - a.totalAmount;
+    });
   }, [partners, projects, episodesMap, selectedYM, selectedDate]);
 
   const filtered = filter === 'all' ? rows : rows.filter(r => r.type === filter);
@@ -192,7 +206,7 @@ export default function SettlementPage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">정산</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">정산 관리</h1>
           <p className="text-gray-500 mt-1 text-sm">{selectedDate.year}년 {selectedDate.month}월</p>
         </div>
         <div className="flex items-center gap-3">
@@ -202,7 +216,7 @@ export default function SettlementPage() {
               <button
                 key={tab.key}
                 onClick={() => setFilter(tab.key)}
-                className="relative px-4 py-1.5 rounded-lg text-[12px] font-semibold"
+                className="relative px-4 py-2 rounded-lg text-[13px] font-semibold"
               >
                 {filter === tab.key && (
                   <motion.div
@@ -220,7 +234,20 @@ export default function SettlementPage() {
             <button onClick={prevMonth} disabled={isMinMonth} className={`p-1.5 rounded-lg transition-colors ${isMinMonth ? 'invisible' : 'hover:bg-gray-100'}`}>
               <ChevronLeft size={14} className="text-[#a8a29e]" />
             </button>
-            <span className="px-2.5 py-1 text-[13px] font-semibold text-gray-800 min-w-[60px] text-center">{selectedDate.month}월</span>
+            <div className="px-2.5 py-1 min-w-[90px] text-center overflow-hidden">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={`${selectedDate.year}-${selectedDate.month}`}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                  className="block text-[13px] font-semibold text-gray-800 tabular-nums"
+                >
+                  {String(selectedDate.year).slice(2)}년 {String(selectedDate.month).padStart(2, '0')}월
+                </motion.span>
+              </AnimatePresence>
+            </div>
             <button onClick={nextMonth} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
               <ChevronRight size={14} className="text-[#a8a29e]" />
             </button>
@@ -229,21 +256,35 @@ export default function SettlementPage() {
       </div>
 
       {/* 통합 카드: 통계 + 테이블 */}
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100" style={{ overflow: 'clip' }}>
         {/* 통계 바 */}
         <div className="px-5 py-4 border-b border-[#f0ece9]">
           <div className="flex items-baseline justify-between mb-1.5">
-            <span className="text-[12px] text-[#a8a29e]">총 지급 예정 · {filtered.length}명{unpaidCount > 0 ? ` 중 ${unpaidCount}명 미지급` : ''}</span>
-            <span className="text-[20px] font-extrabold tracking-tight">{grandTotal.toLocaleString()}<span className="text-[12px] text-[#78716c] font-medium ml-0.5">원</span></span>
+            <motion.span key={`label-${selectedYM}-${filter}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-[13px] text-[#a8a29e]">
+              총 지급 예정 · {filtered.length}명{unpaidCount > 0 ? ` 중 ${unpaidCount}명 미지급` : ''}
+            </motion.span>
+            <motion.span key={`total-${selectedYM}-${filter}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' }} className="text-[22px] font-extrabold tracking-tight">
+              {grandTotal.toLocaleString()}<span className="text-[13px] text-[#78716c] font-medium ml-0.5">원</span>
+            </motion.span>
           </div>
           <div className="h-[6px] bg-[#f0ece9] rounded-full overflow-hidden flex gap-0.5 mb-1.5">
-            {grandPaid > 0 && <div style={{ width: `${paidPct}%` }} className="h-full bg-green-500 rounded-full" />}
-            {grandUnpaid > 0 && <div style={{ width: `${unpaidPct}%` }} className="h-full bg-orange-500 rounded-full" />}
+            <motion.div
+              initial={false}
+              animate={{ width: grandTotal > 0 ? `${paidPct}%` : '0%' }}
+              transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+              className="h-full bg-green-500 rounded-full"
+            />
+            <motion.div
+              initial={false}
+              animate={{ width: grandTotal > 0 ? `${unpaidPct}%` : '0%' }}
+              transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+              className="h-full bg-orange-500 rounded-full"
+            />
           </div>
-          <div className="flex justify-between text-[11px]">
-            <div className="flex items-center gap-1"><div className="w-1.5 h-[3px] bg-green-500 rounded-sm" /><span className="text-green-600 font-semibold">완료 {grandPaid.toLocaleString()}</span><span className="text-[#a8a29e]">({paidPct}%)</span></div>
-            <div className="flex items-center gap-1"><div className="w-1.5 h-[3px] bg-orange-500 rounded-sm" /><span className="text-orange-500 font-semibold">대기 {grandUnpaid.toLocaleString()}</span><span className="text-[#a8a29e]">({unpaidPct}%)</span></div>
-          </div>
+          <motion.div key={`legend-${selectedYM}-${filter}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.1 }} className="flex justify-between text-[12px]">
+            <div className="flex items-center gap-1.5"><div className="w-2 h-1 bg-green-500 rounded-sm" /><span className="text-green-600 font-semibold">완료 {grandPaid.toLocaleString()}</span><span className="text-[#a8a29e]">({paidPct}%)</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-1 bg-orange-500 rounded-sm" /><span className="text-orange-500 font-semibold">대기 {grandUnpaid.toLocaleString()}</span><span className="text-[#a8a29e]">({unpaidPct}%)</span></div>
+          </motion.div>
         </div>
 
         {loading ? (
@@ -251,14 +292,15 @@ export default function SettlementPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div style={{ overflowX: 'clip' }}>
             <div className="min-w-[600px]">
               {/* 테이블 헤더 */}
-              <div className="grid grid-cols-[1fr_60px_100px_100px_70px] gap-2 px-5 py-2 text-[10px] font-semibold text-[#a8a29e] border-b border-[#f0ece9]">
+              <div className="grid grid-cols-[1fr_1fr_110px_110px_80px_70px] gap-3 px-5 py-2.5 text-[11px] font-semibold text-[#a8a29e] border-b border-[#f0ece9]">
                 <span>이름</span>
-                <span>구분</span>
+                <span>프로젝트</span>
                 <span className="text-right">정산 금액</span>
                 <span className="text-right">대기 금액</span>
+                <span className="text-right">가까운 정산일</span>
                 <span className="text-right">상태</span>
               </div>
               {filtered.length === 0 ? (
@@ -269,47 +311,64 @@ export default function SettlementPage() {
                 </div>
               ) : (
                 <div className="divide-y divide-[#f8f7f6]">
-                  {filtered.map(row => {
+                  {filtered.map((row, idx) => {
                     const projLabel = row.projectNames.length > 1
                       ? `${row.projectNames[0]} 외 ${row.projectNames.length - 1}`
                       : row.projectNames[0] || '';
                     return (
-                      <Link
-                        key={`${row.type}-${row.person.id}`}
-                        href={row.detailHref}
-                        className="grid grid-cols-[1fr_60px_100px_100px_70px] gap-2 px-5 py-3 items-center hover:bg-[#fafaf9] transition-colors cursor-pointer"
+                      <motion.div
+                        key={`${row.type}-${row.person.id}-${selectedYM}`}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: idx * 0.05, ease: 'easeOut' }}
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0 ${
+                      <Link
+                        href={row.detailHref}
+                        className="grid grid-cols-[1fr_1fr_110px_110px_80px_70px] gap-3 px-5 py-3.5 items-center hover:bg-[#fafaf9] transition-colors cursor-pointer"
+                      >
+                        {/* 이름 + 구분 */}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
                             row.type === 'manager' ? 'bg-purple-500 text-white' : 'bg-orange-500 text-white'
                           }`}>
                             {row.person.name.charAt(0)}
                           </div>
-                          <span className="text-[13px] font-semibold text-gray-900 truncate">{row.person.name}</span>
-                          {projLabel && (
-                            <span className="text-[10px] text-[#a8a29e] bg-[#f5f5f4] px-1.5 py-0.5 rounded flex-shrink-0">{projLabel}</span>
-                          )}
-                          <span className="text-[10px] text-[#a8a29e] flex-shrink-0">{row.episodeCount}회차</span>
+                          <span className="text-[14px] font-semibold text-gray-900 truncate">{row.person.name}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0 ${
+                            row.type === 'manager'
+                              ? 'bg-purple-50 text-purple-600'
+                              : 'bg-[#fff7ed] text-orange-500'
+                          }`}>
+                            {row.type === 'manager' ? '매니저' : '파트너'}
+                          </span>
                         </div>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0 text-center ${
-                          row.type === 'manager'
-                            ? 'bg-purple-50 text-purple-600'
-                            : 'bg-[#fff7ed] text-orange-500'
-                        }`}>
-                          {row.type === 'manager' ? '매니저' : '파트너'}
-                        </span>
-                        <span className="text-[13px] font-semibold text-gray-900 text-right">{row.totalAmount.toLocaleString()}</span>
-                        <span className={`text-[13px] text-right font-semibold ${row.unpaidAmount > 0 ? 'text-orange-500' : 'text-[#a8a29e]'}`}>
+                        {/* 프로젝트 */}
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {projLabel && (
+                            <span className="text-[12px] text-[#44403c] font-medium truncate">{projLabel}</span>
+                          )}
+                          <span className="text-[11px] text-[#a8a29e] flex-shrink-0">{row.episodeCount}회차</span>
+                        </div>
+                        {/* 정산 금액 */}
+                        <span className="text-[14px] font-semibold text-gray-900 text-right tabular-nums">{row.totalAmount.toLocaleString()}</span>
+                        {/* 대기 금액 */}
+                        <span className={`text-[14px] text-right font-semibold tabular-nums ${row.unpaidAmount > 0 ? 'text-orange-500' : 'text-[#a8a29e]'}`}>
                           {row.unpaidAmount > 0 ? row.unpaidAmount.toLocaleString() : '0'}
                         </span>
+                        {/* 정산일 */}
+                        <span className="text-[12px] text-right tabular-nums text-[#a8a29e]">
+                          {row.nearestDueDate ? (() => { const d = new Date(row.nearestDueDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })() : '-'}
+                        </span>
+                        {/* 상태 */}
                         <div className="text-right">
                           {row.unpaidAmount > 0 ? (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#fff7ed] text-orange-500 font-semibold">미지급</span>
+                            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#fff7ed] text-orange-500 font-semibold">미지급</span>
                           ) : (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#f0fdf4] text-green-600 font-semibold">완료</span>
+                            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#f0fdf4] text-green-600 font-semibold">완료</span>
                           )}
                         </div>
                       </Link>
+                      </motion.div>
                     );
                   })}
                 </div>

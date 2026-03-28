@@ -173,7 +173,7 @@ export default function ManagerSettlementDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <p className="text-gray-500">매니저를 찾을 수 없습니다.</p>
-        <Link href="/finance/manager-settlement" className="text-sm text-orange-500 hover:text-orange-600">
+        <Link href="/finance/partner-settlement" className="text-sm text-orange-500 hover:text-orange-600">
           ← 목록으로 돌아가기
         </Link>
       </div>
@@ -186,7 +186,7 @@ export default function ManagerSettlementDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
-            href={`/finance/manager-settlement`}
+            href={`/finance/partner-settlement`}
             className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
           >
             <ArrowLeft size={20} className="text-gray-500" />
