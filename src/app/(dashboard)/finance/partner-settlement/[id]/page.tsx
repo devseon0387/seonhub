@@ -117,8 +117,8 @@ export default function PartnerSettlementDetailPage() {
 
   return (
     <div className="space-y-5">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between">
+      {/* 헤더 카드 */}
+      <div className="bg-white rounded-2xl border border-gray-100 px-5 py-4">
         <div className="flex items-center gap-3">
           <Link href="/finance/partner-settlement" className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
             <ArrowLeft size={18} className="text-[#a8a29e]" />
@@ -128,7 +128,7 @@ export default function PartnerSettlementDetailPage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-extrabold">{partner.name}</h1>
+              <h1 className="text-[21px] font-extrabold tracking-tight">{partner.name}</h1>
               {partner.partnerType && (
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
                   partner.partnerType === 'business' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'
@@ -137,10 +137,14 @@ export default function PartnerSettlementDetailPage() {
                 </span>
               )}
             </div>
-            <p className="text-[12px] text-[#a8a29e] mt-0.5">{selectedDate.year}년 {selectedDate.month}월 · {allItems.length}건</p>
+            <p className="text-[12px] text-[#a8a29e] mt-0.5">정산 내역 · {allItems.length}건</p>
           </div>
         </div>
-        <div className="flex items-center gap-1 bg-white border border-[#ede9e6] rounded-[10px] px-1 py-1">
+      </div>
+
+      {/* 월 이동 */}
+      <div>
+        <div className="flex items-center gap-1 bg-white border border-[#ede9e6] rounded-[10px] px-1 py-1 w-fit">
           <button onClick={prevMonth} disabled={isMinMonth} className={`p-1.5 rounded-lg transition-colors ${isMinMonth ? 'invisible' : 'hover:bg-gray-100'}`}>
             <ChevronLeft size={14} className="text-[#a8a29e]" />
           </button>
@@ -182,7 +186,7 @@ export default function PartnerSettlementDetailPage() {
         {/* 테이블 */}
         <div style={{ overflowX: 'clip' }}>
           <div className="min-w-[700px]">
-            <div className="grid grid-cols-[1fr_80px_90px_80px_90px] gap-2 px-5 py-2.5 text-[11px] font-semibold text-[#a8a29e] border-b border-[#f0ece9]">
+            <div className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-2.5 text-[11px] font-semibold text-[#a8a29e] border-b border-[#f0ece9]">
               <span>프로젝트 · 회차</span>
               <span className="text-right">정산일</span>
               <span className="text-right">금액</span>
@@ -209,18 +213,18 @@ export default function PartnerSettlementDetailPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: idx * 0.03 }}
                     >
-                      <div className="grid grid-cols-[1fr_80px_90px_80px_90px] gap-2 px-5 py-3 items-center hover:bg-[#fafaf9] transition-colors">
+                      <div className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-3 items-center hover:bg-[#fafaf9] transition-colors">
                         <div className="min-w-0">
                           <span className="text-[13px] font-semibold">{project.title}</span>
                           <span className="text-[12px] text-[#a8a29e] ml-1.5">{ep.episodeNumber}편 {ep.title || ''}</span>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right whitespace-nowrap">
                           {ep.paymentDueDate ? (
-                            <div className="flex items-center justify-end gap-1">
-                              <span className="text-[12px] tabular-nums">{fmtDate(ep.paymentDueDate)}</span>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <span className="text-[12px] tabular-nums text-[#44403c]">{fmtDate(ep.paymentDueDate)}</span>
                               {dday && (
-                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${
-                                  dday.urgent ? 'bg-red-100 text-red-600' : 'text-[#a8a29e]'
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                                  dday.urgent ? 'bg-red-100 text-red-600' : 'bg-[#f5f5f4] text-[#a8a29e]'
                                 }`}>{dday.label}</span>
                               )}
                             </div>

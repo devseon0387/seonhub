@@ -5,12 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   getProjects, getPartners, getClients, getAllEpisodes,
   getMyChecklists, insertChecklist, updateChecklist, deleteChecklist, clearCompletedChecklists,
-  insertProject, insertClient, upsertEpisodes,
+  insertProject, insertClient, upsertEpisodes, updateEpisodeFields,
   ChecklistRow,
 } from '@/lib/supabase/db';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { Calendar, Clock, AlertCircle, CheckCircle, Users, Sparkles, Plus, Trash2, Bell, BellOff, X, Link2, Search, Repeat2, ChevronLeft, ChevronRight, User, FolderOpen, Building2 } from 'lucide-react';
-import { Project, Episode, Partner, Client, WorkContentType } from '@/types';
+import { Project, Episode, Partner, Client, WorkContentType, WorkStep } from '@/types';
+import Link from 'next/link';
 import ProjectWizardModal from '@/components/ProjectWizardModal';
 import DateTimePicker, { RepeatType } from '@/components/DateTimePicker';
 import { useTutorial } from '@/components/tutorial/useTutorial';
@@ -87,6 +88,7 @@ export default function ManagementPage() {
   const [allEpisodes, setAllEpisodes] = useState<(Episode & { projectId: string })[]>([]);
   const [activeTab, setActiveTab] = useState<'today' | 'week' | 'checklist'>('today');
   const [mobileChecklistOpen, setMobileChecklistOpen] = useState(false);
+  const [quickViewEpisode, setQuickViewEpisode] = useState<(Episode & { projectId: string }) | null>(null);
   const [tabDirection, setTabDirection] = useState(1);
 
   const TAB_ORDER = ['checklist', 'today', 'week'] as const;
@@ -600,7 +602,7 @@ export default function ManagementPage() {
                   const { project, partner } = getEpisodeDetails(ep);
                   const days = Math.ceil((todayStart.getTime() - new Date(ep.dueDate!).getTime()) / (1000*60*60*24));
                   return (
-                    <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-red-200 bg-red-50 cursor-pointer hover:border-red-300 transition-colors" onClick={() => window.location.href = `/projects/${ep.projectId}/episodes/${ep.id}`}>
+                    <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-red-200 bg-red-50 cursor-pointer hover:border-red-300 transition-colors" onClick={() => setQuickViewEpisode(ep)}>
                       <div className="flex items-center justify-between">
                         <div><div className="flex items-baseline gap-1.5"><span className="text-[12px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold">{ep.title || '제목 없음'}</span></div><div className="text-[11px] text-[#a8a29e] mt-0.5">{project?.title} · {partner?.name || '미정'}</div></div>
                         <span className="text-[11px] font-semibold text-red-500 bg-red-100 px-2 py-0.5 rounded-full">{days}일 지남</span>
@@ -624,7 +626,7 @@ export default function ManagementPage() {
               ) : todayDeadlines.map(ep => {
                 const { project, partner } = getEpisodeDetails(ep);
                 return (
-                  <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-[#f0ece9] cursor-pointer hover:border-[#d6d3d1] transition-colors" onClick={() => window.location.href = `/projects/${ep.projectId}/episodes/${ep.id}`}>
+                  <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-[#f0ece9] cursor-pointer hover:border-[#d6d3d1] transition-colors" onClick={() => setQuickViewEpisode(ep)}>
                     <div className="flex items-baseline gap-1.5"><span className="text-[12px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold">{ep.title || '제목 없음'}</span></div>
                     <div className="flex items-center gap-1.5 text-[11px] text-[#a8a29e] mt-0.5"><span>{project?.title}</span><span className="text-[#ede9e6]">·</span><div className="w-[14px] h-[14px] bg-[#f0ece9] rounded-full flex items-center justify-center text-[6px] font-bold text-[#78716c]">{partner?.name?.charAt(0) || '?'}</div><span>{partner?.name || '미정'}</span></div>
                   </div>
@@ -645,7 +647,7 @@ export default function ManagementPage() {
               ) : tomorrowDeadlines.map(ep => {
                 const { project, partner } = getEpisodeDetails(ep);
                 return (
-                  <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-[#f0ece9] cursor-pointer hover:border-[#d6d3d1] transition-colors" onClick={() => window.location.href = `/projects/${ep.projectId}/episodes/${ep.id}`}>
+                  <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-[#f0ece9] cursor-pointer hover:border-[#d6d3d1] transition-colors" onClick={() => setQuickViewEpisode(ep)}>
                     <div className="flex items-baseline gap-1.5"><span className="text-[12px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold">{ep.title || '제목 없음'}</span></div>
                     <div className="text-[11px] text-[#a8a29e] mt-0.5">{project?.title} · {partner?.name || '미정'}</div>
                   </div>
@@ -667,7 +669,7 @@ export default function ManagementPage() {
                 const { project, partner } = getEpisodeDetails(ep);
                 const dueDate = new Date(ep.dueDate!);
                 return (
-                  <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-[#f0ece9] cursor-pointer hover:border-[#d6d3d1] transition-colors" onClick={() => window.location.href = `/projects/${ep.projectId}/episodes/${ep.id}`}>
+                  <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-[#f0ece9] cursor-pointer hover:border-[#d6d3d1] transition-colors" onClick={() => setQuickViewEpisode(ep)}>
                     <div className="flex items-baseline gap-1.5"><span className="text-[12px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold">{ep.title || '제목 없음'}</span><span className="text-[11px] text-[#a8a29e]">{dueDate.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span></div>
                     <div className="text-[11px] text-[#a8a29e] mt-0.5">{project?.title} · {partner?.name || '미정'}</div>
                   </div>
@@ -687,7 +689,7 @@ export default function ManagementPage() {
                 {thisWeekCompleted.map(ep => {
                   const { project, partner } = getEpisodeDetails(ep);
                   return (
-                    <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-[#f0ece9] opacity-50 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => window.location.href = `/projects/${ep.projectId}/episodes/${ep.id}`}>
+                    <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-[#f0ece9] opacity-50 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => setQuickViewEpisode(ep)}>
                       <div className="text-[13px] font-semibold">{ep.title || '제목 없음'}</div>
                       <div className="text-[11px] text-[#a8a29e] mt-0.5">{partner?.name || '미정'} · {ep.completedAt ? new Date(ep.completedAt).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }) : ''} 완료</div>
                     </div>
@@ -1260,7 +1262,7 @@ export default function ManagementPage() {
                         const project = projects.find(p => p.id === ep.projectId);
                         const partner = partners.find(p => p.id === ep.assignee);
                         return (
-                          <div key={ep.id} className="p-3 rounded-xl border border-[#f0ece9] cursor-pointer hover:border-[#d6d3d1] transition-colors" onClick={() => { setSelectedCalendarDay(null); window.location.href = `/projects/${ep.projectId}/episodes/${ep.id}`; }}>
+                          <div key={ep.id} className="p-3 rounded-xl border border-[#f0ece9] cursor-pointer hover:border-[#d6d3d1] transition-colors" onClick={() => { setSelectedCalendarDay(null); setQuickViewEpisode(ep); }}>
                             <div className="flex items-baseline gap-1.5">
                               <span className="text-[12px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span>
                               <span className="text-[13px] font-bold">{ep.title || '제목 없음'}</span>
@@ -1328,6 +1330,142 @@ export default function ManagementPage() {
               </div>
             </motion.div>
           </>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* 회차 퀵뷰 모달 */}
+      <AnimatePresence>
+        {quickViewEpisode && (() => {
+          const ep = quickViewEpisode;
+          const project = projects.find(p => p.id === ep.projectId);
+          const partner = partners.find(p => p.id === ep.assignee);
+          const workTypes = (ep.workContent || []) as WorkContentType[];
+          const workSteps = (ep.workSteps || {}) as Record<WorkContentType, WorkStep[]>;
+
+          const handleStepStatusChange = async (workType: WorkContentType, stepId: string, newStatus: string) => {
+            const steps = workSteps[workType] || [];
+            const updated = steps.map(s => s.id === stepId ? { ...s, status: newStatus } : s);
+            const newWorkSteps = { ...workSteps, [workType]: updated };
+            setQuickViewEpisode({ ...ep, workSteps: newWorkSteps } as typeof ep);
+            await updateEpisodeFields(ep.id, { workSteps: newWorkSteps });
+            loadData();
+          };
+
+          return (
+            <>
+              <motion.div
+                key="qv-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-[50]"
+                onClick={() => setQuickViewEpisode(null)}
+              />
+              <motion.div
+                key="qv-modal"
+                initial={{ opacity: 0, scale: 0.96, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 16 }}
+                transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[51] w-[calc(100%-2rem)] sm:w-[480px] max-h-[85vh] overflow-y-auto bg-white rounded-2xl shadow-2xl"
+              >
+                {/* 헤더 */}
+                <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-[#f0ece9]">
+                  <div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[13px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span>
+                      <h3 className="text-[16px] font-extrabold">{ep.title || '제목 없음'}</h3>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1 text-[11px] text-[#a8a29e]">
+                      <span>{project?.title}</span>
+                      {partner && <><span className="text-[#ede9e6]">·</span><span>{partner.name}</span></>}
+                    </div>
+                  </div>
+                  <button onClick={() => setQuickViewEpisode(null)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-[#a8a29e]">
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* 작업 체크리스트 */}
+                <div className="px-5 py-4">
+                  {workTypes.length === 0 ? (
+                    <p className="text-center text-[13px] text-[#a8a29e] py-8">작업이 없습니다</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {workTypes.map(workType => {
+                        const steps = workSteps[workType] || [];
+                        const completed = steps.filter(s => s.status === 'completed').length;
+                        const total = steps.length;
+                        return (
+                          <div key={workType}>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[13px] font-bold">{workType}</span>
+                                {total > 0 && <span className="text-[11px] text-[#a8a29e]">{completed}/{total}</span>}
+                              </div>
+                              {total > 0 && completed === total && <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-600 font-semibold">완료</span>}
+                            </div>
+                            {total === 0 ? (
+                              <p className="text-[12px] text-[#d6d3d1] pl-1">단계 없음</p>
+                            ) : (
+                              <div className="flex flex-col gap-1">
+                                {steps.map(step => (
+                                  <div key={step.id} className={`flex items-center gap-2.5 p-2 rounded-lg transition-colors ${
+                                    step.status === 'completed' ? 'opacity-40' : step.status === 'in_progress' ? 'bg-[#fffef5]' : ''
+                                  }`}>
+                                    <button
+                                      onClick={() => {
+                                        const next = step.status === 'completed' ? 'waiting' : step.status === 'in_progress' ? 'completed' : 'in_progress';
+                                        handleStepStatusChange(workType, step.id, next);
+                                      }}
+                                      className={`w-[20px] h-[20px] rounded-[6px] border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+                                        step.status === 'completed'
+                                          ? 'bg-green-500 border-green-500 text-white text-[10px]'
+                                          : step.status === 'in_progress'
+                                          ? 'border-yellow-400 bg-yellow-50'
+                                          : 'border-[#d6d3d1] hover:border-orange-500'
+                                      }`}
+                                    >
+                                      {step.status === 'completed' ? '✓' : step.status === 'in_progress' ? <div className="w-2 h-2 rounded-full bg-yellow-400" /> : ''}
+                                    </button>
+                                    <div className="flex-1 min-w-0">
+                                      <span className={`text-[13px] font-medium ${step.status === 'completed' ? 'line-through text-[#a8a29e]' : ''}`}>{step.label}</span>
+                                      {step.dueDate && (
+                                        <span className="text-[10px] text-[#a8a29e] ml-2">~{(() => { const d = new Date(step.dueDate); return `${d.getMonth()+1}/${d.getDate()}`; })()}</span>
+                                      )}
+                                    </div>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                                      step.status === 'completed' ? 'bg-green-100 text-green-600'
+                                        : step.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700'
+                                        : 'bg-gray-100 text-gray-500'
+                                    }`}>
+                                      {step.status === 'completed' ? '완료' : step.status === 'in_progress' ? '진행' : '대기'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* 하단: 상세 보기 */}
+                <div className="px-5 pb-4">
+                  <Link
+                    href={`/projects/${ep.projectId}/episodes/${ep.id}`}
+                    className="block w-full text-center py-2.5 bg-[#1c1917] text-white rounded-xl text-[13px] font-semibold hover:bg-[#44403c] transition-colors"
+                    onClick={() => setQuickViewEpisode(null)}
+                  >
+                    상세 보기 →
+                  </Link>
+                </div>
+              </motion.div>
+            </>
           );
         })()}
       </AnimatePresence>
