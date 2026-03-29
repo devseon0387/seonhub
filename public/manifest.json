@@ -1,6 +1,6 @@
 {
   "name": "비모 ERP",
-  "short_name": "비모",
+  "short_name": "비모 ERP",
   "description": "영상 제작 프로젝트 관리 시스템",
   "start_url": "/",
   "display": "standalone",
