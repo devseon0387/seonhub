@@ -306,18 +306,17 @@ export default function PartnersPage() {
   return (
     <div className="space-y-8">
       {/* 헤더 */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">파트너 관리</h1>
-          <p className="text-gray-500 mt-1 sm:mt-2 text-sm sm:text-base">비모 파트너 목록 및 관리</p>
+          <p className="text-gray-500 mt-1 text-sm">비모 파트너 목록 및 관리</p>
         </div>
         <button
           data-tour="tour-partner-new"
           onClick={() => setIsAddPartnerModalOpen(true)}
-          className="px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-colors shadow-lg shadow-orange-500/30 font-semibold flex items-center justify-center gap-2 whitespace-nowrap text-sm sm:text-base self-start sm:self-auto"
+          className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm font-semibold flex-shrink-0"
         >
-          <Plus size={18} />
-          새 파트너 추가
+          + 새 파트너
         </button>
       </div>
 
@@ -391,11 +390,11 @@ export default function PartnersPage() {
         </div>
       </div>
 
-      <div data-tour="tour-partner-search" className="flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3">
-        <Search size={18} className="text-gray-400 flex-shrink-0" />
+      <div data-tour="tour-partner-search" className="flex items-center gap-2 sm:gap-3 bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 px-3 sm:px-4 py-2.5 sm:py-3">
+        <Search size={16} className="text-gray-400 flex-shrink-0" />
         <input
           type="text"
-          placeholder="파트너 이름, 이메일, 전화번호, 회사로 검색..."
+          placeholder="파트너 검색..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="flex-1 bg-transparent focus:outline-none text-sm text-gray-700 placeholder-gray-400"
@@ -536,7 +535,7 @@ export default function PartnersPage() {
       </div>
 
       {/* 파트너 목록 - 모바일 카드 뷰 */}
-      <div className="md:hidden space-y-4">
+      <div className="md:hidden space-y-2.5">
         {filteredPartners.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
             {searchQuery ? (
@@ -552,25 +551,25 @@ export default function PartnersPage() {
               <div
                 key={partner.id}
                 onClick={() => router.push(`/partners/${partner.id}`)}
-                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 active:bg-gray-50 transition-colors"
+                className="bg-white rounded-xl shadow-sm border border-gray-100 p-3.5 active:bg-gray-50 transition-colors"
               >
                 {/* 헤더 - 파트너 정보 */}
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center flex-1 min-w-0">
-                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <User size={26} className="text-orange-500" />
+                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm font-semibold text-orange-500">{partner.name.charAt(0)}</span>
                     </div>
-                    <div className="ml-3 flex-1 min-w-0">
-                      <h3 className="text-base font-semibold text-gray-900 truncate flex items-center gap-2">
+                    <div className="ml-2.5 flex-1 min-w-0">
+                      <h3 className="text-[14px] font-semibold text-gray-900 truncate flex items-center gap-1.5">
                         {partner.name}
                         {partner.role === 'admin' ? (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">운영진</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">운영진</span>
                         ) : partner.generation ? (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-medium">{partner.generation}기</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 font-medium">{partner.generation}기</span>
                         ) : null}
                       </h3>
-                      <div className="flex items-center text-sm text-gray-500 mt-1">
-                        <Mail size={12} className="mr-1 flex-shrink-0" />
+                      <div className="flex items-center text-[12px] text-gray-500 mt-0.5">
+                        <Mail size={11} className="mr-1 flex-shrink-0" />
                         <span className="truncate">{partner.email}</span>
                       </div>
                     </div>
@@ -589,14 +588,14 @@ export default function PartnersPage() {
 
                 {/* 연락처 정보 */}
                 {partner.phone && (
-                  <div className="flex items-center text-sm text-gray-600 mb-3">
-                    <Phone size={14} className="mr-2 text-gray-400" />
+                  <div className="flex items-center text-[12px] text-gray-600 mb-2.5">
+                    <Phone size={12} className="mr-1.5 text-gray-400" />
                     {formatPhoneNumber(partner.phone)}
                   </div>
                 )}
 
                 {/* 프로젝트 통계 */}
-                <div className="grid grid-cols-2 gap-3 mb-4 pb-4 border-b border-gray-200">
+                <div className="grid grid-cols-2 gap-2 mb-3 pb-3 border-b border-gray-100">
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="flex items-center text-xs text-gray-500 mb-1">
                       <Folder size={12} className="mr-1" />

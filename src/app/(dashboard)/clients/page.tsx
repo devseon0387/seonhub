@@ -271,63 +271,58 @@ export default function ClientsPage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">클라이언트 관리</h1>
-          <p className="text-gray-500 mt-2">클라이언트 목록 및 관리</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">클라이언트 관리</h1>
+          <p className="text-gray-500 mt-1 sm:mt-2 text-sm">클라이언트 목록 및 관리</p>
         </div>
         <button
           data-tour="tour-client-new"
           onClick={() => setIsAddModalOpen(true)}
-          className="px-5 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all active:scale-[0.97] shadow-lg shadow-orange-500/30 font-semibold flex items-center gap-2 whitespace-nowrap"
+          className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm font-semibold flex-shrink-0"
         >
-          <Plus size={18} />
-          새 클라이언트 추가
+          + 새 클라이언트
         </button>
       </div>
 
       {/* 통계 */}
-      <div data-tour="tour-client-stats" className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-gray-500">전체 클라이언트</p>
-            <div className="w-9 h-9 bg-orange-50 rounded-xl flex items-center justify-center">
-              <Building2 size={18} className="text-orange-500" />
+      <div data-tour="tour-client-stats" className="grid grid-cols-3 gap-2 sm:gap-4">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-5">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <p className="text-[11px] sm:text-sm font-medium text-gray-500">전체</p>
+            <div className="w-7 h-7 sm:w-9 sm:h-9 bg-orange-50 rounded-lg sm:rounded-xl flex items-center justify-center">
+              <Building2 size={14} className="text-orange-500 sm:w-[18px] sm:h-[18px]" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{clients.length}</p>
-          <p className="text-xs text-gray-400 mt-1">개사 등록</p>
+          <p className="text-xl sm:text-3xl font-bold text-gray-900">{clients.length}</p>
+          <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">개사 등록</p>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-gray-500">활성 클라이언트</p>
-            <div className="w-9 h-9 bg-green-50 rounded-xl flex items-center justify-center">
-              <CheckCircle size={18} className="text-green-500" />
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-5">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <p className="text-[11px] sm:text-sm font-medium text-gray-500">활성</p>
+            <div className="w-7 h-7 sm:w-9 sm:h-9 bg-green-50 rounded-lg sm:rounded-xl flex items-center justify-center">
+              <CheckCircle size={14} className="text-green-500 sm:w-[18px] sm:h-[18px]" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-green-600">
-            {activeCount}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">현재 거래 중</p>
+          <p className="text-xl sm:text-3xl font-bold text-green-600">{activeCount}</p>
+          <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">현재 거래 중</p>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-gray-500">비활성 클라이언트</p>
-            <div className="w-9 h-9 bg-gray-50 rounded-xl flex items-center justify-center">
-              <Users size={18} className="text-gray-400" />
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-5">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <p className="text-[11px] sm:text-sm font-medium text-gray-500">비활성</p>
+            <div className="w-7 h-7 sm:w-9 sm:h-9 bg-gray-50 rounded-lg sm:rounded-xl flex items-center justify-center">
+              <Users size={14} className="text-gray-400 sm:w-[18px] sm:h-[18px]" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-400">
-            {inactiveCount}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">비활성 상태</p>
+          <p className="text-xl sm:text-3xl font-bold text-gray-400">{inactiveCount}</p>
+          <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">비활성 상태</p>
         </div>
       </div>
 
       {/* 검색 바 */}
-      <div data-tour="tour-client-search" className="flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3">
-        <Search size={18} className="text-gray-400 flex-shrink-0" />
+      <div data-tour="tour-client-search" className="flex items-center gap-2 sm:gap-3 bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 px-3 sm:px-4 py-2.5 sm:py-3">
+        <Search size={16} className="text-gray-400 flex-shrink-0" />
         <input
           type="text"
-          placeholder="클라이언트 이름, 담당자, 이메일, 전화번호, 회사, 주소로 검색..."
+          placeholder="클라이언트 검색..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="flex-1 bg-transparent focus:outline-none text-sm text-gray-700 placeholder-gray-400"
@@ -487,7 +482,7 @@ export default function ClientsPage() {
       </div>
 
       {/* 클라이언트 목록 - 모바일 카드 뷰 */}
-      <div className="md:hidden space-y-4">
+      <div className="md:hidden space-y-2.5">
         {filteredClients.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
             {searchQuery ? (
@@ -501,16 +496,16 @@ export default function ClientsPage() {
             <div
               key={client.id}
               onClick={() => router.push(`/clients/${client.id}`)}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 active:bg-gray-50 transition-colors"
+              className="bg-white rounded-xl shadow-sm border border-gray-100 p-3.5 active:bg-gray-50 transition-colors"
             >
               {/* 헤더 - 클라이언트 정보 */}
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center flex-1 min-w-0">
-                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Building2 size={22} className="text-orange-500" />
+                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Building2 size={18} className="text-orange-500" />
                   </div>
-                  <div className="ml-3 flex-1 min-w-0">
-                    <h3 className="text-base font-semibold text-gray-900 truncate">
+                  <div className="ml-2.5 flex-1 min-w-0">
+                    <h3 className="text-[14px] font-semibold text-gray-900 truncate">
                       {client.name}
                     </h3>
                     {client.company && client.company !== client.name && (
@@ -534,14 +529,14 @@ export default function ClientsPage() {
 
               {/* 담당자 */}
               {client.contactPerson && (
-                <div className="mb-3 pb-3 border-b border-gray-200">
-                  <div className="text-xs text-gray-500 mb-1">담당자</div>
-                  <div className="text-sm font-medium text-gray-900">{client.contactPerson}</div>
+                <div className="mb-2.5 pb-2.5 border-b border-gray-100">
+                  <div className="text-[10px] text-gray-400 mb-0.5">담당자</div>
+                  <div className="text-[13px] font-medium text-gray-900">{client.contactPerson}</div>
                 </div>
               )}
 
               {/* 연락처 정보 */}
-              <div className="space-y-2 mb-3 pb-3 border-b border-gray-200">
+              <div className="space-y-1.5 mb-2.5 pb-2.5 border-b border-gray-100">
                 {client.email && (
                   <div className="flex items-center text-sm text-gray-600">
                     <Mail size={14} className="mr-2 text-gray-400 flex-shrink-0" />

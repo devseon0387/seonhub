@@ -204,19 +204,19 @@ export default function SettlementPage() {
   return (
     <div className="space-y-5">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
+      <div className="space-y-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">정산 관리</h1>
           <p className="text-gray-500 mt-1 text-sm">{selectedDate.year}년 {selectedDate.month}월</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* 탭 */}
-          <div className="inline-flex gap-1 p-1 bg-white border border-[#ede9e6] rounded-xl">
+          <div className="inline-flex gap-0.5 sm:gap-1 p-1 bg-white border border-[#ede9e6] rounded-xl">
             {tabs.map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setFilter(tab.key)}
-                className="relative px-4 py-2 rounded-lg text-[13px] font-semibold"
+                className="relative px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[12px] sm:text-[13px] font-semibold"
               >
                 {filter === tab.key && (
                   <motion.div
@@ -256,15 +256,15 @@ export default function SettlementPage() {
       </div>
 
       {/* 통합 카드: 통계 + 테이블 */}
-      <div className="bg-white rounded-2xl border border-gray-100" style={{ overflow: 'clip' }}>
+      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100" style={{ overflow: 'clip' }}>
         {/* 통계 바 */}
-        <div className="px-5 py-4 border-b border-[#f0ece9]">
+        <div className="px-3 sm:px-5 py-3 sm:py-4 border-b border-[#f0ece9]">
           <div className="flex items-baseline justify-between mb-1.5">
-            <motion.span key={`label-${selectedYM}-${filter}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-[13px] text-[#a8a29e]">
+            <motion.span key={`label-${selectedYM}-${filter}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-[11px] sm:text-[13px] text-[#a8a29e]">
               총 지급 예정 · {filtered.length}명{unpaidCount > 0 ? ` 중 ${unpaidCount}명 미지급` : ''}
             </motion.span>
-            <motion.span key={`total-${selectedYM}-${filter}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' }} className="text-[22px] font-extrabold tracking-tight">
-              {grandTotal.toLocaleString()}<span className="text-[13px] text-[#78716c] font-medium ml-0.5">원</span>
+            <motion.span key={`total-${selectedYM}-${filter}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' }} className="text-[18px] sm:text-[22px] font-extrabold tracking-tight">
+              {grandTotal.toLocaleString()}<span className="text-[11px] sm:text-[13px] text-[#78716c] font-medium ml-0.5">원</span>
             </motion.span>
           </div>
           <div className="h-[6px] bg-[#f0ece9] rounded-full overflow-hidden flex gap-0.5 mb-1.5">
@@ -293,15 +293,15 @@ export default function SettlementPage() {
           </div>
         ) : (
           <div style={{ overflowX: 'clip' }}>
-            <div className="min-w-[600px]">
+            <div>
               {/* 테이블 헤더 */}
-              <div className="grid grid-cols-[1fr_1fr_110px_110px_80px_70px] gap-3 px-5 py-2.5 text-[11px] font-semibold text-[#a8a29e] border-b border-[#f0ece9]">
+              <div className="grid grid-cols-[1fr_90px_90px] sm:grid-cols-[1fr_1fr_110px_110px_80px_70px] gap-2 sm:gap-3 px-3 sm:px-5 py-2.5 text-[10px] sm:text-[11px] font-semibold text-[#a8a29e] border-b border-[#f0ece9]">
                 <span>이름</span>
-                <span>프로젝트</span>
+                <span className="hidden sm:block">프로젝트</span>
                 <span className="text-right">정산 금액</span>
                 <span className="text-right">대기 금액</span>
-                <span className="text-right">가까운 정산일</span>
-                <span className="text-right">상태</span>
+                <span className="text-right hidden sm:block">가까운 정산일</span>
+                <span className="text-right hidden sm:block">상태</span>
               </div>
               {filtered.length === 0 ? (
                 <div className="py-20 text-center text-gray-400">
@@ -324,16 +324,16 @@ export default function SettlementPage() {
                       >
                       <Link
                         href={row.detailHref}
-                        className="grid grid-cols-[1fr_1fr_110px_110px_80px_70px] gap-3 px-5 py-3.5 items-center hover:bg-[#fafaf9] transition-colors cursor-pointer"
+                        className="grid grid-cols-[1fr_90px_90px] sm:grid-cols-[1fr_1fr_110px_110px_80px_70px] gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-3.5 items-center hover:bg-[#fafaf9] transition-colors cursor-pointer"
                       >
                         {/* 이름 + 구분 */}
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+                        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                          <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-bold flex-shrink-0 ${
                             row.type === 'manager' ? 'bg-purple-500 text-white' : 'bg-orange-500 text-white'
                           }`}>
                             {row.person.name.charAt(0)}
                           </div>
-                          <span className="text-[14px] font-semibold text-gray-900 truncate">{row.person.name}</span>
+                          <span className="text-[13px] sm:text-[14px] font-semibold text-gray-900 truncate">{row.person.name}</span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0 ${
                             row.type === 'manager'
                               ? 'bg-purple-50 text-purple-600'
@@ -341,26 +341,27 @@ export default function SettlementPage() {
                           }`}>
                             {row.type === 'manager' ? '매니저' : '파트너'}
                           </span>
+                          <span className="text-[10px] text-[#a8a29e] flex-shrink-0 sm:hidden">{row.episodeCount}회차</span>
                         </div>
-                        {/* 프로젝트 */}
-                        <div className="flex items-center gap-1.5 min-w-0">
+                        {/* 프로젝트 (모바일 숨김) */}
+                        <div className="hidden sm:flex items-center gap-1.5 min-w-0">
                           {projLabel && (
                             <span className="text-[12px] text-[#44403c] font-medium truncate">{projLabel}</span>
                           )}
                           <span className="text-[11px] text-[#a8a29e] flex-shrink-0">{row.episodeCount}회차</span>
                         </div>
                         {/* 정산 금액 */}
-                        <span className="text-[14px] font-semibold text-gray-900 text-right tabular-nums">{row.totalAmount.toLocaleString()}</span>
+                        <span className="text-[12px] sm:text-[14px] font-semibold text-gray-900 text-right tabular-nums">{row.totalAmount.toLocaleString()}</span>
                         {/* 대기 금액 */}
-                        <span className={`text-[14px] text-right font-semibold tabular-nums ${row.unpaidAmount > 0 ? 'text-orange-500' : 'text-[#a8a29e]'}`}>
+                        <span className={`text-[12px] sm:text-[14px] text-right font-semibold tabular-nums ${row.unpaidAmount > 0 ? 'text-orange-500' : 'text-[#a8a29e]'}`}>
                           {row.unpaidAmount > 0 ? row.unpaidAmount.toLocaleString() : '0'}
                         </span>
-                        {/* 정산일 */}
-                        <span className="text-[12px] text-right tabular-nums text-[#a8a29e]">
+                        {/* 정산일 (모바일 숨김) */}
+                        <span className="text-[12px] text-right tabular-nums text-[#a8a29e] hidden sm:block">
                           {row.nearestDueDate ? (() => { const d = new Date(row.nearestDueDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })() : '-'}
                         </span>
-                        {/* 상태 */}
-                        <div className="text-right">
+                        {/* 상태 (모바일 숨김) */}
+                        <div className="text-right hidden sm:block">
                           {row.unpaidAmount > 0 ? (
                             <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#fff7ed] text-orange-500 font-semibold">미지급</span>
                           ) : (

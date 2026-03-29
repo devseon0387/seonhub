@@ -11,9 +11,12 @@ export interface ExpenseRow {
   title: string;
   amount: number;
   category: string;
+  payment_type: string;
   expense_date: string;
+  next_renewal_date: string | null;
+  status: string;
+  cancel_reason: string | null;
   description: string | null;
-  project_id: string | null;
   spender_name: string | null;
   created_at: string;
   updated_at: string;
@@ -27,9 +30,12 @@ export function expenseFromRow(row: ExpenseRow): Expense {
     title: row.title,
     amount: Number(row.amount),
     category: row.category as Expense['category'],
+    paymentType: row.payment_type as Expense['paymentType'],
     expenseDate: row.expense_date,
+    nextRenewalDate: row.next_renewal_date ?? undefined,
+    status: row.status as Expense['status'],
+    cancelReason: row.cancel_reason ?? undefined,
     description: row.description ?? undefined,
-    projectId: row.project_id ?? undefined,
     spenderName: row.spender_name ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -42,9 +48,12 @@ export function expenseToInsert(expense: Omit<Expense, 'createdAt' | 'updatedAt'
     title: expense.title,
     amount: expense.amount,
     category: expense.category,
+    payment_type: expense.paymentType,
     expense_date: expense.expenseDate,
+    next_renewal_date: expense.nextRenewalDate ?? null,
+    status: expense.status,
+    cancel_reason: expense.cancelReason ?? null,
     description: expense.description ?? null,
-    project_id: expense.projectId ?? null,
     spender_name: expense.spenderName ?? null,
   };
 }
@@ -54,9 +63,12 @@ export function expenseToUpdate(fields: Partial<Expense>) {
   if (fields.title !== undefined) row.title = fields.title;
   if (fields.amount !== undefined) row.amount = fields.amount;
   if (fields.category !== undefined) row.category = fields.category;
+  if (fields.paymentType !== undefined) row.payment_type = fields.paymentType;
   if (fields.expenseDate !== undefined) row.expense_date = fields.expenseDate;
+  if (fields.nextRenewalDate !== undefined) row.next_renewal_date = fields.nextRenewalDate ?? null;
+  if (fields.status !== undefined) row.status = fields.status;
+  if (fields.cancelReason !== undefined) row.cancel_reason = fields.cancelReason ?? null;
   if (fields.description !== undefined) row.description = fields.description ?? null;
-  if (fields.projectId !== undefined) row.project_id = fields.projectId ?? null;
   if (fields.spenderName !== undefined) row.spender_name = fields.spenderName ?? null;
   return row;
 }

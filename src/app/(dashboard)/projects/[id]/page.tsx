@@ -693,57 +693,57 @@ export default function ProjectDetailPage() {
         }
       `}</style>
       {/* 헤더 */}
-      <div data-tour="tour-detail-header" className="bg-white rounded-2xl border border-gray-100 px-6 py-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <div data-tour="tour-detail-header" className="bg-white rounded-2xl border border-gray-100 px-4 sm:px-6 py-4 sm:py-5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Link
               href="/projects"
-              className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+              className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-xl transition-colors flex-shrink-0"
             >
-              <ArrowLeft size={20} className="text-gray-400" />
+              <ArrowLeft size={18} className="text-gray-400 sm:w-5 sm:h-5" />
             </Link>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-[21px] font-extrabold tracking-tight">{project.title}</h1>
+                <h1 className="text-lg sm:text-[21px] font-extrabold tracking-tight truncate">{project.title}</h1>
                 <StatusBadge status={getComputedProjectStatus(episodes)} />
               </div>
-              <div className="flex items-center gap-2 mt-1 text-xs text-[#a8a29e]">
+              <div className="flex items-center gap-1.5 sm:gap-2 mt-1 text-[11px] sm:text-xs text-[#a8a29e] flex-wrap">
                 <span>{selectedClient || '클라이언트 미설정'}</span>
                 <span className="w-px h-3 bg-[#ede9e6]" />
                 <span>회차 <b className="text-[#1c1917]">{episodes.length}</b>개</span>
-                <span className="w-px h-3 bg-[#ede9e6]" />
-                <span>총 <b className="text-[#1c1917]">{episodes.reduce((sum, ep) => sum + (ep.budget?.totalAmount || 0), 0).toLocaleString()}</b>원</span>
+                <span className="w-px h-3 bg-[#ede9e6] hidden sm:inline" />
+                <span className="hidden sm:inline">총 <b className="text-[#1c1917]">{episodes.reduce((sum, ep) => sum + (ep.budget?.totalAmount || 0), 0).toLocaleString()}</b>원</span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 flex-shrink-0">
             <button
               onClick={() => setIsChecklistModalOpen(true)}
-              className="p-2 text-orange-500 hover:bg-orange-50 rounded-xl transition-colors"
+              className="p-1.5 sm:p-2 text-orange-500 hover:bg-orange-50 rounded-xl transition-colors"
               title="체크리스트"
             >
-              <ClipboardCheck size={18} />
+              <ClipboardCheck size={16} />
             </button>
             <button
               onClick={() => openProjectEditModal('basic')}
-              className="p-2 text-gray-400 hover:bg-gray-100 rounded-xl transition-colors"
+              className="p-1.5 sm:p-2 text-gray-400 hover:bg-gray-100 rounded-xl transition-colors"
               title="수정"
             >
-              <Edit size={18} />
+              <Edit size={16} />
             </button>
             <button
               onClick={() => setIsDeleteModalOpen(true)}
-              className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors"
+              className="p-1.5 sm:p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors"
               title="삭제"
             >
-              <Trash2 size={18} />
+              <Trash2 size={16} />
             </button>
           </div>
         </div>
       </div>
 
       {/* 탭 네비게이션 */}
-      <div data-tour="tour-detail-tabs" className="bg-white rounded-xl border border-gray-100 p-1.5 inline-flex gap-1">
+      <div data-tour="tour-detail-tabs" className="bg-white rounded-xl border border-gray-100 p-1.5 flex gap-1 overflow-x-auto scrollbar-hide">
         {([
           { key: 'in-progress' as const, label: '진행 중인 회차', count: activeEpisodes.length },
           { key: 'episodes' as const, label: '회차 관리', count: episodes.length },
@@ -752,7 +752,7 @@ export default function ProjectDetailPage() {
           <button
             key={tab.key}
             onClick={() => switchTab(tab.key)}
-            className="relative px-5 py-2.5 rounded-xl font-medium text-sm flex items-center gap-2"
+            className="relative px-3 sm:px-5 py-2.5 rounded-xl font-medium text-sm flex items-center gap-1.5 sm:gap-2 flex-shrink-0 whitespace-nowrap"
           >
             {activeTab === tab.key && (
               <motion.div
@@ -794,7 +794,7 @@ export default function ProjectDetailPage() {
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* 기본 정보 */}
-        <div className="lg:col-span-3 bg-white rounded-xl border border-gray-100 p-6 space-y-6">
+        <div className="lg:col-span-3 bg-white rounded-xl border border-gray-100 p-4 sm:p-6 space-y-5 sm:space-y-6">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-semibold text-gray-900">기본 정보</h2>
@@ -809,7 +809,7 @@ export default function ProjectDetailPage() {
 
             <div className="space-y-4">
               {/* 클라이언트, 매니저, 담당 파트너 - 한 줄로 */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* 클라이언트 */}
                 <div>
                   <p className="text-sm font-medium text-gray-500 mb-2">클라이언트</p>
@@ -865,7 +865,7 @@ export default function ProjectDetailPage() {
               </div>
 
               {/* 분류와 작업 내용 - 한 줄로 */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* 분류 */}
                 <div>
                   <p className="text-sm font-medium text-gray-500 mb-2">분류</p>
@@ -900,7 +900,7 @@ export default function ProjectDetailPage() {
 
               {/* 마감 예정 - 오늘 & 이번 주 */}
               <div className="pt-4 border-t border-gray-100">
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {/* 오늘 마감 */}
                     <div>
                       <p className="text-sm font-medium text-gray-500 mb-3">오늘 마감</p>
@@ -977,7 +977,7 @@ export default function ProjectDetailPage() {
 
               {/* 진행 중인 작업 & 누적 작업 수 - 한 줄로 */}
               <div className="pt-4 border-t border-gray-100">
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {/* 진행 중인 작업 */}
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-3">진행 중인 작업</p>
@@ -1134,7 +1134,7 @@ export default function ProjectDetailPage() {
               {/* 작업별 비용 */}
               <div className="pt-3 border-t border-gray-100">
                 <p className="text-sm font-medium text-gray-700 mb-3">작업별 비용</p>
-                <div className="grid grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                   {/* 롱폼 */}
                   <div className={`rounded-lg p-3 ${workTypeCosts['롱폼'].partnerCost === 0 && workTypeCosts['롱폼'].managementCost === 0 ? 'bg-gray-50' : 'bg-orange-50'}`}>
                     <p className={`text-xs font-semibold mb-2 ${workTypeCosts['롱폼'].partnerCost === 0 && workTypeCosts['롱폼'].managementCost === 0 ? 'text-gray-400' : 'text-gray-600'}`}>롱폼</p>
@@ -1240,16 +1240,16 @@ export default function ProjectDetailPage() {
       {/* 진행 중인 회차 탭 */}
       {activeTab === 'in-progress' && (
       <div data-tour="tour-detail-inprogress" className="bg-white rounded-xl border border-gray-100">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-2">
           <div>
-            <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+            <h2 className="text-sm sm:text-base font-semibold text-gray-900 flex items-center gap-2">
               진행 중인 회차
               <span className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full text-xs font-semibold">
                 {activeEpisodes.length}개
               </span>
             </h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={() => {
                 if (isEpisodeEditMode) {
@@ -1273,17 +1273,17 @@ export default function ProjectDetailPage() {
                   setIsEpisodeEditMode(true);
                 }
               }}
-              className={`px-4 py-2 rounded-xl transition-colors text-sm font-medium ${
+              className={`px-3 sm:px-4 py-2 rounded-xl transition-colors text-xs sm:text-sm font-medium ${
                 isEpisodeEditMode
                   ? 'bg-green-500 text-white hover:bg-green-600'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {isEpisodeEditMode ? '저장' : '회차 수정'}
+              {isEpisodeEditMode ? '저장' : '수정'}
             </button>
             <button
               onClick={handleAddEpisode}
-              className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm"
+              className="px-3 sm:px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-xs sm:text-sm"
             >
               + 회차 추가
             </button>
@@ -1308,15 +1308,15 @@ export default function ProjectDetailPage() {
                   <div key={episode.id} className="relative group">
                     <div
                       onClick={() => { if (!isEpisodeEditMode) router.push(`/projects/${projectId}/episodes/${episode.id}`); }}
-                      className={`w-full text-left bg-white rounded-xl border border-gray-100 p-4 transition-all ${
+                      className={`w-full text-left bg-white rounded-xl border border-gray-100 p-3 sm:p-4 transition-all ${
                         isEpisodeEditMode ? 'cursor-default' : 'cursor-pointer hover:border-gray-200 hover:shadow-sm'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex-1 min-w-0">
                         {/* 첫 번째 줄: 편 수, 회차 이름 + 금액 */}
-                        <div className="flex items-center justify-between">
-                        <div className="flex items-baseline gap-2">
+                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-baseline gap-2 min-w-0">
                           {isEpisodeEditMode ? (
                             <div className="flex items-center gap-2 flex-1 min-w-0">
                               <div className="flex items-center flex-shrink-0">
@@ -1349,7 +1349,7 @@ export default function ProjectDetailPage() {
                               <span className="text-[13px] font-bold text-[#a8a29e]">
                                 {episode.episodeNumber === 0 ? '미정' : `${episode.episodeNumber}편`}
                               </span>
-                              <h3 className="text-[15px] font-bold text-gray-900">
+                              <h3 className="text-[15px] font-bold text-gray-900 truncate">
                                 {episode.title || '제목 없음'}
                               </h3>
                             </>
@@ -1357,7 +1357,7 @@ export default function ProjectDetailPage() {
                         </div>
                         {/* 금액 */}
                         {!isEpisodeEditMode && (episode.budget?.totalAmount || 0) > 0 && (
-                          <span className="text-[14px] font-bold flex-shrink-0">{(episode.budget?.totalAmount || 0).toLocaleString()}<span className="text-[11px] text-[#78716c] font-medium ml-0.5">원</span></span>
+                          <span className="text-[12px] sm:text-[14px] font-bold flex-shrink-0">{(episode.budget?.totalAmount || 0).toLocaleString()}<span className="text-[10px] sm:text-[11px] text-[#78716c] font-medium ml-0.5">원</span></span>
                         )}
                         </div>
 
@@ -1482,7 +1482,7 @@ export default function ProjectDetailPage() {
                             })()}
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2 text-[11px] text-[#78716c] mt-1">
+                          <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] text-[#78716c] mt-1 flex-wrap">
                             <EpisodeStatusBadge status={episode.status} />
                             <div className="flex items-center gap-1">
                               <div className="w-[16px] h-[16px] bg-[#f0ece9] rounded-full flex items-center justify-center text-[7px] font-bold text-[#78716c]">
@@ -1490,7 +1490,7 @@ export default function ProjectDetailPage() {
                               </div>
                               <span>{assignee?.name || '미정'}</span>
                             </div>
-                            <span className="text-[#ede9e6]">·</span>
+                            <span className="text-[#ede9e6] hidden sm:inline">·</span>
                             <span className="tabular-nums">
                               {episode.startDate && !isNaN(new Date(episode.startDate).getTime())
                                 ? (() => { const d = new Date(episode.startDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })()
@@ -1500,14 +1500,13 @@ export default function ProjectDetailPage() {
                               )}
                             </span>
                             {episode.workContent.length > 0 && (
-                              <>
-                                <span className="text-[#ede9e6]">·</span>
+                              <div className="hidden sm:flex items-center gap-1">
                                 {episode.workContent.map((work, idx) => (
                                   <span key={idx} className="px-1.5 py-0.5 rounded text-[10px] font-semibold border bg-[#fff7ed] border-[#fed7aa] text-[#ea580c]">
                                     {work}
                                   </span>
                                 ))}
-                              </>
+                              </div>
                             )}
                           </div>
                         )}
@@ -1515,7 +1514,7 @@ export default function ProjectDetailPage() {
                         </div>
 
                         {!isEpisodeEditMode && (
-                          <ChevronRight size={20} className="text-gray-400 group-hover:text-orange-500 transition-colors flex-shrink-0 ml-4" />
+                          <ChevronRight size={18} className="text-gray-400 group-hover:text-orange-500 transition-colors flex-shrink-0 ml-2 sm:ml-4 hidden sm:block" />
                         )}
                       </div>
                     </div>
@@ -1545,14 +1544,14 @@ export default function ProjectDetailPage() {
       {/* 회차 탭 */}
       {activeTab === 'episodes' && (
       <div className="bg-white rounded-xl border border-gray-100">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-2">
+          <h2 className="text-sm sm:text-base font-semibold text-gray-900 flex items-center gap-2 flex-shrink-0">
             회차 관리
             <span className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full text-xs font-semibold">
               {episodes.length}개
             </span>
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             onClick={() => {
               if (isEpisodeEditMode) {
@@ -1576,18 +1575,18 @@ export default function ProjectDetailPage() {
                 setIsEpisodeEditMode(true);
               }
             }}
-            className={`px-4 py-2 rounded-xl transition-colors text-sm font-medium ${
+            className={`px-3 sm:px-4 py-2 rounded-xl transition-colors text-xs sm:text-sm font-medium ${
               isEpisodeEditMode
                 ? 'bg-green-500 text-white hover:bg-green-600'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            {isEpisodeEditMode ? '저장' : '회차 수정'}
+            {isEpisodeEditMode ? '저장' : '수정'}
           </button>
           <button
             onClick={handleAddEpisode}
             data-tour="tour-detail-add-episode"
-            className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm"
+            className="px-3 sm:px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-xs sm:text-sm"
           >
             + 회차 추가
           </button>
@@ -1614,15 +1613,15 @@ export default function ProjectDetailPage() {
                 <div key={episode.id} className="relative group">
                   <div
                     onClick={() => { if (!isEpisodeEditMode) router.push(`/projects/${projectId}/episodes/${episode.id}`); }}
-                    className={`w-full text-left bg-white rounded-xl border border-[#f0ece9] p-4 transition-all ${
+                    className={`w-full text-left bg-white rounded-xl border border-[#f0ece9] p-3 sm:p-4 transition-all ${
                       isEpisodeEditMode ? 'cursor-default' : 'cursor-pointer hover:border-[#d6d3d1] hover:shadow-sm'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex-1 min-w-0">
                       {/* 첫 번째 줄: 편 수, 회차 이름 + 금액 */}
-                      <div className="flex items-center justify-between">
-                      <div className="flex items-baseline gap-2">
+                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-baseline gap-2 min-w-0">
                         {isEpisodeEditMode ? (
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <div className="flex items-center flex-shrink-0">
@@ -1655,7 +1654,7 @@ export default function ProjectDetailPage() {
                             <span className="text-[13px] font-bold text-[#a8a29e]">
                               {episode.episodeNumber === 0 ? '미정' : `${episode.episodeNumber}편`}
                             </span>
-                            <h3 className="text-[15px] font-bold text-gray-900">
+                            <h3 className="text-[15px] font-bold text-gray-900 truncate">
                               {episode.title || '제목 없음'}
                             </h3>
                           </>
@@ -1663,7 +1662,7 @@ export default function ProjectDetailPage() {
                       </div>
                       {/* 금액 (비편집 모드) */}
                       {!isEpisodeEditMode && totalBudget > 0 && (
-                        <span className="text-[14px] font-bold flex-shrink-0">{totalBudget.toLocaleString()}<span className="text-[11px] text-[#78716c] font-medium ml-0.5">원</span></span>
+                        <span className="text-[12px] sm:text-[14px] font-bold flex-shrink-0">{totalBudget.toLocaleString()}<span className="text-[10px] sm:text-[11px] text-[#78716c] font-medium ml-0.5">원</span></span>
                       )}
                       </div>
 
@@ -1788,7 +1787,7 @@ export default function ProjectDetailPage() {
                           })()}
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2 text-[11px] text-[#78716c] mt-1">
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] text-[#78716c] mt-1 flex-wrap">
                           <EpisodeStatusBadge status={episode.status} />
                           <div className="flex items-center gap-1">
                             <div className="w-[16px] h-[16px] bg-[#f0ece9] rounded-full flex items-center justify-center text-[7px] font-bold text-[#78716c]">
@@ -1796,7 +1795,7 @@ export default function ProjectDetailPage() {
                             </div>
                             <span>{assignee?.name || '미정'}</span>
                           </div>
-                          <span className="text-[#ede9e6]">·</span>
+                          <span className="text-[#ede9e6] hidden sm:inline">·</span>
                           <span className="tabular-nums">
                             {episode.startDate && !isNaN(new Date(episode.startDate).getTime())
                               ? (() => { const d = new Date(episode.startDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })()
@@ -1806,8 +1805,7 @@ export default function ProjectDetailPage() {
                             )}
                           </span>
                           {episode.workContent.length > 0 && (
-                            <>
-                              <span className="text-[#ede9e6]">·</span>
+                            <div className="hidden sm:flex items-center gap-1">
                               {episode.workContent.map((work, idx) => (
                                 <span key={idx} className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
                                   episode.status === 'completed'
@@ -1817,7 +1815,7 @@ export default function ProjectDetailPage() {
                                   {work}
                                 </span>
                               ))}
-                            </>
+                            </div>
                           )}
                         </div>
                       )}
@@ -1826,7 +1824,7 @@ export default function ProjectDetailPage() {
                     </div>
 
                       {!isEpisodeEditMode && (
-                        <ChevronRight size={20} className="text-gray-400 group-hover:text-orange-500 transition-colors flex-shrink-0 ml-4" />
+                        <ChevronRight size={18} className="text-gray-400 group-hover:text-orange-500 transition-colors flex-shrink-0 ml-2 sm:ml-4 hidden sm:block" />
                       )}
                     </div>
                   </div>

@@ -57,7 +57,7 @@ const SECTIONS: Section[] = [
     items: [
       { type: 'link', href: '/finance/invoices',   label: '세금계산서',   icon: FileText,   badge: '준비중' },
       { type: 'link', href: '/finance/payments',   label: '입금 관리',    icon: Receipt,    badge: '준비중' },
-      { type: 'link', href: '/finance/expenses',   label: '지출 관리',    icon: CreditCard, badge: '준비중' },
+      { type: 'link', href: '/finance/expenses',   label: '지출 관리',    icon: CreditCard },
       { type: 'divider' },
       { type: 'link', href: '/settlement', label: '정산',       icon: Receipt, badge: '준비중', sub: [
         { href: '/settlement/history', label: '월별 내역', icon: Calendar },
@@ -759,8 +759,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             {breadcrumbProject}
                           </Link>
                         )}
-                        <span style={{ color: '#d6cec8' }}>/</span>
-                        <span style={{ fontWeight: 600, color: '#1c1917' }}>{breadcrumbEpisode}</span>
+                        <span style={{ color: '#d6cec8' }} className="hidden sm:inline">/</span>
+                        <span style={{ fontWeight: 600, color: '#1c1917' }} className="hidden sm:inline">{breadcrumbEpisode}</span>
                       </>
                     )}
                   </div>
