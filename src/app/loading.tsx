@@ -1,28 +1,7 @@
-'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-
-export default function HomePage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    const checkSession = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        router.push('/management');
-      } else {
-        router.push('/login');
-      }
-    };
-    checkSession();
-  }, [router]);
-
+export default function Loading() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f5f4f2]">
-      <div className="flex flex-col items-center gap-4 animate-[fadeInUp_1s_ease]">
+      <div className="flex flex-col items-center gap-4">
         <svg width={72} height={72} viewBox="0 0 134 108" fill="none">
           <path d="M0 10 L40 10 L67 54 L40 54 L27 34 L27 98 L0 98Z" fill="#ea580c" />
           <path d="M134 10 L94 10 L67 54 L94 54 L107 34 L107 98 L134 98Z" fill="#1c1917" />
