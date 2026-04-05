@@ -106,8 +106,8 @@ export default function PartnerSettlementDetailPage() {
     return items.sort((a, b) => (a.episode.paymentDueDate ?? '').localeCompare(b.episode.paymentDueDate ?? ''));
   }, [partner, projects, episodesMap, selectedYM]);
 
-  const totalAmount = allItems.reduce((s, i) => s + (i.episode.budget?.partnerPayment ?? 0) + (i.episode.budget?.managementFee ?? 0), 0);
-  const paidAmount = allItems.filter(i => i.episode.paymentStatus === 'completed').reduce((s, i) => s + (i.episode.budget?.partnerPayment ?? 0) + (i.episode.budget?.managementFee ?? 0), 0);
+  const totalAmount = allItems.reduce((s, i) => s + (i.episode.budget?.partnerPayment ?? 0), 0);
+  const paidAmount = allItems.filter(i => i.episode.paymentStatus === 'completed').reduce((s, i) => s + (i.episode.budget?.partnerPayment ?? 0), 0);
   const unpaidAmount = totalAmount - paidAmount;
   const totalNetAmount = calcNetAmount(totalAmount, partner?.partnerType);
   const paidPct = totalAmount > 0 ? Math.round((paidAmount / totalAmount) * 100) : 0;
@@ -293,7 +293,7 @@ export default function PartnerSettlementDetailPage() {
             ) : (
               <div className="divide-y divide-[#f8f7f6]">
                 {allItems.map(({ episode: ep, project }, idx) => {
-                  const epAmount = (ep.budget?.partnerPayment ?? 0) + (ep.budget?.managementFee ?? 0);
+                  const epAmount = ep.budget?.partnerPayment ?? 0;
                   const epNet = calcNetAmount(epAmount, partner.partnerType);
                   const taxAmount = Math.abs(epNet - epAmount);
                   const dday = ep.paymentDueDate ? getDday(ep.paymentDueDate) : null;
@@ -411,7 +411,7 @@ export default function PartnerSettlementDetailPage() {
                 </thead>
                 <tbody>
                   {allItems.map(({ episode: ep, project }) => {
-                    const epAmount = (ep.budget?.partnerPayment ?? 0) + (ep.budget?.managementFee ?? 0);
+                    const epAmount = ep.budget?.partnerPayment ?? 0;
                     const epNet = calcNetAmount(epAmount, partner.partnerType);
                     const tax = Math.abs(epNet - epAmount);
                     return (
