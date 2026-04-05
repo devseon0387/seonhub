@@ -47,7 +47,8 @@ const SECTIONS: Section[] = [
       { type: 'link', href: '/clients',    label: '클라이언트 관리', icon: Briefcase       },
       { type: 'link', href: '/partners',   label: '파트너 관리',     icon: Users           },
       { type: 'divider' },
-      { type: 'link', href: '/feedback',   label: '개선사항',   icon: MessageSquarePlus },
+      { type: 'link', href: '/feedback',   label: '피드백',   icon: MessageSquarePlus },
+      { type: 'link', href: '/updates',    label: '업데이트', icon: Megaphone },
     ],
   },
   {

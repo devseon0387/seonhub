@@ -22,7 +22,7 @@ export interface Partner {
 }
 
 // 프로젝트 상태
-export type ProjectStatus = 'planning' | 'in_progress' | 'completed' | 'on_hold';
+export type ProjectStatus = 'planning' | 'in_progress' | 'completed' | 'on_hold' | 'archived';
 
 // 프로젝트 비용 정보
 export interface ProjectBudget {

@@ -60,7 +60,7 @@ export default function ProjectsPage() {
     window.addEventListener('fab:action', handler);
     return () => window.removeEventListener('fab:action', handler);
   }, []);
-  const [activeFilter, setActiveFilter] = useState<'all' | ComputedProjectStatus | 'standby_dormant'>('active');
+  const [activeFilter, setActiveFilter] = useState<'all' | ComputedProjectStatus | 'standby_dormant' | 'archived'>('active');
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
@@ -107,6 +107,13 @@ export default function ProjectsPage() {
   const filteredAndSortedProjects = projects
     .filter(project => {
       // 필터 적용
+      // 아카이브 필터
+      if (activeFilter === 'archived') {
+        return project.status === 'archived';
+      }
+      // 아카이브 프로젝트는 '전체'에서도 제외
+      if (project.status === 'archived') return false;
+
       if (activeFilter === 'standby_dormant') {
         const s = projectStatusMap.get(project.id);
         if (s !== 'standby' && s !== 'dormant') return false;
@@ -292,13 +299,15 @@ export default function ProjectsPage() {
             { key: 'all' as const,              label: '전체',       count: projects.length },
             { key: 'active' as const,           label: '진행 중',    count: projects.filter(p => projectStatusMap.get(p.id) === 'active').length },
             { key: 'standby_dormant' as const,  label: '대기·휴면',  count: projects.filter(p => { const s = projectStatusMap.get(p.id); return s === 'standby' || s === 'dormant'; }).length },
-            { key: 'inactive' as const,         label: '비활성',     count: projects.filter(p => projectStatusMap.get(p.id) === 'inactive').length },
+            { key: 'inactive' as const,         label: '비활성',     count: projects.filter(p => p.status !== 'archived' && projectStatusMap.get(p.id) === 'inactive').length },
+            { key: 'archived' as const,         label: '아카이브',   count: projects.filter(p => p.status === 'archived').length },
           ] : [
-            { key: 'all' as const,      label: '전체',   count: projects.length },
-            { key: 'active' as const,   label: '진행 중', count: projects.filter(p => projectStatusMap.get(p.id) === 'active').length },
-            { key: 'standby' as const,  label: '대기',   count: projects.filter(p => projectStatusMap.get(p.id) === 'standby').length },
-            { key: 'dormant' as const,  label: '휴면',   count: projects.filter(p => projectStatusMap.get(p.id) === 'dormant').length },
-            { key: 'inactive' as const, label: '비활성', count: projects.filter(p => projectStatusMap.get(p.id) === 'inactive').length },
+            { key: 'all' as const,      label: '전체',   count: projects.filter(p => p.status !== 'archived').length },
+            { key: 'active' as const,   label: '진행 중', count: projects.filter(p => p.status !== 'archived' && projectStatusMap.get(p.id) === 'active').length },
+            { key: 'standby' as const,  label: '대기',   count: projects.filter(p => p.status !== 'archived' && projectStatusMap.get(p.id) === 'standby').length },
+            { key: 'dormant' as const,  label: '휴면',   count: projects.filter(p => p.status !== 'archived' && projectStatusMap.get(p.id) === 'dormant').length },
+            { key: 'inactive' as const, label: '비활성', count: projects.filter(p => p.status !== 'archived' && projectStatusMap.get(p.id) === 'inactive').length },
+            { key: 'archived' as const, label: '아카이브', count: projects.filter(p => p.status === 'archived').length },
           ]).map(({ key, label, count }) => (
             <button
               key={key}
