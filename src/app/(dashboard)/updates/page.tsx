@@ -104,6 +104,7 @@ export default function UpdatesPage() {
 
   useEffect(() => {
     loadUpdates(tab);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   }, [tab, loadUpdates]);
 
   const latest = updates[0];

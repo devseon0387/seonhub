@@ -22,9 +22,7 @@ function extractPriceHint(title: string): number | null {
   return null;
 }
 
-function fmtCurrency(n: number) {
-  return n.toLocaleString('ko-KR');
-}
+
 
 // ── 미입력 필드 체크
 interface MissingFlags {
@@ -123,6 +121,7 @@ export default function ManagementMissing({ onMissingCount }: { onMissingCount?:
       .catch(() => setLoading(false));
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadData(); }, [loadData]);
   const hasEdits = Object.keys(edits).length > 0;
   useSupabaseRealtime(['episodes', 'projects', 'partners'], useCallback(() => {

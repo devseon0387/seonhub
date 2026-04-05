@@ -4,12 +4,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   getProjects, getPartners, getClients, getAllEpisodes,
-  getMyChecklists, insertChecklist, updateChecklist, deleteChecklist, clearCompletedChecklists,
+  getMyChecklists, insertChecklist, updateChecklist, deleteChecklist,
   insertProject, insertClient, upsertEpisodes, updateEpisodeFields,
   ChecklistRow,
 } from '@/lib/supabase/db';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
-import { Calendar, Clock, AlertCircle, CheckCircle, Users, Sparkles, Plus, Trash2, Bell, BellOff, X, Link2, Search, Repeat2, ChevronLeft, ChevronRight, User, FolderOpen, Building2 } from 'lucide-react';
+import { Calendar, Plus, Bell, X, Link2, Search, ChevronLeft, ChevronRight, User, FolderOpen, Building2 } from 'lucide-react';
 import { Project, Episode, Partner, Client, WorkContentType, WorkStep } from '@/types';
 import Link from 'next/link';
 import ProjectWizardModal from '@/components/ProjectWizardModal';

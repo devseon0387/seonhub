@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Calendar, X, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Check } from 'lucide-react';
 
 interface DateField {
   label: string;
@@ -21,11 +21,7 @@ interface DateTripleModalProps {
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const MONTHS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 
-function fmtShort(v: string) {
-  if (!v) return '';
-  const [y, m, d] = v.split('-').map(Number);
-  return `${String(y).slice(2)}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')}`;
-}
+
 
 function isValidDate(v: string): boolean {
   if (!v || v.length !== 10) return false;
@@ -60,9 +56,6 @@ function MiniCalendar({ label, value, onChange, isMissing, disabled }: DateField
     if (viewMonth === 11) { setViewMonth(0); setViewYear(viewYear + 1); }
     else setViewMonth(viewMonth + 1);
   };
-
-  // 이미 입력된 날짜가 있으면 비활성화 스타일
-  const isFilledAlready = !isMissing && !disabled;
 
   return (
     <div className={`flex-1 min-w-[220px] rounded-xl border p-3 transition-all ${
