@@ -89,7 +89,8 @@ export default function ExpensesPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const prevMonth = () => { if (viewMonth === 1) { setViewYear(viewYear - 1); setViewMonth(12); } else setViewMonth(viewMonth - 1); };
+  const isMinMonth = viewYear === 2026 && viewMonth === 3;
+  const prevMonth = () => { if (isMinMonth) return; if (viewMonth === 1) { setViewYear(viewYear - 1); setViewMonth(12); } else setViewMonth(viewMonth - 1); };
   const nextMonth = () => { if (viewMonth === 12) { setViewYear(viewYear + 1); setViewMonth(1); } else setViewMonth(viewMonth + 1); };
 
   // 구독 현황 (전체 기간)
@@ -99,8 +100,21 @@ export default function ExpensesPage() {
   const yearlySubTotal = activeSubscriptions.filter(e => e.paymentType === 'yearly').reduce((s, e) => s + e.amount, 0);
   const monthlyEquivalent = monthlySubTotal + Math.round(yearlySubTotal / 12);
 
-  // 이번 달 지출
-  const monthExpenses = expenses.filter(e => e.expenseDate.slice(0, 7) === viewYM);
+  // 이번 달 실제 지출
+  const monthExpensesActual = expenses.filter(e => e.expenseDate.slice(0, 7) === viewYM);
+
+  // 활성 구독 중 expenseDate가 이번 달이 아닌 것 → 예정 지출로 추가
+  const monthSubscriptionExpected = activeSubscriptions.filter(sub => {
+    if (sub.expenseDate.slice(0, 7) === viewYM) return false; // 이미 이번 달 실제 지출에 포함됨
+    if (sub.paymentType === 'monthly') return true;
+    if (sub.paymentType === 'yearly' && sub.nextRenewalDate) {
+      return sub.nextRenewalDate.slice(0, 7) === viewYM;
+    }
+    return false;
+  });
+
+  const expectedIds = new Set(monthSubscriptionExpected.map(e => e.id));
+  const monthExpenses = [...monthExpensesActual, ...monthSubscriptionExpected];
   const filtered = catFilter === 'all' ? monthExpenses : monthExpenses.filter(e => e.category === catFilter);
   const totalMonthExpense = monthExpenses.reduce((s, e) => s + e.amount, 0);
 
@@ -203,7 +217,7 @@ export default function ExpensesPage() {
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 bg-white border border-[#ede9e6] rounded-[10px] px-1 py-1">
-            <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"><ChevronLeft size={14} className="text-[#a8a29e]" /></button>
+            <button onClick={prevMonth} disabled={isMinMonth} className={`p-1.5 rounded-lg transition-colors ${isMinMonth ? 'invisible' : 'hover:bg-gray-100'}`}><ChevronLeft size={14} className="text-[#a8a29e]" /></button>
             <div className="px-2.5 py-1 min-w-[90px] text-center overflow-hidden">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span key={`${viewYear}-${viewMonth}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }} className="block text-[13px] font-semibold text-gray-800 tabular-nums">
@@ -318,7 +332,7 @@ export default function ExpensesPage() {
                   />
                 ))}
               </div>
-              <div className="flex gap-3 flex-wrap text-[11px]">
+              <div className="hidden sm:flex gap-3 flex-wrap text-[11px]">
                 {categoryTotals.map(ct => (
                   <span key={ct.category} className="flex items-center gap-1">
                     <span className="w-1.5 h-[3px] rounded-sm" style={{ backgroundColor: CATEGORY_COLORS[ct.category].bar }} />
@@ -330,12 +344,76 @@ export default function ExpensesPage() {
           )}
         </div>
 
-        {/* 카테고리 필터 */}
-        <div className="px-5 py-2.5 border-b border-[#f0ece9] flex gap-1.5 flex-wrap">
+        {/* 카테고리 필터 — 모바일: 칩+금액 가로 스크롤 */}
+        <div className="sm:hidden px-4 py-2.5 border-b border-[#f0ece9] flex gap-1.5 overflow-x-auto scrollbar-hide">
+          <button onClick={() => setCatFilter('all')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[11px] font-semibold transition-colors flex-shrink-0 ${catFilter === 'all' ? 'bg-[#1c1917] text-white' : 'bg-[#f5f5f4] text-[#78716c] hover:bg-[#ede9e6]'}`}>
+            전체 <span className={`text-[10px] tabular-nums ${catFilter === 'all' ? 'opacity-70' : 'opacity-50'}`}>{totalMonthExpense.toLocaleString()}</span>
+          </button>
+          {categoryTotals.map(ct => (
+            <button key={ct.category} onClick={() => setCatFilter(ct.category)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[11px] font-semibold transition-colors flex-shrink-0 ${catFilter === ct.category ? 'bg-[#1c1917] text-white' : 'bg-[#f5f5f4] text-[#78716c] hover:bg-[#ede9e6]'}`}>
+              <span className="w-[6px] h-[6px] rounded-full flex-shrink-0" style={{ backgroundColor: CATEGORY_COLORS[ct.category].bar }} />
+              {ct.category} <span className={`text-[10px] tabular-nums ${catFilter === ct.category ? 'opacity-70' : 'opacity-50'}`}>{ct.total.toLocaleString()}</span>
+            </button>
+          ))}
+        </div>
+        {/* 카테고리 필터 — 데스크탑: 기존 wrap */}
+        <div className="hidden sm:flex px-5 py-2.5 border-b border-[#f0ece9] gap-1.5 flex-wrap">
           <button onClick={() => setCatFilter('all')} className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors ${catFilter === 'all' ? 'bg-[#1c1917] text-white' : 'bg-[#f5f5f4] text-[#78716c] hover:bg-[#ede9e6]'}`}>전체</button>
           {CATEGORIES.map(cat => (
             <button key={cat} onClick={() => setCatFilter(cat)} className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors ${catFilter === cat ? 'bg-[#1c1917] text-white' : 'bg-[#f5f5f4] text-[#78716c] hover:bg-[#ede9e6]'}`}>{cat}</button>
           ))}
+        </div>
+
+        {/* 모바일 카드 리스트 */}
+        <div className="sm:hidden">
+          {filtered.length === 0 ? (
+            <div className="py-20 text-center text-gray-400">
+              <CreditCard className="mx-auto mb-3 text-gray-200" size={36} />
+              <p className="font-medium text-gray-500">지출 내역이 없습니다</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-[#f8f7f6]">
+              {filtered.sort((a, b) => {
+                const dateA = expectedIds.has(a.id) ? (a.nextRenewalDate ?? a.expenseDate) : a.expenseDate;
+                const dateB = expectedIds.has(b.id) ? (b.nextRenewalDate ?? b.expenseDate) : b.expenseDate;
+                return dateB.localeCompare(dateA);
+              }).map((expense, idx) => {
+                const isExpected = expectedIds.has(expense.id);
+                const dimmed = expense.status === 'cancelled';
+                return (
+                  <motion.div
+                    key={expense.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: idx * 0.04 }}
+                    onClick={() => !isExpected && openEdit(expense)}
+                    className={`flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-[#fafaf9] transition-colors ${dimmed ? 'opacity-40' : ''} ${isExpected ? 'opacity-60' : ''}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[14px] font-semibold truncate">{expense.title}</span>
+                        {isExpected && <span className="text-[9px] px-1.5 py-0.5 rounded-md font-semibold bg-blue-50 text-blue-500 flex-shrink-0">예정</span>}
+                        {!isExpected && statusBadge(expense)}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1 text-[10px] text-[#a8a29e]">
+                        <span className="tabular-nums">{isExpected ? (expense.nextRenewalDate?.slice(5).replace('-', '/') ?? '예정') : expense.expenseDate.slice(5).replace('-', '/')}</span>
+                        <span className={`px-1.5 py-0.5 rounded-md font-semibold ${CATEGORY_COLORS[expense.category].bg} ${CATEGORY_COLORS[expense.category].text}`}>{expense.category}</span>
+                        <span className={`px-1.5 py-0.5 rounded-md font-semibold ${PAYMENT_COLORS[expense.paymentType].bg} ${PAYMENT_COLORS[expense.paymentType].text}`}>{paymentLabel(expense.paymentType)}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                      <span className="text-[15px] font-bold tabular-nums">{expense.amount.toLocaleString()}<span className="text-[10px] text-[#78716c] font-medium">원</span></span>
+                      {!isExpected && (
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(expense.id); }} className="p-1.5 rounded-lg hover:bg-red-50 text-[#d6d3d1] hover:text-red-500 transition-colors">
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* 데스크탑 테이블 */}
@@ -352,16 +430,17 @@ export default function ExpensesPage() {
             ) : (
               <div className="divide-y divide-[#f8f7f6]">
                 {filtered.sort((a, b) => b.expenseDate.localeCompare(a.expenseDate)).map((expense, idx) => {
-                  const isSubscription = expense.paymentType !== 'one_time';
+                  const isExpected = expectedIds.has(expense.id);
                   const dimmed = expense.status === 'cancelled';
                   return (
                     <motion.div key={expense.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: idx * 0.03 }}>
-                      <div className={`grid grid-cols-[60px_1fr_80px_70px_100px_28px] gap-2 px-5 py-3 items-center hover:bg-[#fafaf9] transition-colors cursor-pointer ${dimmed ? 'opacity-40' : ''}`} onClick={() => openEdit(expense)}>
-                        <span className="text-[12px] text-[#a8a29e] tabular-nums">{expense.expenseDate.slice(5).replace('-', '/')}</span>
+                      <div className={`grid grid-cols-[60px_1fr_80px_70px_100px_28px] gap-2 px-5 py-3 items-center hover:bg-[#fafaf9] transition-colors cursor-pointer ${dimmed ? 'opacity-40' : ''} ${isExpected ? 'opacity-60' : ''}`} onClick={() => !isExpected && openEdit(expense)}>
+                        <span className="text-[12px] text-[#a8a29e] tabular-nums">{isExpected ? (expense.nextRenewalDate?.slice(5).replace('-', '/') ?? '예정') : expense.expenseDate.slice(5).replace('-', '/')}</span>
                         <div className="min-w-0">
                           <span className="text-[13px] font-semibold block truncate">
                             {expense.title}
-                            {statusBadge(expense)}
+                            {isExpected && <span className="ml-1.5 text-[10px] text-blue-500 font-medium">예정</span>}
+                            {!isExpected && statusBadge(expense)}
                           </span>
                           {(expense.spenderName || expense.description) && (
                             <span className="text-[11px] text-[#a8a29e] block truncate mt-0.5">
@@ -384,40 +463,6 @@ export default function ExpensesPage() {
           </div>
         </div>
 
-        {/* 모바일 카드 뷰 */}
-        <div className="sm:hidden">
-          {filtered.length === 0 ? (
-            <div className="py-16 text-center text-gray-400">
-              <CreditCard className="mx-auto mb-3 text-gray-200" size={36} />
-              <p className="font-medium text-gray-500">지출 내역이 없습니다</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-[#f8f7f6]">
-              {filtered.sort((a, b) => b.expenseDate.localeCompare(a.expenseDate)).map((expense, idx) => {
-                const dimmed = expense.status === 'cancelled';
-                return (
-                  <motion.div key={expense.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: idx * 0.03 }}>
-                    <div className={`px-4 py-3 cursor-pointer active:bg-gray-50 ${dimmed ? 'opacity-40' : ''}`} onClick={() => openEdit(expense)}>
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <span className="text-[13px] font-semibold text-gray-900 truncate">{expense.title}</span>
-                          {statusBadge(expense)}
-                        </div>
-                        <span className="text-[14px] font-bold tabular-nums flex-shrink-0">{expense.amount.toLocaleString()}<span className="text-[10px] text-[#78716c] font-medium ml-0.5">원</span></span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[11px] text-[#a8a29e]">
-                        <span className="tabular-nums">{expense.expenseDate.slice(5).replace('-', '/')}</span>
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${CATEGORY_COLORS[expense.category].bg} ${CATEGORY_COLORS[expense.category].text}`}>{expense.category}</span>
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${PAYMENT_COLORS[expense.paymentType].bg} ${PAYMENT_COLORS[expense.paymentType].text}`}>{paymentLabel(expense.paymentType)}</span>
-                        {expense.spenderName && <><span className="text-[#ede9e6]">·</span><span>{expense.spenderName}</span></>}
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* 추가/수정 모달 */}

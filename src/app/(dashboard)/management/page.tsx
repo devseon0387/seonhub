@@ -604,8 +604,8 @@ export default function ManagementPage() {
                   return (
                     <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-red-200 bg-red-50 cursor-pointer hover:border-red-300 transition-colors" onClick={() => setQuickViewEpisode(ep)}>
                       <div className="flex items-center justify-between">
-                        <div><div className="flex items-baseline gap-1.5"><span className="text-[12px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold">{ep.title || '제목 없음'}</span></div><div className="text-[11px] text-[#a8a29e] mt-0.5">{project?.title} · {partner?.name || '미정'}</div></div>
-                        <span className="text-[11px] font-semibold text-red-500 bg-red-100 px-2 py-0.5 rounded-full">{days}일 지남</span>
+                        <div className="min-w-0 flex-1"><div className="flex items-baseline gap-1.5 min-w-0"><span className="text-[12px] font-bold text-[#a8a29e] shrink-0">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold truncate">{ep.title || '제목 없음'}</span></div><div className="text-[11px] text-[#a8a29e] mt-0.5 truncate">{project?.title} · {partner?.name || '미정'}</div></div>
+                        <span className="text-[11px] font-semibold text-red-500 bg-red-100 px-2 py-0.5 rounded-full shrink-0">{days}일 지남</span>
                       </div>
                     </div>
                   );
@@ -627,8 +627,8 @@ export default function ManagementPage() {
                 const { project, partner } = getEpisodeDetails(ep);
                 return (
                   <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-[#f0ece9] cursor-pointer hover:border-[#d6d3d1] transition-colors" onClick={() => setQuickViewEpisode(ep)}>
-                    <div className="flex items-baseline gap-1.5"><span className="text-[12px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold">{ep.title || '제목 없음'}</span></div>
-                    <div className="flex items-center gap-1.5 text-[11px] text-[#a8a29e] mt-0.5"><span>{project?.title}</span><span className="text-[#ede9e6]">·</span><div className="w-[14px] h-[14px] bg-[#f0ece9] rounded-full flex items-center justify-center text-[6px] font-bold text-[#78716c]">{partner?.name?.charAt(0) || '?'}</div><span>{partner?.name || '미정'}</span></div>
+                    <div className="flex items-baseline gap-1.5 min-w-0"><span className="text-[12px] font-bold text-[#a8a29e] shrink-0">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold truncate">{ep.title || '제목 없음'}</span></div>
+                    <div className="flex items-center gap-1.5 text-[11px] text-[#a8a29e] mt-0.5 min-w-0"><span>{project?.title}</span><span className="text-[#ede9e6]">·</span><div className="w-[14px] h-[14px] bg-[#f0ece9] rounded-full flex items-center justify-center text-[6px] font-bold text-[#78716c]">{partner?.name?.charAt(0) || '?'}</div><span>{partner?.name || '미정'}</span></div>
                   </div>
                 );
               })}
@@ -648,8 +648,8 @@ export default function ManagementPage() {
                 const { project, partner } = getEpisodeDetails(ep);
                 return (
                   <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-[#f0ece9] cursor-pointer hover:border-[#d6d3d1] transition-colors" onClick={() => setQuickViewEpisode(ep)}>
-                    <div className="flex items-baseline gap-1.5"><span className="text-[12px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold">{ep.title || '제목 없음'}</span></div>
-                    <div className="text-[11px] text-[#a8a29e] mt-0.5">{project?.title} · {partner?.name || '미정'}</div>
+                    <div className="flex items-baseline gap-1.5 min-w-0"><span className="text-[12px] font-bold text-[#a8a29e] shrink-0">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold truncate">{ep.title || '제목 없음'}</span></div>
+                    <div className="text-[11px] text-[#a8a29e] mt-0.5 truncate">{project?.title} · {partner?.name || '미정'}</div>
                   </div>
                 );
               })}
@@ -670,8 +670,8 @@ export default function ManagementPage() {
                 const dueDate = new Date(ep.dueDate!);
                 return (
                   <div key={ep.id} className="p-2.5 px-3.5 rounded-[10px] border border-[#f0ece9] cursor-pointer hover:border-[#d6d3d1] transition-colors" onClick={() => setQuickViewEpisode(ep)}>
-                    <div className="flex items-baseline gap-1.5"><span className="text-[12px] font-bold text-[#a8a29e]">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold">{ep.title || '제목 없음'}</span><span className="text-[11px] text-[#a8a29e]">{dueDate.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span></div>
-                    <div className="text-[11px] text-[#a8a29e] mt-0.5">{project?.title} · {partner?.name || '미정'}</div>
+                    <div className="flex items-baseline gap-1.5 min-w-0"><span className="text-[12px] font-bold text-[#a8a29e] shrink-0">{ep.episodeNumber === 0 ? '미정' : `${ep.episodeNumber}편`}</span><span className="text-[13px] font-bold truncate">{ep.title || '제목 없음'}</span><span className="text-[11px] text-[#a8a29e] shrink-0">{dueDate.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span></div>
+                    <div className="text-[11px] text-[#a8a29e] mt-0.5 truncate">{project?.title} · {partner?.name || '미정'}</div>
                   </div>
                 );
               })}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Receipt, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Project, Partner, Episode } from '@/types';
 import { getProjects, getPartners, getAllEpisodes } from '@/lib/supabase/db';
@@ -294,14 +294,14 @@ export default function SettlementPage() {
         ) : (
           <div style={{ overflowX: 'clip' }}>
             <div>
-              {/* 테이블 헤더 */}
-              <div className="grid grid-cols-[1fr_90px_90px] sm:grid-cols-[1fr_1fr_110px_110px_80px_70px] gap-2 sm:gap-3 px-3 sm:px-5 py-2.5 text-[10px] sm:text-[11px] font-semibold text-[#a8a29e] border-b border-[#f0ece9]">
+              {/* 테이블 헤더 (데스크탑) */}
+              <div className="hidden sm:grid grid-cols-[1fr_1fr_110px_110px_80px_70px] gap-3 px-5 py-2.5 text-[11px] font-semibold text-[#a8a29e] border-b border-[#f0ece9]">
                 <span>이름</span>
-                <span className="hidden sm:block">프로젝트</span>
+                <span>프로젝트</span>
                 <span className="text-right">정산 금액</span>
                 <span className="text-right">대기 금액</span>
-                <span className="text-right hidden sm:block">가까운 정산일</span>
-                <span className="text-right hidden sm:block">상태</span>
+                <span className="text-right">가까운 정산일</span>
+                <span className="text-right">상태</span>
               </div>
               {filtered.length === 0 ? (
                 <div className="py-20 text-center text-gray-400">
@@ -322,46 +322,76 @@ export default function SettlementPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: idx * 0.05, ease: 'easeOut' }}
                       >
+                      {/* 모바일: C안 카드형 */}
                       <Link
                         href={row.detailHref}
-                        className="grid grid-cols-[1fr_90px_90px] sm:grid-cols-[1fr_1fr_110px_110px_80px_70px] gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-3.5 items-center hover:bg-[#fafaf9] transition-colors cursor-pointer"
+                        className="flex sm:hidden items-center justify-between px-4 py-3.5 hover:bg-[#fafaf9] transition-colors cursor-pointer"
                       >
-                        {/* 이름 + 구분 */}
-                        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                          <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-bold flex-shrink-0 ${
-                            row.type === 'manager' ? 'bg-purple-500 text-white' : 'bg-orange-500 text-white'
+                        <div className="flex items-center gap-[10px] min-w-0">
+                          <div className={`w-[34px] h-[34px] rounded-full flex items-center justify-center flex-shrink-0 ${
+                            row.type === 'manager' ? 'bg-purple-500' : 'bg-orange-500'
                           }`}>
-                            {row.person.name.charAt(0)}
+                            <User size={16} className="text-white" />
                           </div>
-                          <span className="text-[13px] sm:text-[14px] font-semibold text-gray-900 truncate">{row.person.name}</span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-[6px]">
+                              <span className="text-[15px] font-bold text-gray-900">{row.person.name}</span>
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0 ${
+                                row.type === 'manager' ? 'bg-purple-50 text-purple-600' : 'bg-[#fff7ed] text-orange-500'
+                              }`}>
+                                {row.type === 'manager' ? '매니저' : '파트너'}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-[#a8a29e]">
+                              {row.episodeCount > 0 && `${row.episodeCount}회차`}{row.episodeCount > 0 && projLabel && ' · '}{projLabel}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0 ml-3">
+                          <div className={`text-[16px] font-extrabold tabular-nums ${row.unpaidAmount > 0 ? 'text-[#ea580c]' : 'text-[#16a34a]'}`}>
+                            {row.unpaidAmount > 0 ? row.unpaidAmount.toLocaleString() : '0'}<span className={`text-[11px] font-medium ${row.unpaidAmount > 0 ? 'text-[#ea580c]' : 'text-[#16a34a]'}`}>원</span>
+                          </div>
+                          <div className={`text-[10px] ${row.unpaidAmount > 0 ? 'text-[#a8a29e]' : 'text-[#16a34a]'}`}>
+                            {row.unpaidAmount > 0
+                              ? row.nearestDueDate
+                                ? `미지급 · ${(() => { const d = new Date(row.nearestDueDate); return `${d.getMonth()+1}.${d.getDate()}`; })()} 예정`
+                                : '미지급'
+                              : '완료'}
+                          </div>
+                        </div>
+                      </Link>
+                      {/* 데스크탑: 기존 테이블 행 */}
+                      <Link
+                        href={row.detailHref}
+                        className="hidden sm:grid grid-cols-[1fr_1fr_110px_110px_80px_70px] gap-3 px-5 py-3.5 items-center hover:bg-[#fafaf9] transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            row.type === 'manager' ? 'bg-purple-500' : 'bg-orange-500'
+                          }`}>
+                            <User size={14} className="text-white" />
+                          </div>
+                          <span className="text-[14px] font-semibold text-gray-900 truncate">{row.person.name}</span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0 ${
-                            row.type === 'manager'
-                              ? 'bg-purple-50 text-purple-600'
-                              : 'bg-[#fff7ed] text-orange-500'
+                            row.type === 'manager' ? 'bg-purple-50 text-purple-600' : 'bg-[#fff7ed] text-orange-500'
                           }`}>
                             {row.type === 'manager' ? '매니저' : '파트너'}
                           </span>
-                          <span className="text-[10px] text-[#a8a29e] flex-shrink-0 sm:hidden">{row.episodeCount}회차</span>
                         </div>
-                        {/* 프로젝트 (모바일 숨김) */}
-                        <div className="hidden sm:flex items-center gap-1.5 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
                           {projLabel && (
                             <span className="text-[12px] text-[#44403c] font-medium truncate">{projLabel}</span>
                           )}
                           <span className="text-[11px] text-[#a8a29e] flex-shrink-0">{row.episodeCount}회차</span>
                         </div>
-                        {/* 정산 금액 */}
-                        <span className="text-[12px] sm:text-[14px] font-semibold text-gray-900 text-right tabular-nums">{row.totalAmount.toLocaleString()}</span>
-                        {/* 대기 금액 */}
-                        <span className={`text-[12px] sm:text-[14px] text-right font-semibold tabular-nums ${row.unpaidAmount > 0 ? 'text-orange-500' : 'text-[#a8a29e]'}`}>
+                        <span className="text-[14px] font-semibold text-gray-900 text-right tabular-nums">{row.totalAmount.toLocaleString()}</span>
+                        <span className={`text-[14px] text-right font-semibold tabular-nums ${row.unpaidAmount > 0 ? 'text-orange-500' : 'text-[#a8a29e]'}`}>
                           {row.unpaidAmount > 0 ? row.unpaidAmount.toLocaleString() : '0'}
                         </span>
-                        {/* 정산일 (모바일 숨김) */}
-                        <span className="text-[12px] text-right tabular-nums text-[#a8a29e] hidden sm:block">
+                        <span className="text-[12px] text-right tabular-nums text-[#a8a29e]">
                           {row.nearestDueDate ? (() => { const d = new Date(row.nearestDueDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })() : '-'}
                         </span>
-                        {/* 상태 (모바일 숨김) */}
-                        <div className="text-right hidden sm:block">
+                        <div className="text-right">
                           {row.unpaidAmount > 0 ? (
                             <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#fff7ed] text-orange-500 font-semibold">미지급</span>
                           ) : (

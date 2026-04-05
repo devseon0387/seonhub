@@ -516,15 +516,17 @@ export default function ClientsPage() {
                     )}
                   </div>
                 </div>
-                <span
-                  className={`ml-2 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                    client.status === 'active'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {client.status === 'active' ? '활성' : '비활성'}
-                </span>
+                <div className="ml-2 flex-shrink-0">
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                      client.status === 'active'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
+                    {client.status === 'active' ? '활성' : '비활성'}
+                  </span>
+                </div>
               </div>
 
               {/* 담당자 */}
@@ -546,7 +548,7 @@ export default function ClientsPage() {
                 {client.phone && (
                   <div className="flex items-center text-sm text-gray-600">
                     <Phone size={14} className="mr-2 text-gray-400 flex-shrink-0" />
-                    {formatPhoneNumber(client.phone)}
+                    <span className="truncate">{formatPhoneNumber(client.phone)}</span>
                   </div>
                 )}
                 {client.address && (

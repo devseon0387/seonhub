@@ -554,18 +554,18 @@ export default function PartnersPage() {
                 className="bg-white rounded-xl shadow-sm border border-gray-100 p-3.5 active:bg-gray-50 transition-colors"
               >
                 {/* 헤더 - 파트너 정보 */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center flex-1 min-w-0">
+                <div className="flex items-start justify-between mb-3 min-w-0">
+                  <div className="flex items-center flex-1 min-w-0 overflow-hidden">
                     <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
                       <span className="text-sm font-semibold text-orange-500">{partner.name.charAt(0)}</span>
                     </div>
                     <div className="ml-2.5 flex-1 min-w-0">
-                      <h3 className="text-[14px] font-semibold text-gray-900 truncate flex items-center gap-1.5">
-                        {partner.name}
+                      <h3 className="text-[14px] font-semibold text-gray-900 flex items-center gap-1.5 min-w-0">
+                        <span className="truncate">{partner.name}</span>
                         {partner.role === 'admin' ? (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">운영진</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium flex-shrink-0">운영진</span>
                         ) : partner.generation ? (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 font-medium">{partner.generation}기</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 font-medium flex-shrink-0">{partner.generation}기</span>
                         ) : null}
                       </h3>
                       <div className="flex items-center text-[12px] text-gray-500 mt-0.5">
@@ -576,7 +576,7 @@ export default function PartnersPage() {
                   </div>
                   <button
                     onClick={(e) => handleToggleStatus(partner, e)}
-                    className={`ml-2 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap cursor-pointer transition-colors ${
+                    className={`ml-2 flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap cursor-pointer transition-colors ${
                       partner.status === 'active'
                         ? 'bg-green-100 text-green-800'
                         : 'bg-gray-100 text-gray-800'
@@ -604,7 +604,7 @@ export default function PartnersPage() {
                     <div className="text-base font-semibold text-gray-900">
                       {stats.totalProjects}개
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-[11px] text-gray-500 mt-1 truncate">
                       진행중 {stats.inProgressProjects} / 완료 {stats.completedProjects}
                     </div>
                   </div>
@@ -616,7 +616,7 @@ export default function PartnersPage() {
                     <div className="text-base font-semibold text-gray-900">
                       {stats.totalEpisodes}개
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-[11px] text-gray-500 mt-1 truncate">
                       완료 {stats.completedEpisodes}
                     </div>
                   </div>

@@ -745,9 +745,9 @@ export default function ProjectDetailPage() {
       {/* 탭 네비게이션 */}
       <div data-tour="tour-detail-tabs" className="bg-white rounded-xl border border-gray-100 p-1.5 flex gap-1 overflow-x-auto scrollbar-hide">
         {([
-          { key: 'in-progress' as const, label: '진행 중인 회차', count: activeEpisodes.length },
-          { key: 'episodes' as const, label: '회차 관리', count: episodes.length },
-          { key: 'overview' as const, label: '프로젝트 개요', count: undefined },
+          { key: 'in-progress' as const, label: '진행 중인 회차', mobileLabel: '진행 중', count: activeEpisodes.length },
+          { key: 'episodes' as const, label: '회차 관리', mobileLabel: '전체', count: episodes.length },
+          { key: 'overview' as const, label: '프로젝트 개요', mobileLabel: '개요', count: undefined },
         ]).map((tab) => (
           <button
             key={tab.key}
@@ -761,7 +761,10 @@ export default function ProjectDetailPage() {
                 transition={{ type: 'spring', stiffness: 380, damping: 30 }}
               />
             )}
-            <span className={`relative z-10 transition-colors duration-200 ${activeTab === tab.key ? 'text-white' : 'text-gray-500'}`}>
+            <span className={`relative z-10 transition-colors duration-200 sm:hidden ${activeTab === tab.key ? 'text-white' : 'text-gray-500'}`}>
+              {tab.mobileLabel}
+            </span>
+            <span className={`relative z-10 transition-colors duration-200 hidden sm:inline ${activeTab === tab.key ? 'text-white' : 'text-gray-500'}`}>
               {tab.label}
             </span>
             {tab.count !== undefined && (

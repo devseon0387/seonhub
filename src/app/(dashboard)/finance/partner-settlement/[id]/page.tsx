@@ -213,6 +213,25 @@ export default function PartnerSettlementDetailPage() {
             <p className="text-[12px] text-[#a8a29e] mt-0.5">정산 내역 · {allItems.length}건</p>
           </div>
         </div>
+        {/* 모바일: 헤더 내 프로그레스 바 */}
+        {allItems.length > 0 && (
+          <div className="sm:hidden mt-3 pt-3 border-t border-[#f0ece9]">
+            <motion.div
+              key={`mobile-legend-${selectedYM}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className="flex items-center justify-between mb-1.5"
+            >
+              <span className="text-[11px] text-[#a8a29e] font-semibold">실 지급 <b className="text-blue-600">{totalNetAmount.toLocaleString()}원</b></span>
+              <span className="text-[10px] text-[#a8a29e]">{totalAmount > 0 ? Math.round((paidAmount / totalAmount) * 100) : 0}% 지급됨</span>
+            </motion.div>
+            <div className="h-[6px] bg-[#f0ece9] rounded-full overflow-hidden flex gap-0.5">
+              <motion.div initial={{ width: 0 }} animate={{ width: `${paidPct}%` }} transition={{ duration: 0.6, delay: 0.2, ease: [0.4, 0, 0.2, 1] }} className="h-full bg-green-500 rounded-full" />
+              <motion.div initial={{ width: 0 }} animate={{ width: `${100 - paidPct}%` }} transition={{ duration: 0.6, delay: 0.3, ease: [0.4, 0, 0.2, 1] }} className="h-full bg-orange-500 rounded-full" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 월 이동 + 모두 정산 완료 */}
@@ -239,23 +258,23 @@ export default function PartnerSettlementDetailPage() {
             className="flex items-center gap-1.5 px-3 py-2 bg-green-500 text-white rounded-xl text-[12px] font-semibold hover:bg-green-600 transition-colors disabled:opacity-50"
           >
             <CheckCircle size={14} />
-            {saving ? '처리 중...' : '모두 정산 완료'}
+            {saving ? '처리 중...' : <><span className="hidden sm:inline">모두 정산 완료</span><span className="sm:hidden">모두 완료</span></>}
           </button>
         )}
         <button
           onClick={handleExport}
           disabled={exporting || allItems.length === 0}
-          className="flex items-center gap-1.5 px-3 py-2 bg-white border border-[#ede9e6] text-[#44403c] rounded-xl text-[12px] font-semibold hover:bg-[#fafaf9] transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 sm:px-3 py-2 bg-white border border-[#ede9e6] text-[#44403c] rounded-xl text-[12px] font-semibold hover:bg-[#fafaf9] transition-colors disabled:opacity-50"
         >
           <Download size={14} />
-          {exporting ? '내보내는 중...' : '내보내기'}
+          <span className="hidden sm:inline">{exporting ? '내보내는 중...' : '내보내기'}</span>
         </button>
       </div>
 
       {/* 통합 카드: 통계 + 테이블 */}
       <div className="bg-white rounded-2xl border border-gray-100" style={{ overflow: 'clip' }}>
-        {/* 통계 바 */}
-        <div className="px-5 py-4 border-b border-[#f0ece9]">
+        {/* 통계 바 (모바일 숨김 — 합계 실 지급액으로 대체) */}
+        <div className="hidden sm:block px-5 py-4 border-b border-[#f0ece9]">
           <div className="flex items-baseline justify-between mb-1.5">
             <motion.span key={`label-${selectedYM}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-[13px] text-[#a8a29e]">
               총 정산 · 실 지급 <b className="text-blue-600">{calcNetAmount(totalAmount, partner.partnerType).toLocaleString()}원</b>
@@ -274,8 +293,86 @@ export default function PartnerSettlementDetailPage() {
           </motion.div>
         </div>
 
-        {/* 테이블 */}
-        <div style={{ overflowX: 'clip' }}>
+        {/* 모바일: 프로젝트별 그룹 카드 */}
+        <div className="sm:hidden">
+          {allItems.length === 0 ? (
+            <div className="py-20 text-center text-gray-400">
+              <Receipt className="mx-auto mb-3 text-gray-200" size={36} />
+              <p className="font-medium text-gray-500">정산 내역이 없어요</p>
+              <p className="text-xs mt-1">{selectedDate.year}년 {selectedDate.month}월에 해당하는 내역이 없습니다</p>
+            </div>
+          ) : (() => {
+            const grouped = new Map<string, typeof allItems>();
+            allItems.forEach(item => {
+              const key = item.project.id;
+              if (!grouped.has(key)) grouped.set(key, []);
+              grouped.get(key)!.push(item);
+            });
+            let globalIdx = 0;
+            return [...grouped.entries()].map(([projId, items], groupIdx) => {
+              const projTitle = items[0].project.title;
+              const projNet = items.reduce((s, { episode: ep }) => s + calcNetAmount(ep.budget?.partnerPayment ?? 0, partner.partnerType), 0);
+              return (
+                <div key={projId}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: groupIdx * 0.08, ease: 'easeOut' }}
+                    className="px-4 py-3 bg-[#fafaf9] border-b border-[#f0ece9] flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[13px] font-bold">{projTitle}</span>
+                      <span className="text-[10px] text-[#a8a29e]">{items.length}건</span>
+                    </div>
+                    <span className="text-[12px] font-bold text-blue-600 tabular-nums">{projNet.toLocaleString()}원</span>
+                  </motion.div>
+                  {items.map(({ episode: ep, project }, idx) => {
+                    const epAmount = ep.budget?.partnerPayment ?? 0;
+                    const epNet = calcNetAmount(epAmount, partner.partnerType);
+                    const taxAmount = Math.abs(epNet - epAmount);
+                    const dday = ep.paymentDueDate ? getDday(ep.paymentDueDate) : null;
+                    const itemIdx = globalIdx++;
+                    return (
+                      <motion.div
+                        key={ep.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: itemIdx * 0.05 + 0.1, ease: 'easeOut' }}
+                        onClick={() => openEdit(ep, project.title)}
+                        className="flex items-center justify-between px-4 pl-8 py-3 border-b border-[#f8f7f6] hover:bg-[#fafaf9] transition-colors cursor-pointer"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-[13px] font-semibold">
+                            {ep.episodeNumber}편 <span className="text-[#a8a29e] font-medium">{ep.title || ''}</span>
+                          </div>
+                          <div className="text-[10px] text-[#a8a29e] mt-1 flex items-center gap-1">
+                            {ep.paymentDueDate ? (
+                              <>
+                                {(() => { const d = new Date(ep.paymentDueDate); return `${d.getMonth()+1}.${d.getDate()}`; })()} 마감
+                                {dday && (
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${
+                                    dday.urgent ? 'bg-red-100 text-red-600' : 'bg-[#f5f5f4] text-[#a8a29e]'
+                                  }`}>{dday.label}</span>
+                                )}
+                              </>
+                            ) : '-'}
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0 ml-3">
+                          <div className="text-[14px] font-bold text-blue-600 tabular-nums">{epNet.toLocaleString()}</div>
+                          <div className="text-[10px] text-[#a8a29e] tabular-nums">{epAmount.toLocaleString()} {partner.partnerType === 'business' ? '+' : '−'}{taxAmount.toLocaleString()}</div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              );
+            });
+          })()}
+        </div>
+
+        {/* 데스크탑: 기존 테이블 */}
+        <div className="hidden sm:block" style={{ overflowX: 'clip' }}>
           <div className="min-w-[700px]">
             <div className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-2.5 text-[11px] font-semibold text-[#a8a29e] border-b border-[#f0ece9]">
               <span>프로젝트 · 회차</span>
@@ -336,9 +433,35 @@ export default function PartnerSettlementDetailPage() {
           </div>
         </div>
 
-        {/* 합계 */}
+        {/* 합계 — 모바일 */}
         {allItems.length > 0 && (
-          <div className="px-5 py-3.5 border-t border-[#f0ece9] bg-[#fafaf9] flex items-center justify-between">
+          <div className="sm:hidden px-4 py-3.5 border-t border-[#f0ece9] bg-[#fafaf9]">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] font-semibold text-[#78716c]">합계</span>
+                {partner.bank && partner.bankAccount ? (
+                  <button onClick={copyAccount} className="flex items-center gap-1.5 text-[10px] px-2 py-0.5 bg-white border border-[#ede9e6] rounded-lg hover:border-[#d6d3d1] transition-colors">
+                    <Landmark size={10} className="text-[#a8a29e]" />
+                    <span className="text-[#78716c]">{partner.bank} {partner.bankAccount}</span>
+                    {copiedId ? <Check size={10} className="text-green-500" /> : <Copy size={10} className="text-[#d6d3d1]" />}
+                  </button>
+                ) : (
+                  <Link href="/partners" className="text-[10px] px-2 py-0.5 bg-orange-50 text-orange-500 rounded-lg hover:bg-orange-100 transition-colors">
+                    계좌 미등록
+                  </Link>
+                )}
+              </div>
+              <span className="text-[11px] text-[#a8a29e] tabular-nums">{totalAmount.toLocaleString()} {partner.partnerType === 'business' ? '+' : '−'} {Math.abs(totalNetAmount - totalAmount).toLocaleString()}</span>
+            </div>
+            <div className="flex items-center justify-between px-3.5 py-2.5 bg-white rounded-[10px] border border-[#f0ece9]">
+              <span className="text-[12px] font-semibold text-[#78716c]">실 지급액</span>
+              <span className="text-[20px] font-extrabold text-blue-600 tabular-nums tracking-tight">{totalNetAmount.toLocaleString()}<span className="text-[11px] font-medium ml-0.5">원</span></span>
+            </div>
+          </div>
+        )}
+        {/* 합계 — 데스크탑 */}
+        {allItems.length > 0 && (
+          <div className="hidden sm:flex px-5 py-3.5 border-t border-[#f0ece9] bg-[#fafaf9] items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-[13px] font-semibold text-[#78716c]">합계</span>
               {partner.bank && partner.bankAccount ? (

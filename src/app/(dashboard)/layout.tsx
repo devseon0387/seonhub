@@ -922,7 +922,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           transition: 'margin-left 0.2s cubic-bezier(0.4,0,0.2,1)',
         }}
       >
-        <div className="p-4 sm:p-6 lg:p-8">
+        <div className="p-4 sm:p-6 lg:p-8 pb-24 sm:pb-6 lg:pb-8">
           <DashboardContent>{children}</DashboardContent>
         </div>
       </main>
