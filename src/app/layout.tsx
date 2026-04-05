@@ -20,6 +20,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "VIMO ERP",
   description: "영상 제작 프로젝트 관리 시스템",
+  metadataBase: new URL('https://video-moment.vercel.app'),
+  openGraph: {
+    title: 'VIMO ERP',
+    description: '영상 제작 프로젝트 관리 시스템',
+    type: 'website',
+  },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
