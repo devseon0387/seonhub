@@ -71,20 +71,22 @@ export default function SettlementPage() {
     return map;
   }, [allEpisodes]);
 
-  // 통합 정산 데이터
+  // 통합 정산 데이터 (아카이브 프로젝트 제외)
+  const activeProjects = useMemo(() => projects.filter(p => p.status !== 'archived'), [projects]);
+
   const rows: SettlementRow[] = useMemo(() => {
     const result: SettlementRow[] = [];
 
     // 매니저 ID 목록 (매니저로 등록된 프로젝트가 있는 사람)
     const managerIds = new Set(
-      partners.filter(p => projects.some(proj => proj.managerIds?.includes(p.id))).map(p => p.id)
+      partners.filter(p => activeProjects.some(proj => proj.managerIds?.includes(p.id))).map(p => p.id)
     );
 
     // 파트너 정산 — 매니저인 사람은 제외
     partners.forEach(partner => {
       if (managerIds.has(partner.id)) return; // 매니저는 파트너 행에서 제외
 
-      const partnerProjects = projects.filter(p => p.partnerIds?.includes(partner.id) || p.partnerId === partner.id);
+      const partnerProjects = activeProjects.filter(p => p.partnerIds?.includes(partner.id) || p.partnerId === partner.id);
       let totalAmount = 0, paidAmount = 0, episodeCount = 0;
       const projectIds = new Set<string>();
       const unpaidDueDates: string[] = [];
@@ -108,7 +110,7 @@ export default function SettlementPage() {
       if (episodeCount > 0) {
         const today = new Date().toISOString().slice(0, 10);
         const sorted = unpaidDueDates.sort((a, b) => Math.abs(new Date(a).getTime() - new Date(today).getTime()) - Math.abs(new Date(b).getTime() - new Date(today).getTime()));
-        const projectNames = [...projectIds].map(id => projects.find(p => p.id === id)?.title || '').filter(Boolean);
+        const projectNames = [...projectIds].map(id => activeProjects.find(p => p.id === id)?.title || '').filter(Boolean);
         result.push({
           person: partner, type: 'partner', episodeCount,
           projectNames, totalAmount, paidAmount, unpaidAmount: totalAmount - paidAmount,
@@ -127,7 +129,7 @@ export default function SettlementPage() {
       const unpaidDueDates: string[] = [];
 
       // 매니징 비용 (manager로 배정된 에피소드)
-      projects.forEach(project => {
+      activeProjects.forEach(project => {
         const episodes = (episodesMap[project.id] || []).filter(
           ep => (ep.manager === manager.id || ep.manager === manager.name) && ep.paymentDueDate?.slice(0, 7) === selectedYM
         );
@@ -144,7 +146,7 @@ export default function SettlementPage() {
       });
 
       // 작업 비용 (매니저가 assignee인 모든 에피소드)
-      projects.forEach(project => {
+      activeProjects.forEach(project => {
         const episodes = (episodesMap[project.id] || []).filter(
           ep => (ep.assignee === manager.id || ep.assignee === manager.name) && ep.paymentDueDate?.slice(0, 7) === selectedYM
         );
@@ -161,7 +163,7 @@ export default function SettlementPage() {
       if (episodeCount > 0 || workTotal > 0) {
         const today = new Date().toISOString().slice(0, 10);
         const sorted = unpaidDueDates.sort((a, b) => Math.abs(new Date(a).getTime() - new Date(today).getTime()) - Math.abs(new Date(b).getTime() - new Date(today).getTime()));
-        const projectNames = [...projectIds].map(id => projects.find(p => p.id === id)?.title || '').filter(Boolean);
+        const projectNames = [...projectIds].map(id => activeProjects.find(p => p.id === id)?.title || '').filter(Boolean);
         result.push({
           person: manager, type: 'manager', episodeCount,
           projectNames, totalAmount, paidAmount, unpaidAmount: totalAmount - paidAmount,
@@ -176,7 +178,7 @@ export default function SettlementPage() {
       if (a.type !== b.type) return a.type === 'partner' ? -1 : 1;
       return b.totalAmount - a.totalAmount;
     });
-  }, [partners, projects, episodesMap, selectedYM, selectedDate]);
+  }, [partners, activeProjects, episodesMap, selectedYM, selectedDate]);
 
   const filtered = filter === 'all' ? rows : rows.filter(r => r.type === filter);
   const grandTotal = filtered.reduce((s, r) => s + r.totalAmount, 0);
