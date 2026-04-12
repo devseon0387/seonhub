@@ -42,12 +42,13 @@ const SECTIONS: Section[] = [
       { type: 'link', href: '/management', label: '매니지먼트', icon: ClipboardCheck  },
       { type: 'link', href: '/projects',   label: '프로젝트',   icon: FolderOpen      },
       { type: 'divider' },
-      { type: 'link', href: '/finance/partner-settlement', label: '정산 관리', icon: Users, badge: 'test' },
+      { type: 'link', href: '/finance/partner-settlement', label: '정산 관리', icon: Users },
       { type: 'divider' },
       { type: 'link', href: '/clients',    label: '클라이언트 관리', icon: Briefcase       },
       { type: 'link', href: '/partners',   label: '파트너 관리',     icon: Users           },
       { type: 'divider' },
-      { type: 'link', href: '/feedback',   label: '개선사항',   icon: MessageSquarePlus },
+      { type: 'link', href: '/feedback',   label: '피드백',   icon: MessageSquarePlus },
+      { type: 'link', href: '/updates',    label: '업데이트', icon: Megaphone },
     ],
   },
   {
@@ -57,7 +58,7 @@ const SECTIONS: Section[] = [
     items: [
       { type: 'link', href: '/finance/invoices',   label: '세금계산서',   icon: FileText,   badge: '준비중' },
       { type: 'link', href: '/finance/payments',   label: '입금 관리',    icon: Receipt,    badge: '준비중' },
-      { type: 'link', href: '/finance/expenses',   label: '지출 관리',    icon: CreditCard, badge: '준비중' },
+      { type: 'link', href: '/finance/expenses',   label: '지출 관리',    icon: CreditCard },
       { type: 'divider' },
       { type: 'link', href: '/settlement', label: '정산',       icon: Receipt, badge: '준비중', sub: [
         { href: '/settlement/history', label: '월별 내역', icon: Calendar },
@@ -759,8 +760,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             {breadcrumbProject}
                           </Link>
                         )}
-                        <span style={{ color: '#d6cec8' }}>/</span>
-                        <span style={{ fontWeight: 600, color: '#1c1917' }}>{breadcrumbEpisode}</span>
+                        <span style={{ color: '#d6cec8' }} className="hidden sm:inline">/</span>
+                        <span style={{ fontWeight: 600, color: '#1c1917' }} className="hidden sm:inline">{breadcrumbEpisode}</span>
                       </>
                     )}
                   </div>
@@ -922,7 +923,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           transition: 'margin-left 0.2s cubic-bezier(0.4,0,0.2,1)',
         }}
       >
-        <div className="p-4 sm:p-6 lg:p-8">
+        <div className="p-4 sm:p-6 lg:p-8 pb-24 sm:pb-6 lg:pb-8">
           <DashboardContent>{children}</DashboardContent>
         </div>
       </main>

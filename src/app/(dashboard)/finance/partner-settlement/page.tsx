@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Receipt, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Project, Partner, Episode } from '@/types';
 import { getProjects, getPartners, getAllEpisodes } from '@/lib/supabase/db';
@@ -71,20 +71,22 @@ export default function SettlementPage() {
     return map;
   }, [allEpisodes]);
 
-  // 통합 정산 데이터
+  // 통합 정산 데이터 (아카이브 프로젝트 제외)
+  const activeProjects = useMemo(() => projects.filter(p => p.status !== 'archived'), [projects]);
+
   const rows: SettlementRow[] = useMemo(() => {
     const result: SettlementRow[] = [];
 
     // 매니저 ID 목록 (매니저로 등록된 프로젝트가 있는 사람)
     const managerIds = new Set(
-      partners.filter(p => projects.some(proj => proj.managerIds?.includes(p.id))).map(p => p.id)
+      partners.filter(p => activeProjects.some(proj => proj.managerIds?.includes(p.id))).map(p => p.id)
     );
 
     // 파트너 정산 — 매니저인 사람은 제외
     partners.forEach(partner => {
       if (managerIds.has(partner.id)) return; // 매니저는 파트너 행에서 제외
 
-      const partnerProjects = projects.filter(p => p.partnerIds?.includes(partner.id) || p.partnerId === partner.id);
+      const partnerProjects = activeProjects.filter(p => p.partnerIds?.includes(partner.id) || p.partnerId === partner.id);
       let totalAmount = 0, paidAmount = 0, episodeCount = 0;
       const projectIds = new Set<string>();
       const unpaidDueDates: string[] = [];
@@ -108,7 +110,7 @@ export default function SettlementPage() {
       if (episodeCount > 0) {
         const today = new Date().toISOString().slice(0, 10);
         const sorted = unpaidDueDates.sort((a, b) => Math.abs(new Date(a).getTime() - new Date(today).getTime()) - Math.abs(new Date(b).getTime() - new Date(today).getTime()));
-        const projectNames = [...projectIds].map(id => projects.find(p => p.id === id)?.title || '').filter(Boolean);
+        const projectNames = [...projectIds].map(id => activeProjects.find(p => p.id === id)?.title || '').filter(Boolean);
         result.push({
           person: partner, type: 'partner', episodeCount,
           projectNames, totalAmount, paidAmount, unpaidAmount: totalAmount - paidAmount,
@@ -127,7 +129,7 @@ export default function SettlementPage() {
       const unpaidDueDates: string[] = [];
 
       // 매니징 비용 (manager로 배정된 에피소드)
-      projects.forEach(project => {
+      activeProjects.forEach(project => {
         const episodes = (episodesMap[project.id] || []).filter(
           ep => (ep.manager === manager.id || ep.manager === manager.name) && ep.paymentDueDate?.slice(0, 7) === selectedYM
         );
@@ -144,7 +146,7 @@ export default function SettlementPage() {
       });
 
       // 작업 비용 (매니저가 assignee인 모든 에피소드)
-      projects.forEach(project => {
+      activeProjects.forEach(project => {
         const episodes = (episodesMap[project.id] || []).filter(
           ep => (ep.assignee === manager.id || ep.assignee === manager.name) && ep.paymentDueDate?.slice(0, 7) === selectedYM
         );
@@ -161,7 +163,7 @@ export default function SettlementPage() {
       if (episodeCount > 0 || workTotal > 0) {
         const today = new Date().toISOString().slice(0, 10);
         const sorted = unpaidDueDates.sort((a, b) => Math.abs(new Date(a).getTime() - new Date(today).getTime()) - Math.abs(new Date(b).getTime() - new Date(today).getTime()));
-        const projectNames = [...projectIds].map(id => projects.find(p => p.id === id)?.title || '').filter(Boolean);
+        const projectNames = [...projectIds].map(id => activeProjects.find(p => p.id === id)?.title || '').filter(Boolean);
         result.push({
           person: manager, type: 'manager', episodeCount,
           projectNames, totalAmount, paidAmount, unpaidAmount: totalAmount - paidAmount,
@@ -176,7 +178,7 @@ export default function SettlementPage() {
       if (a.type !== b.type) return a.type === 'partner' ? -1 : 1;
       return b.totalAmount - a.totalAmount;
     });
-  }, [partners, projects, episodesMap, selectedYM, selectedDate]);
+  }, [partners, activeProjects, episodesMap, selectedYM, selectedDate]);
 
   const filtered = filter === 'all' ? rows : rows.filter(r => r.type === filter);
   const grandTotal = filtered.reduce((s, r) => s + r.totalAmount, 0);
@@ -204,19 +206,19 @@ export default function SettlementPage() {
   return (
     <div className="space-y-5">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
+      <div className="space-y-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">정산 관리</h1>
           <p className="text-gray-500 mt-1 text-sm">{selectedDate.year}년 {selectedDate.month}월</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* 탭 */}
-          <div className="inline-flex gap-1 p-1 bg-white border border-[#ede9e6] rounded-xl">
+          <div className="inline-flex gap-0.5 sm:gap-1 p-1 bg-white border border-[#ede9e6] rounded-xl">
             {tabs.map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setFilter(tab.key)}
-                className="relative px-4 py-2 rounded-lg text-[13px] font-semibold"
+                className="relative px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[12px] sm:text-[13px] font-semibold"
               >
                 {filter === tab.key && (
                   <motion.div
@@ -256,15 +258,15 @@ export default function SettlementPage() {
       </div>
 
       {/* 통합 카드: 통계 + 테이블 */}
-      <div className="bg-white rounded-2xl border border-gray-100" style={{ overflow: 'clip' }}>
+      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100" style={{ overflow: 'clip' }}>
         {/* 통계 바 */}
-        <div className="px-5 py-4 border-b border-[#f0ece9]">
+        <div className="px-3 sm:px-5 py-3 sm:py-4 border-b border-[#f0ece9]">
           <div className="flex items-baseline justify-between mb-1.5">
-            <motion.span key={`label-${selectedYM}-${filter}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-[13px] text-[#a8a29e]">
+            <motion.span key={`label-${selectedYM}-${filter}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-[11px] sm:text-[13px] text-[#a8a29e]">
               총 지급 예정 · {filtered.length}명{unpaidCount > 0 ? ` 중 ${unpaidCount}명 미지급` : ''}
             </motion.span>
-            <motion.span key={`total-${selectedYM}-${filter}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' }} className="text-[22px] font-extrabold tracking-tight">
-              {grandTotal.toLocaleString()}<span className="text-[13px] text-[#78716c] font-medium ml-0.5">원</span>
+            <motion.span key={`total-${selectedYM}-${filter}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' }} className="text-[18px] sm:text-[22px] font-extrabold tracking-tight">
+              {grandTotal.toLocaleString()}<span className="text-[11px] sm:text-[13px] text-[#78716c] font-medium ml-0.5">원</span>
             </motion.span>
           </div>
           <div className="h-[6px] bg-[#f0ece9] rounded-full overflow-hidden flex gap-0.5 mb-1.5">
@@ -293,9 +295,9 @@ export default function SettlementPage() {
           </div>
         ) : (
           <div style={{ overflowX: 'clip' }}>
-            <div className="min-w-[600px]">
-              {/* 테이블 헤더 */}
-              <div className="grid grid-cols-[1fr_1fr_110px_110px_80px_70px] gap-3 px-5 py-2.5 text-[11px] font-semibold text-[#a8a29e] border-b border-[#f0ece9]">
+            <div>
+              {/* 테이블 헤더 (데스크탑) */}
+              <div className="hidden sm:grid grid-cols-[1fr_1fr_110px_110px_80px_70px] gap-3 px-5 py-2.5 text-[11px] font-semibold text-[#a8a29e] border-b border-[#f0ece9]">
                 <span>이름</span>
                 <span>프로젝트</span>
                 <span className="text-right">정산 금액</span>
@@ -322,44 +324,75 @@ export default function SettlementPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: idx * 0.05, ease: 'easeOut' }}
                       >
+                      {/* 모바일: C안 카드형 */}
                       <Link
                         href={row.detailHref}
-                        className="grid grid-cols-[1fr_1fr_110px_110px_80px_70px] gap-3 px-5 py-3.5 items-center hover:bg-[#fafaf9] transition-colors cursor-pointer"
+                        className="flex sm:hidden items-center justify-between px-4 py-3.5 hover:bg-[#fafaf9] transition-colors cursor-pointer"
                       >
-                        {/* 이름 + 구분 */}
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
-                            row.type === 'manager' ? 'bg-purple-500 text-white' : 'bg-orange-500 text-white'
+                        <div className="flex items-center gap-[10px] min-w-0">
+                          <div className={`w-[34px] h-[34px] rounded-full flex items-center justify-center flex-shrink-0 ${
+                            row.type === 'manager' ? 'bg-purple-500' : 'bg-orange-500'
                           }`}>
-                            {row.person.name.charAt(0)}
+                            <User size={16} className="text-white" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-[6px]">
+                              <span className="text-[15px] font-bold text-gray-900">{row.person.name}</span>
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0 ${
+                                row.type === 'manager' ? 'bg-purple-50 text-purple-600' : 'bg-[#fff7ed] text-orange-500'
+                              }`}>
+                                {row.type === 'manager' ? '매니저' : '파트너'}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-[#a8a29e]">
+                              {row.episodeCount > 0 && `${row.episodeCount}회차`}{row.episodeCount > 0 && projLabel && ' · '}{projLabel}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0 ml-3">
+                          <div className={`text-[16px] font-extrabold tabular-nums ${row.unpaidAmount > 0 ? 'text-[#ea580c]' : 'text-[#16a34a]'}`}>
+                            {row.unpaidAmount > 0 ? row.unpaidAmount.toLocaleString() : '0'}<span className={`text-[11px] font-medium ${row.unpaidAmount > 0 ? 'text-[#ea580c]' : 'text-[#16a34a]'}`}>원</span>
+                          </div>
+                          <div className={`text-[10px] ${row.unpaidAmount > 0 ? 'text-[#a8a29e]' : 'text-[#16a34a]'}`}>
+                            {row.unpaidAmount > 0
+                              ? row.nearestDueDate
+                                ? `미지급 · ${(() => { const d = new Date(row.nearestDueDate); return `${d.getMonth()+1}.${d.getDate()}`; })()} 예정`
+                                : '미지급'
+                              : '완료'}
+                          </div>
+                        </div>
+                      </Link>
+                      {/* 데스크탑: 기존 테이블 행 */}
+                      <Link
+                        href={row.detailHref}
+                        className="hidden sm:grid grid-cols-[1fr_1fr_110px_110px_80px_70px] gap-3 px-5 py-3.5 items-center hover:bg-[#fafaf9] transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            row.type === 'manager' ? 'bg-purple-500' : 'bg-orange-500'
+                          }`}>
+                            <User size={14} className="text-white" />
                           </div>
                           <span className="text-[14px] font-semibold text-gray-900 truncate">{row.person.name}</span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0 ${
-                            row.type === 'manager'
-                              ? 'bg-purple-50 text-purple-600'
-                              : 'bg-[#fff7ed] text-orange-500'
+                            row.type === 'manager' ? 'bg-purple-50 text-purple-600' : 'bg-[#fff7ed] text-orange-500'
                           }`}>
                             {row.type === 'manager' ? '매니저' : '파트너'}
                           </span>
                         </div>
-                        {/* 프로젝트 */}
                         <div className="flex items-center gap-1.5 min-w-0">
                           {projLabel && (
                             <span className="text-[12px] text-[#44403c] font-medium truncate">{projLabel}</span>
                           )}
                           <span className="text-[11px] text-[#a8a29e] flex-shrink-0">{row.episodeCount}회차</span>
                         </div>
-                        {/* 정산 금액 */}
                         <span className="text-[14px] font-semibold text-gray-900 text-right tabular-nums">{row.totalAmount.toLocaleString()}</span>
-                        {/* 대기 금액 */}
                         <span className={`text-[14px] text-right font-semibold tabular-nums ${row.unpaidAmount > 0 ? 'text-orange-500' : 'text-[#a8a29e]'}`}>
                           {row.unpaidAmount > 0 ? row.unpaidAmount.toLocaleString() : '0'}
                         </span>
-                        {/* 정산일 */}
                         <span className="text-[12px] text-right tabular-nums text-[#a8a29e]">
                           {row.nearestDueDate ? (() => { const d = new Date(row.nearestDueDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })() : '-'}
                         </span>
-                        {/* 상태 */}
                         <div className="text-right">
                           {row.unpaidAmount > 0 ? (
                             <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#fff7ed] text-orange-500 font-semibold">미지급</span>

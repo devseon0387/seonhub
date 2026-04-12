@@ -143,9 +143,18 @@ function getPageActions(pathname: string): FABAction[] {
   return common;
 }
 
+// 정산 상세 페이지에서는 FAB 숨김
+function shouldHideFAB(pathname: string): boolean {
+  if (/^\/finance\/partner-settlement\/[^/]+/.test(pathname)) return true;
+  if (/^\/finance\/manager-settlement\/[^/]+/.test(pathname)) return true;
+  return false;
+}
+
 export default function GlobalFAB() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+
+  if (shouldHideFAB(pathname)) return null;
 
   const actions = getPageActions(pathname);
 

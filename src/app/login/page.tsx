@@ -281,7 +281,7 @@ export default function LoginPage() {
             transition: 'all 0.6s cubic-bezier(0.16,1,0.3,1)',
           }}>
             <img
-              src="/logo.png"
+              src="/logo.png?v=2"
               alt="비모 ERP"
               style={{
                 width: '120px', height: 'auto',

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { ArrowLeft, Briefcase, Users, ClipboardCheck, Wallet, ArrowRight, ChevronDown, Receipt, Calendar } from 'lucide-react';
+import { ArrowLeft, Briefcase, Users, ClipboardCheck, Wallet, ChevronDown, Receipt, Calendar } from 'lucide-react';
 import { Project, Partner, Client } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getProjects, getPartners, getClients } from '@/lib/supabase/db';
@@ -31,18 +31,10 @@ export default function SettlementHistoryPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'client' | 'partner' | 'manager'>('client');
-  const [tabDirection, setTabDirection] = useState(1);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   const toggleGroup = (id: string) => setOpenGroups(prev => ({ ...prev, [id]: !prev[id] }));
-  const isGroupOpen = (id: string) => openGroups[id] !== false;
-
-  const TAB_ORDER = ['client', 'partner', 'manager'] as const;
-  const switchTab = (tab: 'client' | 'partner' | 'manager') => {
-    setTabDirection(TAB_ORDER.indexOf(tab) > TAB_ORDER.indexOf(activeTab) ? 1 : -1);
-    setActiveTab(tab);
-  };
+  const isGroupOpen = (id: string) => openGroups[id] === true;
 
   const loadData = useCallback(() => {
     Promise.all([getProjects(), getPartners(), getClients()]).then(
@@ -85,9 +77,9 @@ export default function SettlementHistoryPage() {
   // 선택된 월의 정산 계산
   const filteredProjects = currentMonthData?.projects ?? [];
 
-  const clientSettlements = useMemo(() => groupByClient(filteredProjects, clients), [filteredProjects, clients]);
+  const clientSettlements = useMemo(() => groupByClient(filteredProjects, clients).filter(s => s.totalAmount > 0), [filteredProjects, clients]);
 
-  const partnerSettlements = useMemo(() => groupByPartner(filteredProjects, partners), [filteredProjects, partners]);
+  const partnerSettlements = useMemo(() => groupByPartner(filteredProjects, partners).filter(s => s.totalAmount > 0), [filteredProjects, partners]);
 
   if (loading) {
     return (
@@ -137,7 +129,7 @@ export default function SettlementHistoryPage() {
                       <p className="text-xs text-gray-400">{mp.length}개 프로젝트</p>
                     </div>
                   </div>
-                  <ArrowRight size={16} className="text-gray-300 group-hover:text-orange-400 transition-colors" />
+                  <ChevronDown size={16} className="-rotate-90 text-gray-300 group-hover:text-orange-400 transition-colors" />
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
@@ -168,9 +160,12 @@ export default function SettlementHistoryPage() {
 
   // 월 선택 후 → 상세 정산 표시
   const md = currentMonthData!;
+  const partnerPct = md.clientTotal > 0 ? Math.round((md.partnerTotal / md.clientTotal) * 100) : 0;
+  const managerPct = md.clientTotal > 0 ? Math.round((md.managerTotal / md.clientTotal) * 100) : 0;
+  const marginPct = md.clientTotal > 0 ? Math.round((md.margin / md.clientTotal) * 100) : 0;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* 뒤로가기 + 헤더 */}
       <div>
         <button
@@ -180,272 +175,254 @@ export default function SettlementHistoryPage() {
           <ArrowLeft size={14} />
           월별 목록으로
         </button>
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold text-gray-900">{formatYearMonth(selectedMonth)} 정산</h1>
-          <span className="text-sm text-gray-400">{md.projects.length}개 프로젝트</span>
-        </div>
+        <h1 className="text-2xl font-extrabold text-gray-900">{formatYearMonth(selectedMonth)} 정산</h1>
+        <p className="text-sm text-gray-400 mt-0.5">{md.projects.length}개 프로젝트</p>
       </div>
 
-      {/* 정산 흐름 요약 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex-1 min-w-[100px]">
-            <p className="text-xs text-gray-400 mb-1 flex items-center gap-1.5">
-              <Briefcase size={11} className="text-orange-400" />클라이언트 수금
+      {/* 사이드바 + 본문 분할 레이아웃 */}
+      <div className="flex gap-5">
+        {/* 왼쪽: 고정 요약 사이드바 */}
+        <div className="w-[240px] flex-shrink-0 space-y-3 sticky top-6 self-start">
+          {/* 총 수금 */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <p className="text-[10px] font-bold text-[#a8a29e] uppercase tracking-wider mb-3">총 수금</p>
+            <p className="text-[32px] font-extrabold text-gray-900 tracking-tight leading-none">
+              {(md.clientTotal / 10000).toFixed(0)}<span className="text-[14px] text-gray-400 font-semibold ml-0.5">만원</span>
             </p>
-            <p className="text-xl font-bold text-orange-600">{(md.clientTotal / 10000).toFixed(0)}<span className="text-sm font-medium text-orange-300 ml-0.5">만원</span></p>
           </div>
-          <ArrowRight size={14} className="text-gray-200 flex-shrink-0" />
-          <div className="flex-1 min-w-[100px]">
-            <p className="text-xs text-gray-400 mb-1 flex items-center gap-1.5">
-              <Users size={11} className="text-orange-400" />파트너 지급
-            </p>
-            <p className="text-xl font-bold text-orange-600">{(md.partnerTotal / 10000).toFixed(0)}<span className="text-sm font-medium text-orange-300 ml-0.5">만원</span></p>
-          </div>
-          <ArrowRight size={14} className="text-gray-200 flex-shrink-0" />
-          <div className="flex-1 min-w-[100px]">
-            <p className="text-xs text-gray-400 mb-1 flex items-center gap-1.5">
-              <ClipboardCheck size={11} className="text-orange-400" />매니저 지급
-            </p>
-            <p className="text-xl font-bold text-orange-500">{(md.managerTotal / 10000).toFixed(0)}<span className="text-sm font-medium text-orange-300 ml-0.5">만원</span></p>
-          </div>
-          <ArrowRight size={14} className="text-gray-200 flex-shrink-0" />
-          <div className="flex-1 min-w-[100px]">
-            <p className="text-xs text-gray-400 mb-1 flex items-center gap-1.5">
-              <Wallet size={11} className="text-emerald-400" />유보금
-            </p>
-            <p className="text-xl font-bold text-emerald-600">{(md.margin / 10000).toFixed(0)}<span className="text-sm font-medium text-emerald-300 ml-0.5">만원</span></p>
-          </div>
-        </div>
-      </div>
 
-      {/* 탭 네비게이션 */}
-      <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-200 inline-flex gap-2">
-        {([
-          { key: 'client'  as const, icon: Briefcase,     label: '클라이언트 정산' },
-          { key: 'partner' as const, icon: Users,          label: '파트너 정산' },
-          { key: 'manager' as const, icon: ClipboardCheck, label: '매니저 정산' },
-        ]).map(({ key, icon: Icon, label }) => (
-          <button key={key} onClick={() => switchTab(key)} className="relative px-6 py-3 rounded-xl font-semibold">
-            {activeTab === key && (
-              <motion.div
-                layoutId="history-tab-pill"
-                className="absolute inset-0 bg-orange-500 rounded-xl shadow-lg shadow-orange-500/30"
-                transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              />
-            )}
-            <div className={`relative flex items-center gap-2 transition-colors duration-200 ${activeTab === key ? 'text-white' : 'text-gray-600 hover:text-gray-900'}`}>
-              <Icon size={18} />
-              <span>{label}</span>
-            </div>
-          </button>
-        ))}
-      </div>
-
-      {/* 탭 콘텐츠 */}
-      <div style={{ overflowX: 'clip' }}>
-        <AnimatePresence mode="wait" custom={tabDirection}>
-          <motion.div
-            key={activeTab}
-            custom={tabDirection}
-            variants={{
-              enter: (dir: number) => ({ x: dir > 0 ? 50 : -50, opacity: 0 }),
-              center: { x: 0, opacity: 1 },
-              exit:  (dir: number) => ({ x: dir > 0 ? -50 : 50, opacity: 0 }),
-            }}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
-          >
-
-          {/* 클라이언트 정산 */}
-          {activeTab === 'client' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Briefcase size={16} className="text-orange-500" />
-                  <h2 className="font-semibold text-gray-900">클라이언트별 정산 내역</h2>
-                </div>
-                {clientSettlements.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 font-bold">{clientSettlements.length}개</span>
-                )}
+          {/* 지출 구성 */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+            <p className="text-[10px] font-bold text-[#a8a29e] uppercase tracking-wider">지출 구성</p>
+            <div>
+              <div className="flex justify-between items-baseline mb-1.5">
+                <span className="text-[12px] text-gray-600 font-medium flex items-center gap-1.5"><Users size={11} className="text-orange-400" />파트너</span>
+                <span className="text-[14px] font-bold text-gray-900">{(md.partnerTotal / 10000).toFixed(0)}만</span>
               </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <motion.div initial={{ width: 0 }} animate={{ width: `${partnerPct}%` }} transition={{ duration: 0.6 }} className="h-full bg-orange-400 rounded-full" />
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">{partnerPct}% · {partnerSettlements.length}명</p>
+            </div>
+            <div>
+              <div className="flex justify-between items-baseline mb-1.5">
+                <span className="text-[12px] text-gray-600 font-medium flex items-center gap-1.5"><ClipboardCheck size={11} className="text-amber-400" />매니저</span>
+                <span className="text-[14px] font-bold text-gray-900">{(md.managerTotal / 10000).toFixed(0)}만</span>
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <motion.div initial={{ width: 0 }} animate={{ width: `${managerPct}%` }} transition={{ duration: 0.6, delay: 0.1 }} className="h-full bg-amber-400 rounded-full" />
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">{managerPct}%</p>
+            </div>
+            <div className="pt-3 border-t border-gray-100">
+              <div className="flex justify-between items-baseline">
+                <span className="text-[12px] text-emerald-600 font-semibold flex items-center gap-1.5"><Wallet size={11} />유보금</span>
+                <span className="text-[18px] font-extrabold text-emerald-600">{(md.margin / 10000).toFixed(0)}만</span>
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">마진율 {marginPct}%</p>
+            </div>
+          </div>
+        </div>
 
-              {clientSettlements.length === 0 ? (
-                <div className="py-20 text-center text-gray-400">
-                  <Receipt className="mx-auto mb-3 text-gray-200" size={36} />
-                  <p className="font-medium text-gray-500">이 달의 클라이언트 정산 내역이 없어요</p>
+        {/* 오른쪽: 상세 내역 */}
+        <div className="flex-1 space-y-4 min-w-0">
+          {/* 클라이언트 섹션 */}
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-orange-50 flex items-center justify-center">
+                  <Briefcase size={12} className="text-orange-500" />
                 </div>
-              ) : (
-                <>
-                  {clientSettlements.map(({ clientName, clientInfo, projects: cp, totalAmount }) => (
-                    <div key={clientName} className="divide-y divide-gray-50">
-                      <button
-                        onClick={() => toggleGroup(`c-${clientName}`)}
-                        className="w-full px-5 py-3 bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 flex-shrink-0 ${isGroupOpen(`c-${clientName}`) ? '' : '-rotate-90'}`} />
-                          <span className="text-sm font-semibold text-gray-800">{clientName}</span>
-                          {clientInfo?.company && <span className="text-xs text-gray-400">{clientInfo.company}</span>}
-                          <span className="text-xs text-gray-400">·</span>
-                          <span className="text-xs text-gray-400">{cp.length}건</span>
-                        </div>
-                        <span className="text-sm font-semibold text-gray-700">{(totalAmount / 10000).toFixed(0)}만원</span>
-                      </button>
-                      <AnimatePresence initial={false}>
-                        {isGroupOpen(`c-${clientName}`) && (
-                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
-                            {cp.map(project => {
-                              const sc = statusConfig[project.status] ?? statusConfig.planning;
-                              return (
-                                <div key={project.id} className="pl-10 pr-5 py-3 hover:bg-gray-50 transition-colors flex items-center justify-between border-t border-gray-50">
-                                  <div className="flex items-center gap-2.5 min-w-0">
-                                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sc.dot}`} />
-                                    <span className="text-sm text-gray-600 truncate">{project.title}</span>
-                                    <span className="text-xs text-gray-400 flex-shrink-0">{sc.label}</span>
-                                  </div>
-                                  <span className="text-sm text-gray-700 ml-4 flex-shrink-0">{(project.budget.totalAmount / 10000).toFixed(0)}만원</span>
-                                </div>
-                              );
-                            })}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  ))}
-                  <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-sm text-gray-500">총 수금 예정</span>
-                    <span className="text-sm font-semibold text-gray-800">{(md.clientTotal / 10000).toFixed(0)}만원</span>
-                  </div>
-                </>
+                <h2 className="text-[14px] font-bold text-gray-900">클라이언트별 수금</h2>
+              </div>
+              {clientSettlements.length > 0 && (
+                <span className="text-[11px] px-2.5 py-1 rounded-full bg-orange-50 text-orange-600 font-bold">{clientSettlements.length}개사</span>
               )}
             </div>
-          )}
 
-          {/* 파트너 정산 */}
-          {activeTab === 'partner' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users size={16} className="text-orange-500" />
-                  <h2 className="font-semibold text-gray-900">파트너별 정산 내역</h2>
-                </div>
-                {partnerSettlements.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 font-bold">{partnerSettlements.length}명</span>
-                )}
+            {clientSettlements.length === 0 ? (
+              <div className="py-16 text-center text-gray-400">
+                <Receipt className="mx-auto mb-3 text-gray-200" size={36} />
+                <p className="font-medium text-gray-500">클라이언트 정산 내역이 없어요</p>
               </div>
-
-              {partnerSettlements.length === 0 ? (
-                <div className="py-20 text-center text-gray-400">
-                  <Receipt className="mx-auto mb-3 text-gray-200" size={36} />
-                  <p className="font-medium text-gray-500">이 달의 파트너 정산 내역이 없어요</p>
-                </div>
-              ) : (
-                <>
-                  {partnerSettlements.map(({ partner, partnerProjects, totalAmount, projectCount }) => (
-                    <div key={partner.id} className="divide-y divide-gray-50">
-                      <button
-                        onClick={() => toggleGroup(`p-${partner.id}`)}
-                        className="w-full px-5 py-3 bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 flex-shrink-0 ${isGroupOpen(`p-${partner.id}`) ? '' : '-rotate-90'}`} />
-                          <span className="text-sm font-semibold text-gray-800">{partner.name}</span>
-                          {partner.email && <span className="text-xs text-gray-400">{partner.email}</span>}
-                          <span className="text-xs text-gray-400">·</span>
-                          <span className="text-xs text-gray-400">{projectCount}건</span>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {clientSettlements.map(({ clientName, clientInfo, projects: cp, totalAmount }) => (
+                  <div key={clientName}>
+                    <button
+                      onClick={() => toggleGroup(`c-${clientName}`)}
+                      className="w-full px-5 py-3.5 hover:bg-orange-50/30 transition-colors flex items-center justify-between cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-100 to-orange-50 flex items-center justify-center text-[11px] font-extrabold text-orange-600 flex-shrink-0">
+                          {clientName.charAt(0)}
                         </div>
-                        <span className="text-sm font-semibold text-gray-700">{(totalAmount / 10000).toFixed(0)}만원</span>
-                      </button>
-                      <AnimatePresence initial={false}>
-                        {isGroupOpen(`p-${partner.id}`) && (
-                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
-                            {partnerProjects.map(project => {
-                              const sc = statusConfig[project.status] ?? statusConfig.planning;
-                              return (
-                                <div key={project.id} className="pl-10 pr-5 py-3 hover:bg-gray-50 transition-colors flex items-center justify-between border-t border-gray-50">
-                                  <div className="flex items-center gap-2.5 min-w-0">
-                                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sc.dot}`} />
-                                    <span className="text-sm text-gray-600 truncate">{project.title}</span>
-                                    <span className="text-xs text-gray-400 flex-shrink-0">{project.client}</span>
-                                  </div>
-                                  <span className="text-sm text-gray-700 ml-4 flex-shrink-0">{(project.budget.partnerPayment / 10000).toFixed(0)}만원</span>
+                        <div className="text-left">
+                          <p className="text-[13px] font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">{clientName}</p>
+                          <p className="text-[11px] text-gray-400">
+                            {cp.length}건{clientInfo?.company ? ` · ${clientInfo.company}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[14px] font-bold text-gray-900">{(totalAmount / 10000).toFixed(0)}만원</span>
+                        <ChevronDown size={14} className={`text-gray-300 transition-transform duration-200 ${isGroupOpen(`c-${clientName}`) ? '' : '-rotate-90'}`} />
+                      </div>
+                    </button>
+                    <AnimatePresence initial={false}>
+                      {isGroupOpen(`c-${clientName}`) && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
+                          {cp.map(project => {
+                            const sc = statusConfig[project.status] ?? statusConfig.planning;
+                            return (
+                              <div key={project.id} className="pl-[60px] pr-5 py-2.5 hover:bg-gray-50 transition-colors flex items-center justify-between border-t border-gray-50">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sc.dot}`} />
+                                  <span className="text-[13px] text-gray-600 truncate">{project.title}</span>
+                                  <span className="text-[11px] text-gray-400 flex-shrink-0">{sc.label}</span>
                                 </div>
-                              );
-                            })}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  ))}
-                  <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-500">총 지급 예정</span>
-                    <span className="text-base font-bold text-orange-600">{(md.partnerTotal / 10000).toFixed(0)}만원</span>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* 매니저 정산 */}
-          {activeTab === 'manager' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ClipboardCheck size={16} className="text-orange-500" />
-                  <h2 className="font-semibold text-gray-900">프로젝트별 매니징 비용</h2>
-                </div>
-              </div>
-
-              {filteredProjects.length === 0 ? (
-                <div className="py-20 text-center text-gray-400">
-                  <Receipt className="mx-auto mb-3 text-gray-200" size={36} />
-                  <p className="font-medium text-gray-500">이 달의 매니저 정산 내역이 없어요</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <div className="min-w-[380px]">
-                    <div className="px-5 py-2.5 bg-gray-50 grid grid-cols-[1fr_72px_84px_60px] gap-3 text-xs font-semibold text-gray-400 border-b border-gray-100">
-                      <span>프로젝트</span>
-                      <span className="text-right">총 매출</span>
-                      <span className="text-right">매니징 비용</span>
-                      <span className="text-right">마진율</span>
-                    </div>
-                    <div className="divide-y divide-gray-50">
-                      {filteredProjects.map(project => {
-                        const sc = statusConfig[project.status] ?? statusConfig.planning;
-                        return (
-                          <div key={project.id} className="px-5 py-3.5 hover:bg-gray-50 transition-colors grid grid-cols-[1fr_72px_84px_60px] gap-3 items-center">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sc.dot}`} />
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">{project.title}</p>
-                                <p className="text-xs text-gray-400 mt-0.5">{project.client}</p>
+                                <span className="text-[13px] text-gray-700 ml-4 flex-shrink-0">{(project.budget.totalAmount / 10000).toFixed(0)}만원</span>
                               </div>
-                            </div>
-                            <p className="text-sm text-gray-600 text-right">{(project.budget.totalAmount / 10000).toFixed(0)}만</p>
-                            <p className="text-sm font-semibold text-orange-500 text-right">{(project.budget.managementFee / 10000).toFixed(0)}만원</p>
-                            <p className="text-sm font-semibold text-emerald-600 text-right">{project.budget.marginRate}%</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="px-5 py-4 border-t border-gray-100 grid grid-cols-[1fr_72px_84px_60px] gap-3 items-center">
-                      <span className="text-sm font-semibold text-gray-500">총 매니징 비용</span>
-                      <span className="text-sm text-gray-400 text-right">{(md.clientTotal / 10000).toFixed(0)}만</span>
-                      <span className="text-base font-bold text-orange-500 text-right">{(md.managerTotal / 10000).toFixed(0)}만원</span>
-                      <span></span>
-                    </div>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
+                ))}
+                <div className="px-5 py-4 bg-gray-50/50 flex items-center justify-between">
+                  <span className="text-[13px] font-semibold text-gray-500">총 수금 예정</span>
+                  <span className="text-[14px] font-extrabold text-gray-900">{(md.clientTotal / 10000).toFixed(0)}만원</span>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* 파트너 섹션 */}
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <Users size={12} className="text-blue-500" />
+                </div>
+                <h2 className="text-[14px] font-bold text-gray-900">파트너별 지급</h2>
+              </div>
+              {partnerSettlements.length > 0 && (
+                <span className="text-[11px] px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 font-bold">{partnerSettlements.length}명</span>
               )}
             </div>
-          )}
 
-          </motion.div>
-        </AnimatePresence>
+            {partnerSettlements.length === 0 ? (
+              <div className="py-16 text-center text-gray-400">
+                <Receipt className="mx-auto mb-3 text-gray-200" size={36} />
+                <p className="font-medium text-gray-500">파트너 정산 내역이 없어요</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {partnerSettlements.map(({ partner, partnerProjects, totalAmount, projectCount }) => (
+                  <div key={partner.id}>
+                    <button
+                      onClick={() => toggleGroup(`p-${partner.id}`)}
+                      className="w-full px-5 py-3.5 hover:bg-blue-50/30 transition-colors flex items-center justify-between cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-600 flex-shrink-0">
+                          {partner.name.charAt(0)}
+                        </div>
+                        <div className="text-left">
+                          <p className="text-[13px] font-semibold text-gray-900">{partner.name}</p>
+                          <p className="text-[11px] text-gray-400">{projectCount}건{partner.email ? ` · ${partner.email}` : ''}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[14px] font-bold text-gray-900">{(totalAmount / 10000).toFixed(0)}만원</span>
+                        <ChevronDown size={14} className={`text-gray-300 transition-transform duration-200 ${isGroupOpen(`p-${partner.id}`) ? '' : '-rotate-90'}`} />
+                      </div>
+                    </button>
+                    <AnimatePresence initial={false}>
+                      {isGroupOpen(`p-${partner.id}`) && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
+                          {partnerProjects.map(project => {
+                            const sc = statusConfig[project.status] ?? statusConfig.planning;
+                            return (
+                              <div key={project.id} className="pl-[60px] pr-5 py-2.5 hover:bg-gray-50 transition-colors flex items-center justify-between border-t border-gray-50">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sc.dot}`} />
+                                  <span className="text-[13px] text-gray-600 truncate">{project.title}</span>
+                                  <span className="text-[11px] text-gray-400 flex-shrink-0">{project.client}</span>
+                                </div>
+                                <span className="text-[13px] text-gray-700 ml-4 flex-shrink-0">{(project.budget.partnerPayment / 10000).toFixed(0)}만원</span>
+                              </div>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                ))}
+                <div className="px-5 py-4 bg-gray-50/50 flex items-center justify-between">
+                  <span className="text-[13px] font-semibold text-gray-500">총 지급 예정</span>
+                  <span className="text-[14px] font-extrabold text-orange-600">{(md.partnerTotal / 10000).toFixed(0)}만원</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 매니저 섹션 */}
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-amber-50 flex items-center justify-center">
+                  <ClipboardCheck size={12} className="text-amber-500" />
+                </div>
+                <h2 className="text-[14px] font-bold text-gray-900">프로젝트별 매니징 비용</h2>
+              </div>
+            </div>
+
+            {filteredProjects.filter(p => p.budget.managementFee > 0).length === 0 ? (
+              <div className="py-16 text-center text-gray-400">
+                <Receipt className="mx-auto mb-3 text-gray-200" size={36} />
+                <p className="font-medium text-gray-500">매니저 정산 내역이 없어요</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="min-w-[380px]">
+                  <div className="px-5 py-2.5 bg-gray-50 grid grid-cols-[1fr_72px_84px_60px] gap-3 text-[10px] font-bold text-gray-400 border-b border-gray-100">
+                    <span>프로젝트</span>
+                    <span className="text-right">총 매출</span>
+                    <span className="text-right">매니징 비용</span>
+                    <span className="text-right">마진율</span>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {filteredProjects.filter(p => p.budget.managementFee > 0).map(project => {
+                      const sc = statusConfig[project.status] ?? statusConfig.planning;
+                      return (
+                        <div key={project.id} className="px-5 py-3.5 hover:bg-gray-50 transition-colors grid grid-cols-[1fr_72px_84px_60px] gap-3 items-center">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sc.dot}`} />
+                            <div className="min-w-0">
+                              <p className="text-[13px] font-medium text-gray-900 truncate">{project.title}</p>
+                              <p className="text-[11px] text-gray-400 mt-0.5">{project.client}</p>
+                            </div>
+                          </div>
+                          <p className="text-[13px] text-gray-600 text-right">{(project.budget.totalAmount / 10000).toFixed(0)}만</p>
+                          <p className="text-[13px] font-semibold text-orange-500 text-right">{(project.budget.managementFee / 10000).toFixed(0)}만원</p>
+                          <p className="text-[13px] font-semibold text-emerald-600 text-right">{project.budget.marginRate}%</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="px-5 py-4 bg-gray-50/50 grid grid-cols-[1fr_72px_84px_60px] gap-3 items-center">
+                    <span className="text-[13px] font-semibold text-gray-500">총 매니징 비용</span>
+                    <span className="text-[13px] text-gray-400 text-right">{(md.clientTotal / 10000).toFixed(0)}만</span>
+                    <span className="text-[14px] font-extrabold text-orange-500 text-right">{(md.managerTotal / 10000).toFixed(0)}만원</span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

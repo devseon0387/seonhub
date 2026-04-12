@@ -22,7 +22,7 @@ export interface Partner {
 }
 
 // 프로젝트 상태
-export type ProjectStatus = 'planning' | 'in_progress' | 'completed' | 'on_hold';
+export type ProjectStatus = 'planning' | 'in_progress' | 'completed' | 'on_hold' | 'archived';
 
 // 프로젝트 비용 정보
 export interface ProjectBudget {
@@ -127,15 +127,24 @@ export interface Episode {
 // 지출 카테고리
 export type ExpenseCategory = '운영비' | '장비' | '교통' | '식비' | '숙박' | '소프트웨어' | '기타';
 
+// 결제 유형
+export type PaymentType = 'one_time' | 'monthly' | 'yearly';
+
+// 구독 상태
+export type SubscriptionStatus = 'active' | 'cancelling' | 'cancelled';
+
 // 지출 타입
 export interface Expense {
   id: string;
   title: string;
   amount: number;
   category: ExpenseCategory;
+  paymentType: PaymentType;
   expenseDate: string;
+  nextRenewalDate?: string;
+  status: SubscriptionStatus;
+  cancelReason?: string;
   description?: string;
-  projectId?: string;
   spenderName?: string;
   createdAt: string;
   updatedAt: string;

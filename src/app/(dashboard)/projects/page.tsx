@@ -60,7 +60,14 @@ export default function ProjectsPage() {
     window.addEventListener('fab:action', handler);
     return () => window.removeEventListener('fab:action', handler);
   }, []);
-  const [activeFilter, setActiveFilter] = useState<'all' | ComputedProjectStatus>('active');
+  const [activeFilter, setActiveFilter] = useState<'all' | ComputedProjectStatus | 'standby_dormant' | 'archived'>('active');
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'amount' | 'name'>('recent');
 
@@ -100,7 +107,17 @@ export default function ProjectsPage() {
   const filteredAndSortedProjects = projects
     .filter(project => {
       // 필터 적용
-      if (activeFilter !== 'all' && projectStatusMap.get(project.id) !== activeFilter) return false;
+      // 아카이브 필터
+      if (activeFilter === 'archived') {
+        return project.status === 'archived';
+      }
+      // 아카이브 프로젝트는 '전체'에서도 제외
+      if (project.status === 'archived') return false;
+
+      if (activeFilter === 'standby_dormant') {
+        const s = projectStatusMap.get(project.id);
+        if (s !== 'standby' && s !== 'dormant') return false;
+      } else if (activeFilter !== 'all' && projectStatusMap.get(project.id) !== activeFilter) return false;
 
       // 검색 적용
       if (searchQuery) {
@@ -261,35 +278,41 @@ export default function ProjectsPage() {
       `}</style>
 
       {/* 헤더 */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">프로젝트</h1>
-          <p className="text-gray-500 mt-1 text-sm">진행 중인 프로젝트와 회차를 한눈에 관리하세요</p>
+          <p className="text-gray-500 mt-1 text-sm">진행 중인 프로젝트를 한눈에 관리하세요</p>
         </div>
         <button
           data-tour="tour-proj-new"
           onClick={() => setIsAddModalOpen(true)}
-          className="px-4 py-2.5 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors active:scale-[0.97] font-medium flex items-center justify-center gap-1.5 text-sm self-start sm:self-auto"
+          className="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors flex-shrink-0"
         >
-          <Plus size={16} />
-          새 프로젝트
+          + 새 프로젝트
         </button>
       </div>
 
       {/* 필터 탭 + 정렬 */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div data-tour="tour-proj-filters" className="bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-2 shadow-sm border border-gray-200 flex gap-1 sm:gap-2 overflow-x-auto scrollbar-hide w-fit max-w-full">
-          {([
-            { key: 'all' as const,      label: '전체',   count: projects.length },
-            { key: 'active' as const,   label: '진행 중', count: projects.filter(p => projectStatusMap.get(p.id) === 'active').length },
-            { key: 'standby' as const,  label: '대기',   count: projects.filter(p => projectStatusMap.get(p.id) === 'standby').length },
-            { key: 'dormant' as const,  label: '휴면',   count: projects.filter(p => projectStatusMap.get(p.id) === 'dormant').length },
-            { key: 'inactive' as const, label: '비활성', count: projects.filter(p => projectStatusMap.get(p.id) === 'inactive').length },
+        <div data-tour="tour-proj-filters" className="bg-white rounded-xl sm:rounded-2xl p-1 sm:p-2 shadow-sm border border-gray-200 flex gap-0.5 sm:gap-2 w-full sm:w-fit">
+          {(isMobile ? [
+            { key: 'all' as const,              label: '전체',       count: projects.length },
+            { key: 'active' as const,           label: '진행 중',    count: projects.filter(p => projectStatusMap.get(p.id) === 'active').length },
+            { key: 'standby_dormant' as const,  label: '대기·휴면',  count: projects.filter(p => { const s = projectStatusMap.get(p.id); return s === 'standby' || s === 'dormant'; }).length },
+            { key: 'inactive' as const,         label: '비활성',     count: projects.filter(p => p.status !== 'archived' && projectStatusMap.get(p.id) === 'inactive').length },
+            { key: 'archived' as const,         label: '아카이브',   count: projects.filter(p => p.status === 'archived').length },
+          ] : [
+            { key: 'all' as const,      label: '전체',   count: projects.filter(p => p.status !== 'archived').length },
+            { key: 'active' as const,   label: '진행 중', count: projects.filter(p => p.status !== 'archived' && projectStatusMap.get(p.id) === 'active').length },
+            { key: 'standby' as const,  label: '대기',   count: projects.filter(p => p.status !== 'archived' && projectStatusMap.get(p.id) === 'standby').length },
+            { key: 'dormant' as const,  label: '휴면',   count: projects.filter(p => p.status !== 'archived' && projectStatusMap.get(p.id) === 'dormant').length },
+            { key: 'inactive' as const, label: '비활성', count: projects.filter(p => p.status !== 'archived' && projectStatusMap.get(p.id) === 'inactive').length },
+            { key: 'archived' as const, label: '아카이브', count: projects.filter(p => p.status === 'archived').length },
           ]).map(({ key, label, count }) => (
             <button
               key={key}
               onClick={() => setActiveFilter(key)}
-              className="relative px-3 py-2.5 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl font-semibold flex-shrink-0"
+              className="relative flex-1 sm:flex-initial px-1.5 py-2 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl font-semibold"
             >
               {activeFilter === key && (
                 <motion.div
@@ -298,11 +321,11 @@ export default function ProjectsPage() {
                   transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                 />
               )}
-              <div className={`relative flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base transition-colors duration-200 ${
+              <div className={`relative flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-base transition-colors duration-200 ${
                 activeFilter === key ? 'text-white' : 'text-gray-600 hover:text-gray-900'
               }`}>
                 <span>{label}</span>
-                <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold transition-colors duration-200 ${
+                <span className={`text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 rounded-full font-bold transition-colors duration-200 ${
                   activeFilter === key ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
                 }`}>
                   {count}
@@ -313,15 +336,15 @@ export default function ProjectsPage() {
         </div>
 
         {/* 검색 + 정렬 */}
-        <div data-tour="tour-proj-search" className="flex items-center gap-2">
-          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5">
+        <div data-tour="tour-proj-search" className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex-1 sm:flex-initial flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5">
             <Search size={15} className="text-gray-400 flex-shrink-0" />
             <input
               type="text"
               placeholder="검색..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent focus:outline-none text-sm text-gray-700 placeholder-gray-400 w-36"
+              className="bg-transparent focus:outline-none text-sm text-gray-700 placeholder-gray-400 w-full sm:w-36"
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')} className="text-gray-300 hover:text-gray-500">

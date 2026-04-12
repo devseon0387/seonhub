@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Copy, Check, Landmark, Receipt, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { ArrowLeft, Copy, Check, Landmark, Receipt, ChevronLeft, ChevronRight, X, CheckCircle, Clock, Coins, Download } from 'lucide-react';
+import { toPng } from 'html-to-image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Project, Partner, Episode } from '@/types';
-import { getProjects, getPartners, getAllEpisodes } from '@/lib/supabase/db';
+import { getProjects, getPartners, getAllEpisodes, updateEpisodeFields } from '@/lib/supabase/db';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import Link from 'next/link';
+import DatePicker from '@/components/DatePicker';
 
 function calcNetAmount(amount: number, partnerType?: 'freelancer' | 'business') {
   if (partnerType === 'business') return Math.round(amount * 1.1);
@@ -36,6 +39,7 @@ function fmtDate(dateStr: string) {
 
 interface SettlementRow {
   id: string;
+  episodeId: string;
   type: 'management' | 'work';
   projectTitle: string;
   episodeNumber: number;
@@ -43,6 +47,9 @@ interface SettlementRow {
   amount: number;
   paymentDueDate?: string;
   paymentStatus?: string;
+  budgetTotal: number;
+  budgetPartner: number;
+  budgetManagement: number;
 }
 
 export default function ManagerSettlementDetailPage() {
@@ -54,6 +61,11 @@ export default function ManagerSettlementDetailPage() {
   const [allEpisodes, setAllEpisodes] = useState<(Episode & { projectId: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState(false);
+  const [editingRow, setEditingRow] = useState<SettlementRow | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editStatus, setEditStatus] = useState<'pending' | 'completed'>('pending');
+  const [saving, setSaving] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState(() => {
     const y = searchParams.get('year');
@@ -95,7 +107,7 @@ export default function ManagerSettlementDetailPage() {
       (episodesMap[project.id] || []).forEach(ep => {
         if ((ep.manager !== manager.id && ep.manager !== manager.name) || ep.paymentDueDate?.slice(0, 7) !== selectedYM) return;
         const amt = ep.budget?.managementFee ?? 0;
-        result.push({ id: `mgmt-${ep.id}`, type: 'management', projectTitle: project.title, episodeNumber: ep.episodeNumber, episodeTitle: ep.title || '', amount: amt, paymentDueDate: ep.paymentDueDate, paymentStatus: ep.paymentStatus });
+        result.push({ id: `mgmt-${ep.id}`, episodeId: ep.id, type: 'management', projectTitle: project.title, episodeNumber: ep.episodeNumber, episodeTitle: ep.title || '', amount: amt, paymentDueDate: ep.paymentDueDate, paymentStatus: ep.paymentStatus, budgetTotal: ep.budget?.totalAmount ?? 0, budgetPartner: ep.budget?.partnerPayment ?? 0, budgetManagement: ep.budget?.managementFee ?? 0 });
       });
     });
 
@@ -104,7 +116,7 @@ export default function ManagerSettlementDetailPage() {
       (episodesMap[project.id] || []).forEach(ep => {
         if ((ep.assignee !== manager.id && ep.assignee !== manager.name) || ep.paymentDueDate?.slice(0, 7) !== selectedYM) return;
         const amt = ep.budget?.partnerPayment ?? 0;
-        result.push({ id: `work-${ep.id}`, type: 'work', projectTitle: project.title, episodeNumber: ep.episodeNumber, episodeTitle: ep.title || '', amount: amt, paymentDueDate: ep.paymentDueDate, paymentStatus: ep.paymentStatus });
+        result.push({ id: `work-${ep.id}`, episodeId: ep.id, type: 'work', projectTitle: project.title, episodeNumber: ep.episodeNumber, episodeTitle: ep.title || '', amount: amt, paymentDueDate: ep.paymentDueDate, paymentStatus: ep.paymentStatus, budgetTotal: ep.budget?.totalAmount ?? 0, budgetPartner: ep.budget?.partnerPayment ?? 0, budgetManagement: ep.budget?.managementFee ?? 0 });
       });
     });
 
@@ -126,6 +138,74 @@ export default function ManagerSettlementDetailPage() {
       setCopiedId(true);
       setTimeout(() => setCopiedId(false), 2000);
     }
+  };
+
+  const openEdit = (row: SettlementRow) => {
+    setEditingRow(row);
+    setEditDate(row.paymentDueDate ?? '');
+    setEditAmount(String(row.amount));
+    setEditStatus(row.paymentStatus === 'completed' ? 'completed' : 'pending');
+  };
+
+  const handleSave = async () => {
+    if (!editingRow) return;
+    setSaving(true);
+    const newAmount = parseInt(editAmount) || 0;
+    const budget = editingRow.type === 'management'
+      ? { totalAmount: editingRow.budgetTotal, partnerPayment: editingRow.budgetPartner, managementFee: newAmount }
+      : { totalAmount: editingRow.budgetTotal, partnerPayment: newAmount, managementFee: editingRow.budgetManagement };
+    await updateEpisodeFields(editingRow.episodeId, {
+      paymentDueDate: editDate || undefined,
+      paymentStatus: editStatus,
+      budget,
+    });
+    setSaving(false);
+    setEditingRow(null);
+    loadData();
+  };
+
+  const exportRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (!exportRef.current || !manager) return;
+    setExporting(true);
+    try {
+      const el = exportRef.current;
+      // 캡처 순간만 화면에 표시
+      el.style.position = 'fixed';
+      el.style.left = '0';
+      el.style.top = '0';
+      el.style.zIndex = '9999';
+      await new Promise(r => setTimeout(r, 200));
+      const dataUrl = await toPng(el, { pixelRatio: 2, backgroundColor: '#ffffff', cacheBust: true });
+      el.style.position = 'fixed';
+      el.style.left = '-9999px';
+      el.style.zIndex = '-1';
+      const link = document.createElement('a');
+      link.download = `정산_${manager.name}_${selectedYM}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (e) {
+      console.error('Export failed:', e);
+    }
+    setExporting(false);
+  };
+
+  const hasUnpaid = rows.some(r => r.paymentStatus !== 'completed');
+
+  const handleCompleteAll = async () => {
+    const unpaidRows = rows.filter(r => r.paymentStatus !== 'completed');
+    if (unpaidRows.length === 0) return;
+    setSaving(true);
+    const seen = new Set<string>();
+    for (const row of unpaidRows) {
+      if (seen.has(row.episodeId)) continue;
+      seen.add(row.episodeId);
+      await updateEpisodeFields(row.episodeId, { paymentStatus: 'completed' });
+    }
+    setSaving(false);
+    loadData();
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" /></div>;
@@ -158,8 +238,8 @@ export default function ManagerSettlementDetailPage() {
         </div>
       </div>
 
-      {/* 월 이동 */}
-      <div>
+      {/* 월 이동 + 모두 정산 완료 */}
+      <div className="flex items-center gap-2">
         <div className="flex items-center gap-1 bg-white border border-[#ede9e6] rounded-[10px] px-1 py-1 w-fit">
           <button onClick={prevMonth} disabled={isMinMonth} className={`p-1.5 rounded-lg transition-colors ${isMinMonth ? 'invisible' : 'hover:bg-gray-100'}`}>
             <ChevronLeft size={14} className="text-[#a8a29e]" />
@@ -175,6 +255,24 @@ export default function ManagerSettlementDetailPage() {
             <ChevronRight size={14} className="text-[#a8a29e]" />
           </button>
         </div>
+        {hasUnpaid && (
+          <button
+            onClick={handleCompleteAll}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-3 py-2 bg-green-500 text-white rounded-xl text-[12px] font-semibold hover:bg-green-600 transition-colors disabled:opacity-50"
+          >
+            <CheckCircle size={14} />
+            {saving ? '처리 중...' : '모두 정산 완료'}
+          </button>
+        )}
+        <button
+          onClick={handleExport}
+          disabled={exporting || rows.length === 0}
+          className="flex items-center gap-1.5 px-3 py-2 bg-white border border-[#ede9e6] text-[#44403c] rounded-xl text-[12px] font-semibold hover:bg-[#fafaf9] transition-colors disabled:opacity-50"
+        >
+          <Download size={14} />
+          {exporting ? '내보내는 중...' : '내보내기'}
+        </button>
       </div>
 
       {/* 통합 카드: 통계 + 테이블 */}
@@ -232,7 +330,7 @@ export default function ManagerSettlementDetailPage() {
                           const dday = row.paymentDueDate ? getDday(row.paymentDueDate) : null;
                           return (
                             <motion.div key={row.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: idx * 0.03 }}>
-                              <div className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-3 items-center hover:bg-[#fafaf9] transition-colors">
+                              <div onClick={() => openEdit(row)} className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-3 items-center hover:bg-[#fafaf9] transition-colors cursor-pointer">
                                 <div className="min-w-0"><span className="text-[13px] font-semibold">{row.projectTitle}</span><span className="text-[12px] text-[#a8a29e] ml-1.5">{row.episodeNumber}편 {row.episodeTitle}</span></div>
                                 <div className="text-right whitespace-nowrap">{row.paymentDueDate ? (<div className="flex items-center justify-end gap-1.5"><span className="text-[12px] tabular-nums text-[#44403c]">{fmtDate(row.paymentDueDate)}</span>{dday && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${dday.urgent ? 'bg-red-100 text-red-600' : 'bg-[#f5f5f4] text-[#a8a29e]'}`}>{dday.label}</span>}</div>) : <span className="text-[12px] text-[#d6d3d1]">-</span>}</div>
                                 <span className="text-[14px] font-semibold text-right tabular-nums">{row.amount.toLocaleString()}</span>
@@ -278,7 +376,7 @@ export default function ManagerSettlementDetailPage() {
                           const dday = row.paymentDueDate ? getDday(row.paymentDueDate) : null;
                           return (
                             <motion.div key={row.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: idx * 0.03 }}>
-                              <div className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-3 items-center hover:bg-[#fafaf9] transition-colors">
+                              <div onClick={() => openEdit(row)} className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-3 items-center hover:bg-[#fafaf9] transition-colors cursor-pointer">
                                 <div className="min-w-0"><span className="text-[13px] font-semibold">{row.projectTitle}</span><span className="text-[12px] text-[#a8a29e] ml-1.5">{row.episodeNumber}편 {row.episodeTitle}</span></div>
                                 <div className="text-right whitespace-nowrap">{row.paymentDueDate ? (<div className="flex items-center justify-end gap-1.5"><span className="text-[12px] tabular-nums text-[#44403c]">{fmtDate(row.paymentDueDate)}</span>{dday && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${dday.urgent ? 'bg-red-100 text-red-600' : 'bg-[#f5f5f4] text-[#a8a29e]'}`}>{dday.label}</span>}</div>) : <span className="text-[12px] text-[#d6d3d1]">-</span>}</div>
                                 <span className="text-[14px] font-semibold text-right tabular-nums">{row.amount.toLocaleString()}</span>
@@ -326,6 +424,233 @@ export default function ManagerSettlementDetailPage() {
           </div>
         )}
       </div>
+      {/* A4 내보내기용 (Portal로 body에 렌더) */}
+      {typeof window !== 'undefined' && createPortal(
+      <div ref={exportRef} style={{ width: '794px', padding: '48px 40px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: '#fff', position: 'fixed', left: '-9999px', top: '0', zIndex: -1 }}>
+        {manager && (() => {
+          const mgmtRows = rows.filter(r => r.type === 'management');
+          const workRows = rows.filter(r => r.type === 'work');
+          const mgmtNet = calcNetAmount(managementTotal, manager.partnerType);
+          const workNet = calcNetAmount(workTotal, manager.partnerType);
+          const taxLabel = manager.partnerType === 'business' ? '부가세' : '원천징수';
+          const taxSign = manager.partnerType === 'business' ? '+' : '−';
+
+          const renderTable = (title: string, color: string, items: SettlementRow[], subtotal: number, subtotalNet: number) => (
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: color }} />
+                <span style={{ fontSize: '14px', fontWeight: 700 }}>{title}</span>
+                <span style={{ fontSize: '12px', color: '#a8a29e' }}>{items.length}건</span>
+                <span style={{ marginLeft: 'auto', fontSize: '14px', fontWeight: 700 }}>{subtotal.toLocaleString()}원</span>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #f0ece9' }}>
+                    <th style={{ textAlign: 'left', padding: '8px 6px', color: '#a8a29e', fontWeight: 600 }}>프로젝트 · 회차</th>
+                    <th style={{ textAlign: 'right', padding: '8px 6px', color: '#a8a29e', fontWeight: 600 }}>정산일</th>
+                    <th style={{ textAlign: 'right', padding: '8px 6px', color: '#a8a29e', fontWeight: 600 }}>금액</th>
+                    <th style={{ textAlign: 'right', padding: '8px 6px', color: '#a8a29e', fontWeight: 600 }}>{taxLabel}</th>
+                    <th style={{ textAlign: 'right', padding: '8px 6px', color: '#a8a29e', fontWeight: 600 }}>실 수령</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map(row => {
+                    const epNet = calcNetAmount(row.amount, manager.partnerType);
+                    const tax = Math.abs(epNet - row.amount);
+                    return (
+                      <tr key={row.id} style={{ borderBottom: '1px solid #f5f4f2' }}>
+                        <td style={{ padding: '10px 6px' }}>
+                          <span style={{ fontWeight: 600 }}>{row.projectTitle}</span>
+                          <span style={{ color: '#a8a29e', marginLeft: '6px' }}>{row.episodeNumber}편 {row.episodeTitle}</span>
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '10px 6px', color: '#44403c' }}>{row.paymentDueDate ? fmtDate(row.paymentDueDate) : '-'}</td>
+                        <td style={{ textAlign: 'right', padding: '10px 6px', fontWeight: 600 }}>{row.amount.toLocaleString()}</td>
+                        <td style={{ textAlign: 'right', padding: '10px 6px', color: '#a8a29e' }}>{taxSign}{tax.toLocaleString()}</td>
+                        <td style={{ textAlign: 'right', padding: '10px 6px', fontWeight: 700, color: '#2563eb' }}>{epNet.toLocaleString()}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr style={{ borderTop: '2px solid #f0ece9', background: '#fafaf9' }}>
+                    <td style={{ padding: '10px 6px', fontWeight: 600, color: '#78716c' }}>소계</td>
+                    <td />
+                    <td style={{ textAlign: 'right', padding: '10px 6px', fontWeight: 700 }}>{subtotal.toLocaleString()}</td>
+                    <td style={{ textAlign: 'right', padding: '10px 6px', color: '#a8a29e' }}>{taxSign}{Math.abs(subtotalNet - subtotal).toLocaleString()}</td>
+                    <td style={{ textAlign: 'right', padding: '10px 6px', fontWeight: 700, color: '#2563eb' }}>{subtotalNet.toLocaleString()}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          );
+
+          return (
+            <>
+              {/* 헤더 */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div>
+                  <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{manager.name} 정산 내역서</h1>
+                  <p style={{ fontSize: '13px', color: '#a8a29e', margin: '4px 0 0' }}>
+                    {manager.partnerType === 'business' ? '사업자' : '프리랜서'} · {getNetLabel(manager.partnerType)}
+                  </p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>{selectedDate.year}년 {selectedDate.month}월</p>
+                  <p style={{ fontSize: '11px', color: '#a8a29e', margin: '2px 0 0' }}>발행일 {new Date().toLocaleDateString('ko-KR')}</p>
+                </div>
+              </div>
+              <div style={{ height: '2px', background: 'linear-gradient(to right, #ea580c, #f97316)', borderRadius: '1px', marginBottom: '24px' }} />
+
+              {/* 요약 */}
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '28px' }}>
+                <div style={{ flex: 1, background: '#fafaf9', borderRadius: '12px', padding: '16px' }}>
+                  <p style={{ fontSize: '11px', color: '#a8a29e', margin: '0 0 4px' }}>총 정산액</p>
+                  <p style={{ fontSize: '20px', fontWeight: 800, margin: 0 }}>{totalAmount.toLocaleString()}<span style={{ fontSize: '12px', fontWeight: 500 }}>원</span></p>
+                </div>
+                <div style={{ flex: 1, background: '#eff6ff', borderRadius: '12px', padding: '16px' }}>
+                  <p style={{ fontSize: '11px', color: '#a8a29e', margin: '0 0 4px' }}>실 지급액</p>
+                  <p style={{ fontSize: '20px', fontWeight: 800, margin: 0, color: '#2563eb' }}>{totalNetAmount.toLocaleString()}<span style={{ fontSize: '12px', fontWeight: 500 }}>원</span></p>
+                </div>
+              </div>
+
+              {/* 테이블 */}
+              {mgmtRows.length > 0 && renderTable('매니징 비용', '#a855f7', mgmtRows, managementTotal, mgmtNet)}
+              {workRows.length > 0 && renderTable('작업 비용', '#f97316', workRows, workTotal, workNet)}
+
+              {/* 합계 */}
+              <div style={{ borderTop: '2px solid #1c1917', padding: '16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 700 }}>합계</span>
+                  {manager.bank && manager.bankAccount && (
+                    <span style={{ fontSize: '12px', color: '#78716c', background: '#f5f5f4', padding: '4px 10px', borderRadius: '6px' }}>
+                      {manager.bank} {manager.bankAccount}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '16px', fontWeight: 700 }}>{totalAmount.toLocaleString()}</span>
+                  <span style={{ color: '#d6d3d1' }}>{taxSign}</span>
+                  <span style={{ fontSize: '13px', color: '#a8a29e' }}>{Math.abs(totalNetAmount - totalAmount).toLocaleString()}</span>
+                  <span style={{ color: '#d6d3d1' }}>=</span>
+                  <span style={{ fontSize: '20px', fontWeight: 800, color: '#2563eb' }}>{totalNetAmount.toLocaleString()}<span style={{ fontSize: '12px', fontWeight: 500, marginLeft: '2px' }}>원</span></span>
+                </div>
+              </div>
+
+              {/* 푸터 */}
+              <div style={{ marginTop: '32px', textAlign: 'center', fontSize: '10px', color: '#d6d3d1' }}>
+                VIMO ERP · 비모
+              </div>
+            </>
+          );
+        })()}
+      </div>,
+      document.body
+      )}
+
+      {/* 편집 모달 (Portal) */}
+      {typeof window !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {editingRow && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/30 z-50"
+                onClick={() => setEditingRow(null)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                className="fixed z-50 bg-white rounded-2xl shadow-2xl w-[calc(100%-32px)] max-w-md top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+              >
+              <div className="px-5 pt-4 pb-2 flex items-center justify-between border-b border-[#f0ece9]">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-[15px] font-bold">{editingRow.projectTitle}</h3>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                      editingRow.type === 'management' ? 'bg-purple-50 text-purple-600' : 'bg-orange-50 text-orange-500'
+                    }`}>{editingRow.type === 'management' ? '매니징' : '작업'}</span>
+                  </div>
+                  <p className="text-[12px] text-[#a8a29e]">{editingRow.episodeNumber}편 {editingRow.episodeTitle}</p>
+                </div>
+                <button onClick={() => setEditingRow(null)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+                  <X size={18} className="text-[#a8a29e]" />
+                </button>
+              </div>
+              <div className="px-5 py-4 space-y-4">
+                {/* 정산 상태 */}
+                <div>
+                  <label className="text-[11px] font-semibold text-[#a8a29e] mb-1.5 block">정산 상태</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setEditStatus('completed')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
+                        editStatus === 'completed'
+                          ? 'bg-green-500 text-white'
+                          : 'bg-[#f5f5f4] text-[#78716c] hover:bg-[#ede9e6]'
+                      }`}
+                    >
+                      <CheckCircle size={15} />
+                      정산 완료
+                    </button>
+                    <button
+                      onClick={() => setEditStatus('pending')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
+                        editStatus === 'pending'
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-[#f5f5f4] text-[#78716c] hover:bg-[#ede9e6]'
+                      }`}
+                    >
+                      <Clock size={15} />
+                      대기
+                    </button>
+                  </div>
+                </div>
+                {/* 정산일 */}
+                <div>
+                  <label className="text-[11px] font-semibold text-[#a8a29e] mb-1.5 block">정산일</label>
+                  <DatePicker
+                    value={editDate}
+                    onChange={setEditDate}
+                    placeholder="정산일 선택"
+                  />
+                </div>
+                {/* 금액 */}
+                <div>
+                  <label className="text-[11px] font-semibold text-[#a8a29e] mb-1.5 flex items-center gap-1">
+                    <Coins size={12} />
+                    {editingRow.type === 'management' ? '매니징 비용' : '작업 비용'}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={editAmount ? parseInt(editAmount).toLocaleString() : ''}
+                      onChange={e => setEditAmount(e.target.value.replace(/[^0-9]/g, ''))}
+                      className="w-full px-3 py-2.5 border border-[#ede9e6] rounded-xl text-[14px] font-semibold tabular-nums focus:outline-none focus:border-orange-400 transition-colors pr-8"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-[#a8a29e]">원</span>
+                  </div>
+                </div>
+              </div>
+              <div className="px-5 pb-5 pt-1">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="w-full py-3 bg-orange-500 text-white rounded-xl text-[14px] font-bold hover:bg-orange-600 transition-colors disabled:opacity-50"
+                >
+                  {saving ? '저장 중...' : '저장'}
+                </button>
+              </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

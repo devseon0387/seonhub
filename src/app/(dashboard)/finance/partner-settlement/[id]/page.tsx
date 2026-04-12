@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Copy, Check, Landmark, Receipt, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Copy, Check, Landmark, Receipt, ChevronLeft, ChevronRight, X, CheckCircle, Clock, Coins, Download } from 'lucide-react';
+import { toPng } from 'html-to-image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Project, Partner, Episode } from '@/types';
-import { getProjects, getPartners, getAllEpisodes } from '@/lib/supabase/db';
+import { getProjects, getPartners, getAllEpisodes, updateEpisodeFields } from '@/lib/supabase/db';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import Link from 'next/link';
+import DatePicker from '@/components/DatePicker';
 
 function calcNetAmount(amount: number, partnerType?: 'freelancer' | 'business') {
   if (partnerType === 'business') return Math.round(amount * 1.1);
@@ -47,6 +50,11 @@ export default function PartnerSettlementDetailPage() {
   const [allEpisodes, setAllEpisodes] = useState<(Episode & { projectId: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState(false);
+  const [editingEp, setEditingEp] = useState<(Episode & { projectId: string; projectTitle: string }) | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editStatus, setEditStatus] = useState<'pending' | 'completed'>('pending');
+  const [saving, setSaving] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState(() => {
     const y = searchParams.get('year');
@@ -98,8 +106,8 @@ export default function PartnerSettlementDetailPage() {
     return items.sort((a, b) => (a.episode.paymentDueDate ?? '').localeCompare(b.episode.paymentDueDate ?? ''));
   }, [partner, projects, episodesMap, selectedYM]);
 
-  const totalAmount = allItems.reduce((s, i) => s + (i.episode.budget?.partnerPayment ?? 0) + (i.episode.budget?.managementFee ?? 0), 0);
-  const paidAmount = allItems.filter(i => i.episode.paymentStatus === 'completed').reduce((s, i) => s + (i.episode.budget?.partnerPayment ?? 0) + (i.episode.budget?.managementFee ?? 0), 0);
+  const totalAmount = allItems.reduce((s, i) => s + (i.episode.budget?.partnerPayment ?? 0), 0);
+  const paidAmount = allItems.filter(i => i.episode.paymentStatus === 'completed').reduce((s, i) => s + (i.episode.budget?.partnerPayment ?? 0), 0);
   const unpaidAmount = totalAmount - paidAmount;
   const totalNetAmount = calcNetAmount(totalAmount, partner?.partnerType);
   const paidPct = totalAmount > 0 ? Math.round((paidAmount / totalAmount) * 100) : 0;
@@ -110,6 +118,71 @@ export default function PartnerSettlementDetailPage() {
       setCopiedId(true);
       setTimeout(() => setCopiedId(false), 2000);
     }
+  };
+
+  const openEdit = (ep: Episode & { projectId: string }, projectTitle: string) => {
+    setEditingEp({ ...ep, projectTitle });
+    setEditDate(ep.paymentDueDate ?? '');
+    setEditAmount(String(ep.budget?.partnerPayment ?? 0));
+    setEditStatus(ep.paymentStatus === 'completed' ? 'completed' : 'pending');
+  };
+
+  const handleSave = async () => {
+    if (!editingEp) return;
+    setSaving(true);
+    const newAmount = parseInt(editAmount) || 0;
+    await updateEpisodeFields(editingEp.id, {
+      paymentDueDate: editDate || undefined,
+      paymentStatus: editStatus,
+      budget: {
+        totalAmount: editingEp.budget?.totalAmount ?? 0,
+        partnerPayment: newAmount,
+        managementFee: editingEp.budget?.managementFee ?? 0,
+      },
+    });
+    setSaving(false);
+    setEditingEp(null);
+    loadData();
+  };
+
+  const exportRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (!exportRef.current || !partner) return;
+    setExporting(true);
+    try {
+      const el = exportRef.current;
+      el.style.position = 'fixed';
+      el.style.left = '0';
+      el.style.top = '0';
+      el.style.zIndex = '9999';
+      await new Promise(r => setTimeout(r, 200));
+      const dataUrl = await toPng(el, { pixelRatio: 2, backgroundColor: '#ffffff', cacheBust: true });
+      el.style.position = 'fixed';
+      el.style.left = '-9999px';
+      el.style.zIndex = '-1';
+      const link = document.createElement('a');
+      link.download = `정산_${partner.name}_${selectedYM}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (e) {
+      console.error('Export failed:', e);
+    }
+    setExporting(false);
+  };
+
+  const hasUnpaid = allItems.some(i => i.episode.paymentStatus !== 'completed');
+
+  const handleCompleteAll = async () => {
+    const unpaid = allItems.filter(i => i.episode.paymentStatus !== 'completed');
+    if (unpaid.length === 0) return;
+    setSaving(true);
+    for (const { episode } of unpaid) {
+      await updateEpisodeFields(episode.id, { paymentStatus: 'completed' });
+    }
+    setSaving(false);
+    loadData();
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" /></div>;
@@ -140,10 +213,29 @@ export default function PartnerSettlementDetailPage() {
             <p className="text-[12px] text-[#a8a29e] mt-0.5">정산 내역 · {allItems.length}건</p>
           </div>
         </div>
+        {/* 모바일: 헤더 내 프로그레스 바 */}
+        {allItems.length > 0 && (
+          <div className="sm:hidden mt-3 pt-3 border-t border-[#f0ece9]">
+            <motion.div
+              key={`mobile-legend-${selectedYM}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className="flex items-center justify-between mb-1.5"
+            >
+              <span className="text-[11px] text-[#a8a29e] font-semibold">실 지급 <b className="text-blue-600">{totalNetAmount.toLocaleString()}원</b></span>
+              <span className="text-[10px] text-[#a8a29e]">{totalAmount > 0 ? Math.round((paidAmount / totalAmount) * 100) : 0}% 지급됨</span>
+            </motion.div>
+            <div className="h-[6px] bg-[#f0ece9] rounded-full overflow-hidden flex gap-0.5">
+              <motion.div initial={{ width: 0 }} animate={{ width: `${paidPct}%` }} transition={{ duration: 0.6, delay: 0.2, ease: [0.4, 0, 0.2, 1] }} className="h-full bg-green-500 rounded-full" />
+              <motion.div initial={{ width: 0 }} animate={{ width: `${100 - paidPct}%` }} transition={{ duration: 0.6, delay: 0.3, ease: [0.4, 0, 0.2, 1] }} className="h-full bg-orange-500 rounded-full" />
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* 월 이동 */}
-      <div>
+      {/* 월 이동 + 모두 정산 완료 */}
+      <div className="flex items-center gap-2">
         <div className="flex items-center gap-1 bg-white border border-[#ede9e6] rounded-[10px] px-1 py-1 w-fit">
           <button onClick={prevMonth} disabled={isMinMonth} className={`p-1.5 rounded-lg transition-colors ${isMinMonth ? 'invisible' : 'hover:bg-gray-100'}`}>
             <ChevronLeft size={14} className="text-[#a8a29e]" />
@@ -159,12 +251,30 @@ export default function PartnerSettlementDetailPage() {
             <ChevronRight size={14} className="text-[#a8a29e]" />
           </button>
         </div>
+        {hasUnpaid && (
+          <button
+            onClick={handleCompleteAll}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-3 py-2 bg-green-500 text-white rounded-xl text-[12px] font-semibold hover:bg-green-600 transition-colors disabled:opacity-50"
+          >
+            <CheckCircle size={14} />
+            {saving ? '처리 중...' : <><span className="hidden sm:inline">모두 정산 완료</span><span className="sm:hidden">모두 완료</span></>}
+          </button>
+        )}
+        <button
+          onClick={handleExport}
+          disabled={exporting || allItems.length === 0}
+          className="flex items-center gap-1.5 px-3 sm:px-3 py-2 bg-white border border-[#ede9e6] text-[#44403c] rounded-xl text-[12px] font-semibold hover:bg-[#fafaf9] transition-colors disabled:opacity-50"
+        >
+          <Download size={14} />
+          <span className="hidden sm:inline">{exporting ? '내보내는 중...' : '내보내기'}</span>
+        </button>
       </div>
 
       {/* 통합 카드: 통계 + 테이블 */}
       <div className="bg-white rounded-2xl border border-gray-100" style={{ overflow: 'clip' }}>
-        {/* 통계 바 */}
-        <div className="px-5 py-4 border-b border-[#f0ece9]">
+        {/* 통계 바 (모바일 숨김 — 합계 실 지급액으로 대체) */}
+        <div className="hidden sm:block px-5 py-4 border-b border-[#f0ece9]">
           <div className="flex items-baseline justify-between mb-1.5">
             <motion.span key={`label-${selectedYM}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-[13px] text-[#a8a29e]">
               총 정산 · 실 지급 <b className="text-blue-600">{calcNetAmount(totalAmount, partner.partnerType).toLocaleString()}원</b>
@@ -183,8 +293,86 @@ export default function PartnerSettlementDetailPage() {
           </motion.div>
         </div>
 
-        {/* 테이블 */}
-        <div style={{ overflowX: 'clip' }}>
+        {/* 모바일: 프로젝트별 그룹 카드 */}
+        <div className="sm:hidden">
+          {allItems.length === 0 ? (
+            <div className="py-20 text-center text-gray-400">
+              <Receipt className="mx-auto mb-3 text-gray-200" size={36} />
+              <p className="font-medium text-gray-500">정산 내역이 없어요</p>
+              <p className="text-xs mt-1">{selectedDate.year}년 {selectedDate.month}월에 해당하는 내역이 없습니다</p>
+            </div>
+          ) : (() => {
+            const grouped = new Map<string, typeof allItems>();
+            allItems.forEach(item => {
+              const key = item.project.id;
+              if (!grouped.has(key)) grouped.set(key, []);
+              grouped.get(key)!.push(item);
+            });
+            let globalIdx = 0;
+            return [...grouped.entries()].map(([projId, items], groupIdx) => {
+              const projTitle = items[0].project.title;
+              const projNet = items.reduce((s, { episode: ep }) => s + calcNetAmount(ep.budget?.partnerPayment ?? 0, partner.partnerType), 0);
+              return (
+                <div key={projId}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: groupIdx * 0.08, ease: 'easeOut' }}
+                    className="px-4 py-3 bg-[#fafaf9] border-b border-[#f0ece9] flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[13px] font-bold">{projTitle}</span>
+                      <span className="text-[10px] text-[#a8a29e]">{items.length}건</span>
+                    </div>
+                    <span className="text-[12px] font-bold text-blue-600 tabular-nums">{projNet.toLocaleString()}원</span>
+                  </motion.div>
+                  {items.map(({ episode: ep, project }, idx) => {
+                    const epAmount = ep.budget?.partnerPayment ?? 0;
+                    const epNet = calcNetAmount(epAmount, partner.partnerType);
+                    const taxAmount = Math.abs(epNet - epAmount);
+                    const dday = ep.paymentDueDate ? getDday(ep.paymentDueDate) : null;
+                    const itemIdx = globalIdx++;
+                    return (
+                      <motion.div
+                        key={ep.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: itemIdx * 0.05 + 0.1, ease: 'easeOut' }}
+                        onClick={() => openEdit(ep, project.title)}
+                        className="flex items-center justify-between px-4 pl-8 py-3 border-b border-[#f8f7f6] hover:bg-[#fafaf9] transition-colors cursor-pointer"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-[13px] font-semibold">
+                            {ep.episodeNumber}편 <span className="text-[#a8a29e] font-medium">{ep.title || ''}</span>
+                          </div>
+                          <div className="text-[10px] text-[#a8a29e] mt-1 flex items-center gap-1">
+                            {ep.paymentDueDate ? (
+                              <>
+                                {(() => { const d = new Date(ep.paymentDueDate); return `${d.getMonth()+1}.${d.getDate()}`; })()} 마감
+                                {dday && (
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${
+                                    dday.urgent ? 'bg-red-100 text-red-600' : 'bg-[#f5f5f4] text-[#a8a29e]'
+                                  }`}>{dday.label}</span>
+                                )}
+                              </>
+                            ) : '-'}
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0 ml-3">
+                          <div className="text-[14px] font-bold text-blue-600 tabular-nums">{epNet.toLocaleString()}</div>
+                          <div className="text-[10px] text-[#a8a29e] tabular-nums">{epAmount.toLocaleString()} {partner.partnerType === 'business' ? '+' : '−'}{taxAmount.toLocaleString()}</div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              );
+            });
+          })()}
+        </div>
+
+        {/* 데스크탑: 기존 테이블 */}
+        <div className="hidden sm:block" style={{ overflowX: 'clip' }}>
           <div className="min-w-[700px]">
             <div className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-2.5 text-[11px] font-semibold text-[#a8a29e] border-b border-[#f0ece9]">
               <span>프로젝트 · 회차</span>
@@ -202,7 +390,7 @@ export default function PartnerSettlementDetailPage() {
             ) : (
               <div className="divide-y divide-[#f8f7f6]">
                 {allItems.map(({ episode: ep, project }, idx) => {
-                  const epAmount = (ep.budget?.partnerPayment ?? 0) + (ep.budget?.managementFee ?? 0);
+                  const epAmount = ep.budget?.partnerPayment ?? 0;
                   const epNet = calcNetAmount(epAmount, partner.partnerType);
                   const taxAmount = Math.abs(epNet - epAmount);
                   const dday = ep.paymentDueDate ? getDday(ep.paymentDueDate) : null;
@@ -213,7 +401,10 @@ export default function PartnerSettlementDetailPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: idx * 0.03 }}
                     >
-                      <div className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-3 items-center hover:bg-[#fafaf9] transition-colors">
+                      <div
+                        onClick={() => openEdit(ep, project.title)}
+                        className="grid grid-cols-[1fr_120px_100px_90px_100px] gap-2 px-5 py-3 items-center hover:bg-[#fafaf9] transition-colors cursor-pointer"
+                      >
                         <div className="min-w-0">
                           <span className="text-[13px] font-semibold">{project.title}</span>
                           <span className="text-[12px] text-[#a8a29e] ml-1.5">{ep.episodeNumber}편 {ep.title || ''}</span>
@@ -242,9 +433,35 @@ export default function PartnerSettlementDetailPage() {
           </div>
         </div>
 
-        {/* 합계 */}
+        {/* 합계 — 모바일 */}
         {allItems.length > 0 && (
-          <div className="px-5 py-3.5 border-t border-[#f0ece9] bg-[#fafaf9] flex items-center justify-between">
+          <div className="sm:hidden px-4 py-3.5 border-t border-[#f0ece9] bg-[#fafaf9]">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] font-semibold text-[#78716c]">합계</span>
+                {partner.bank && partner.bankAccount ? (
+                  <button onClick={copyAccount} className="flex items-center gap-1.5 text-[10px] px-2 py-0.5 bg-white border border-[#ede9e6] rounded-lg hover:border-[#d6d3d1] transition-colors">
+                    <Landmark size={10} className="text-[#a8a29e]" />
+                    <span className="text-[#78716c]">{partner.bank} {partner.bankAccount}</span>
+                    {copiedId ? <Check size={10} className="text-green-500" /> : <Copy size={10} className="text-[#d6d3d1]" />}
+                  </button>
+                ) : (
+                  <Link href="/partners" className="text-[10px] px-2 py-0.5 bg-orange-50 text-orange-500 rounded-lg hover:bg-orange-100 transition-colors">
+                    계좌 미등록
+                  </Link>
+                )}
+              </div>
+              <span className="text-[11px] text-[#a8a29e] tabular-nums">{totalAmount.toLocaleString()} {partner.partnerType === 'business' ? '+' : '−'} {Math.abs(totalNetAmount - totalAmount).toLocaleString()}</span>
+            </div>
+            <div className="flex items-center justify-between px-3.5 py-2.5 bg-white rounded-[10px] border border-[#f0ece9]">
+              <span className="text-[12px] font-semibold text-[#78716c]">실 지급액</span>
+              <span className="text-[20px] font-extrabold text-blue-600 tabular-nums tracking-tight">{totalNetAmount.toLocaleString()}<span className="text-[11px] font-medium ml-0.5">원</span></span>
+            </div>
+          </div>
+        )}
+        {/* 합계 — 데스크탑 */}
+        {allItems.length > 0 && (
+          <div className="hidden sm:flex px-5 py-3.5 border-t border-[#f0ece9] bg-[#fafaf9] items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-[13px] font-semibold text-[#78716c]">합계</span>
               {partner.bank && partner.bankAccount ? (
@@ -269,6 +486,202 @@ export default function PartnerSettlementDetailPage() {
           </div>
         )}
       </div>
+      {/* A4 내보내기용 (Portal로 body에 렌더) */}
+      {typeof window !== 'undefined' && createPortal(
+      <div ref={exportRef} style={{ width: '794px', padding: '48px 40px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: '#fff', position: 'fixed', left: '-9999px', top: '0', zIndex: -1 }}>
+        {partner && (() => {
+          const taxLabel = partner.partnerType === 'business' ? '부가세' : '원천징수';
+          const taxSign = partner.partnerType === 'business' ? '+' : '−';
+          return (
+            <>
+              {/* 헤더 */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div>
+                  <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{partner.name} 정산 내역서</h1>
+                  <p style={{ fontSize: '13px', color: '#a8a29e', margin: '4px 0 0' }}>
+                    {partner.partnerType === 'business' ? '사업자' : '프리랜서'} · {getNetLabel(partner.partnerType)}
+                  </p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>{selectedDate.year}년 {selectedDate.month}월</p>
+                  <p style={{ fontSize: '11px', color: '#a8a29e', margin: '2px 0 0' }}>발행일 {new Date().toLocaleDateString('ko-KR')}</p>
+                </div>
+              </div>
+              <div style={{ height: '2px', background: 'linear-gradient(to right, #ea580c, #f97316)', borderRadius: '1px', marginBottom: '24px' }} />
+
+              {/* 요약 */}
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '28px' }}>
+                <div style={{ flex: 1, background: '#fafaf9', borderRadius: '12px', padding: '16px' }}>
+                  <p style={{ fontSize: '11px', color: '#a8a29e', margin: '0 0 4px' }}>총 정산액</p>
+                  <p style={{ fontSize: '20px', fontWeight: 800, margin: 0 }}>{totalAmount.toLocaleString()}<span style={{ fontSize: '12px', fontWeight: 500 }}>원</span></p>
+                </div>
+                <div style={{ flex: 1, background: '#eff6ff', borderRadius: '12px', padding: '16px' }}>
+                  <p style={{ fontSize: '11px', color: '#a8a29e', margin: '0 0 4px' }}>실 지급액</p>
+                  <p style={{ fontSize: '20px', fontWeight: 800, margin: 0, color: '#2563eb' }}>{totalNetAmount.toLocaleString()}<span style={{ fontSize: '12px', fontWeight: 500 }}>원</span></p>
+                </div>
+              </div>
+
+              {/* 테이블 */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginBottom: '24px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #f0ece9' }}>
+                    <th style={{ textAlign: 'left', padding: '8px 6px', color: '#a8a29e', fontWeight: 600 }}>프로젝트 · 회차</th>
+                    <th style={{ textAlign: 'right', padding: '8px 6px', color: '#a8a29e', fontWeight: 600 }}>정산일</th>
+                    <th style={{ textAlign: 'right', padding: '8px 6px', color: '#a8a29e', fontWeight: 600 }}>금액</th>
+                    <th style={{ textAlign: 'right', padding: '8px 6px', color: '#a8a29e', fontWeight: 600 }}>{taxLabel}</th>
+                    <th style={{ textAlign: 'right', padding: '8px 6px', color: '#a8a29e', fontWeight: 600 }}>실 수령</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allItems.map(({ episode: ep, project }) => {
+                    const epAmount = ep.budget?.partnerPayment ?? 0;
+                    const epNet = calcNetAmount(epAmount, partner.partnerType);
+                    const tax = Math.abs(epNet - epAmount);
+                    return (
+                      <tr key={ep.id} style={{ borderBottom: '1px solid #f5f4f2' }}>
+                        <td style={{ padding: '10px 6px' }}>
+                          <span style={{ fontWeight: 600 }}>{project.title}</span>
+                          <span style={{ color: '#a8a29e', marginLeft: '6px' }}>{ep.episodeNumber}편 {ep.title || ''}</span>
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '10px 6px', color: '#44403c' }}>{ep.paymentDueDate ? fmtDate(ep.paymentDueDate) : '-'}</td>
+                        <td style={{ textAlign: 'right', padding: '10px 6px', fontWeight: 600 }}>{epAmount.toLocaleString()}</td>
+                        <td style={{ textAlign: 'right', padding: '10px 6px', color: '#a8a29e' }}>{taxSign}{tax.toLocaleString()}</td>
+                        <td style={{ textAlign: 'right', padding: '10px 6px', fontWeight: 700, color: '#2563eb' }}>{epNet.toLocaleString()}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              {/* 합계 */}
+              <div style={{ borderTop: '2px solid #1c1917', padding: '16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 700 }}>합계</span>
+                  {partner.bank && partner.bankAccount && (
+                    <span style={{ fontSize: '12px', color: '#78716c', background: '#f5f5f4', padding: '4px 10px', borderRadius: '6px' }}>
+                      {partner.bank} {partner.bankAccount}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '16px', fontWeight: 700 }}>{totalAmount.toLocaleString()}</span>
+                  <span style={{ color: '#d6d3d1' }}>{taxSign}</span>
+                  <span style={{ fontSize: '13px', color: '#a8a29e' }}>{Math.abs(totalNetAmount - totalAmount).toLocaleString()}</span>
+                  <span style={{ color: '#d6d3d1' }}>=</span>
+                  <span style={{ fontSize: '20px', fontWeight: 800, color: '#2563eb' }}>{totalNetAmount.toLocaleString()}<span style={{ fontSize: '12px', fontWeight: 500, marginLeft: '2px' }}>원</span></span>
+                </div>
+              </div>
+
+              {/* 푸터 */}
+              <div style={{ marginTop: '32px', textAlign: 'center', fontSize: '10px', color: '#d6d3d1' }}>
+                VIMO ERP · 비모
+              </div>
+            </>
+          );
+        })()}
+      </div>,
+      document.body
+      )}
+
+      {/* 편집 모달 (Portal) */}
+      {typeof window !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {editingEp && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/30 z-50"
+                onClick={() => setEditingEp(null)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                className="fixed z-50 bg-white rounded-2xl shadow-2xl w-[calc(100%-32px)] max-w-md top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+              >
+              <div className="px-5 pt-4 pb-2 flex items-center justify-between border-b border-[#f0ece9]">
+                <div>
+                  <h3 className="text-[15px] font-bold">{editingEp.projectTitle}</h3>
+                  <p className="text-[12px] text-[#a8a29e]">{editingEp.episodeNumber}편 {editingEp.title || ''}</p>
+                </div>
+                <button onClick={() => setEditingEp(null)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+                  <X size={18} className="text-[#a8a29e]" />
+                </button>
+              </div>
+              <div className="px-5 py-4 space-y-4">
+                {/* 정산 상태 */}
+                <div>
+                  <label className="text-[11px] font-semibold text-[#a8a29e] mb-1.5 block">정산 상태</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setEditStatus('completed')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
+                        editStatus === 'completed'
+                          ? 'bg-green-500 text-white'
+                          : 'bg-[#f5f5f4] text-[#78716c] hover:bg-[#ede9e6]'
+                      }`}
+                    >
+                      <CheckCircle size={15} />
+                      정산 완료
+                    </button>
+                    <button
+                      onClick={() => setEditStatus('pending')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
+                        editStatus === 'pending'
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-[#f5f5f4] text-[#78716c] hover:bg-[#ede9e6]'
+                      }`}
+                    >
+                      <Clock size={15} />
+                      대기
+                    </button>
+                  </div>
+                </div>
+                {/* 정산일 */}
+                <div>
+                  <label className="text-[11px] font-semibold text-[#a8a29e] mb-1.5 block">정산일</label>
+                  <DatePicker
+                    value={editDate}
+                    onChange={setEditDate}
+                    placeholder="정산일 선택"
+                  />
+                </div>
+                {/* 금액 */}
+                <div>
+                  <label className="text-[11px] font-semibold text-[#a8a29e] mb-1.5 flex items-center gap-1">
+                    <Coins size={12} />
+                    파트너 지급액
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={editAmount ? parseInt(editAmount).toLocaleString() : ''}
+                      onChange={e => setEditAmount(e.target.value.replace(/[^0-9]/g, ''))}
+                      className="w-full px-3 py-2.5 border border-[#ede9e6] rounded-xl text-[14px] font-semibold tabular-nums focus:outline-none focus:border-orange-400 transition-colors pr-8"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-[#a8a29e]">원</span>
+                  </div>
+                </div>
+              </div>
+              <div className="px-5 pb-5 pt-1">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="w-full py-3 bg-orange-500 text-white rounded-xl text-[14px] font-bold hover:bg-orange-600 transition-colors disabled:opacity-50"
+                >
+                  {saving ? '저장 중...' : '저장'}
+                </button>
+              </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

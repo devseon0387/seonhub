@@ -1,29 +1,9 @@
-'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { createClient } from '@/lib/supabase/client';
 
-export default function HomePage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    const checkSession = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        router.push('/management');
-      } else {
-        router.push('/login');
-      }
-    };
-    checkSession();
-  }, [router]);
-
+export default function Loading() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f5f4f2]">
-      <div className="flex flex-col items-center gap-4 animate-[fadeInUp_1s_ease]">
+      <div className="flex flex-col items-center gap-4">
         <Image src="/logo.png" alt="비모 ERP" width={72} height={58} priority />
         <span className="text-lg font-bold text-[#1c1917] tracking-tight">비모 ERP</span>
         <div className="flex gap-1.5 mt-3">

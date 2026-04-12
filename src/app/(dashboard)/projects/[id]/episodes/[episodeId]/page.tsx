@@ -31,6 +31,7 @@ export default function EpisodeDetailPage() {
   const editingFieldRef = useRef<string | null>(null);
   const [partnerSearch, setPartnerSearch] = useState('');
   const [confirmRemove, setConfirmRemove] = useState<WorkContentType | null>(null);
+  const [mobileStepEdit, setMobileStepEdit] = useState<{ workType: WorkContentType; stepId: string } | null>(null);
   const [shortformModal, setShortformModal] = useState<{ workType: WorkContentType; count: number; mode: 'new' | 'add' } | null>(null);
   const [editedEpisode, setEditedEpisode] = useState<Episode | null>(null);
 
@@ -536,13 +537,14 @@ export default function EpisodeDetailPage() {
     const existing = workSteps[workType] || [];
     const fixedCat = isFixedCategoryType(workType);
 
-    const newSteps: WorkStep[] = Array.from({ length: count }, (_, i) => {
+    const newSteps: WorkStep[] = [];
+    for (let i = 0; i < count; i++) {
       const idx = existing.length + i;
       const category = fixedCat ? workType : (idx === 0 ? '원본 전달' : '가편');
       const label = fixedCat
         ? (workType === 'OAP' ? 'OAP 제작' : `${workType} ${idx + 1}편`)
-        : generateStepLabel(category, workType, [...existing, ...newSteps.slice(0, i)]);
-      return {
+        : generateStepLabel(category, workType, [...existing, ...newSteps]);
+      newSteps.push({
         id: `${workType}-${Date.now()}-${i}`,
         label,
         category,
@@ -550,8 +552,8 @@ export default function EpisodeDetailPage() {
         startDate: editedEpisode.startDate,
         dueDate: editedEpisode.dueDate || '',
         assigneeId: editedEpisode.assignee || undefined,
-      };
-    });
+      });
+    }
 
     editWorkSteps(prev => ({
       ...prev,
@@ -772,22 +774,22 @@ export default function EpisodeDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f4f2]">
-      <div className="max-w-5xl mx-auto py-8 px-4">
+      <div className="max-w-5xl mx-auto py-4 sm:py-8 px-2 sm:px-4">
         {/* 헤더 + 기본 정보 통합 */}
         <div data-tour="tour-episode-header" className="bg-white rounded-xl border border-gray-100 mb-6">
-          <div className="px-6 py-4">
+          <div className="px-4 sm:px-6 py-4">
             {/* 뒤로가기 버튼 */}
             <button
               onClick={() => router.push(`/projects/${projectId}`)}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+              className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 mb-3 sm:mb-4 transition-colors"
             >
-              <ArrowLeft size={20} />
-              <span className="text-sm font-medium">프로젝트로 돌아가기</span>
+              <ArrowLeft size={18} />
+              <span className="text-xs sm:text-sm font-medium">프로젝트로 돌아가기</span>
             </button>
 
             {/* 제목 줄 */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-baseline gap-2.5">
+            <div className="flex items-center justify-between mb-3 gap-2">
+              <div className="flex items-baseline gap-2 sm:gap-2.5 min-w-0 flex-wrap">
                 {editingField === 'episodeNumber' ? (
                   <motion.div
                     className="flex items-center"
@@ -829,14 +831,14 @@ export default function EpisodeDetailPage() {
                       placeholder="회차 제목을 입력하세요"
                       onChange={(e) => handleFieldChange('title', e.target.value)}
                       onBlur={handleFieldBlur}
-                      className="text-[21px] font-extrabold text-gray-900 bg-orange-50/50 border-b-2 border-orange-400 border-t-0 border-l-0 border-r-0 rounded-none px-1 py-0.5 focus:outline-none focus:ring-0 placeholder-gray-300 tracking-tight"
+                      className="text-[17px] sm:text-[21px] font-extrabold text-gray-900 bg-orange-50/50 border-b-2 border-orange-400 border-t-0 border-l-0 border-r-0 rounded-none px-1 py-0.5 focus:outline-none focus:ring-0 placeholder-gray-300 tracking-tight w-full"
                     />
                   </motion.div>
                 ) : (
                   <motion.span
                     key={`title-display-${editedEpisode.title}`}
                     onClick={() => handleFieldClick('title')}
-                    className="text-[21px] font-extrabold cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5 -mx-1 tracking-tight"
+                    className="text-[17px] sm:text-[21px] font-extrabold cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5 -mx-1 tracking-tight"
                     initial={{ color: editedFields.has('title') ? '#ea580c' : '#1c1917' }}
                     animate={{ color: '#1c1917' }}
                     transition={{ duration: 0.6, delay: 1, ease: 'easeOut' }}
@@ -854,7 +856,7 @@ export default function EpisodeDetailPage() {
                 })()}
               </div>
 
-              <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                 {/* 아바타 그룹 */}
                 {(partner || managerPartner) && (
                   <div className="flex items-center">
@@ -889,7 +891,7 @@ export default function EpisodeDetailPage() {
             </div>
 
             {/* 글래스 메타바 */}
-            <div data-tour="tour-episode-info" className="flex items-center gap-3.5 px-4 py-2.5 bg-[#fafaf9] rounded-[10px]">
+            <div data-tour="tour-episode-info" className="flex items-center gap-2 sm:gap-3.5 px-3 sm:px-4 py-2.5 bg-[#fafaf9] rounded-[10px] flex-wrap">
               {/* 기간 */}
               <div className="flex items-center gap-1.5 text-xs">
                 <span className="text-[#a8a29e] font-semibold">기간</span>
@@ -922,9 +924,9 @@ export default function EpisodeDetailPage() {
                   );
                 })()}
               </div>
-              <div className="w-px h-4 bg-[#ede9e6]" />
+              <div className="w-px h-4 bg-[#ede9e6] hidden sm:block" />
               {/* 담당자 */}
-              <div className="flex items-center gap-2 text-xs text-[#78716c]">
+              <div className="hidden sm:flex items-center gap-2 text-xs text-[#78716c]">
                 {partner && (
                   <div className="flex items-center gap-1.5">
                     <div className="w-[18px] h-[18px] bg-[#f0ece9] rounded-full flex items-center justify-center text-[8px] font-bold text-[#78716c]">
@@ -975,122 +977,226 @@ export default function EpisodeDetailPage() {
                   const totalAmount = editedEpisode.budget!.totalAmount;
                   const reserve = totalAmount - totalPartner - totalManagement;
                   return (
-                    <div className="flex items-center justify-between w-full">
+                    <div className="w-full">
                       {collapsedSections.budget ? (
                         <>
-                          <div className="flex items-baseline gap-4">
+                          {/* 첫 줄: 총 비용 + 태그 */}
+                          <div className="flex items-center justify-between w-full">
                             <div className="flex items-baseline gap-2">
                               <span className="text-[11px] font-semibold text-[#a8a29e]">총 비용</span>
-                              <span className="text-[22px] font-extrabold tracking-tight">{totalAmount.toLocaleString()}</span>
-                              <span className="text-[13px] font-semibold text-[#78716c]">원</span>
+                              <span className="text-[18px] sm:text-[22px] font-extrabold tracking-tight">{totalAmount.toLocaleString()}</span>
+                              <span className="text-[12px] sm:text-[13px] font-semibold text-[#78716c]">원</span>
                             </div>
-                            <div className="w-px h-6 bg-[#ede9e6]" />
-                            <div className="flex items-center gap-3 text-[13px]">
-                              <span><span className="text-[#a8a29e]">파트너</span> <span className="font-bold text-orange-600">{totalPartner.toLocaleString()}</span></span>
-                              <span><span className="text-[#a8a29e]">매니저</span> <span className="font-bold text-orange-600">{totalManagement.toLocaleString()}</span></span>
-                              <span><span className="text-[#a8a29e]">유보금</span> <span className="font-bold text-green-600">{reserve.toLocaleString()}</span></span>
+                            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                              <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 bg-[#fafaf9] rounded-lg border border-[#f0ece9] text-[10px] sm:text-xs">
+                                <span className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${editedEpisode.paymentStatus === 'completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                                <span className="text-[#78716c]">{editedEpisode.paymentStatus === 'completed' ? '입금완료' : '입금전'}</span>
+                              </div>
+                              <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 bg-[#fafaf9] rounded-lg border border-[#f0ece9] text-[10px] sm:text-xs">
+                                <span className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${editedEpisode.invoiceStatus === 'completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                                <span className="text-[#78716c]">{editedEpisode.invoiceStatus === 'completed' ? '발행완료' : '미발행'}</span>
+                              </div>
+                              <ChevronRight size={18} className="text-gray-400 ml-1" />
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#fafaf9] rounded-lg border border-[#f0ece9] text-xs">
-                              <span className={`w-[5px] h-[5px] rounded-full ${editedEpisode.paymentStatus === 'completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
-                              <span className="text-[#78716c]">{editedEpisode.paymentStatus === 'completed' ? '입금 완료' : '입금 전'}</span>
-                              {editedEpisode.paymentDueDate && (
-                                <span className="text-[#44403c] font-medium">{(() => { const [,m,d] = editedEpisode.paymentDueDate.split('-').map(Number); return `${m}.${d}`; })()}</span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#fafaf9] rounded-lg border border-[#f0ece9] text-xs">
-                              <span className={`w-[5px] h-[5px] rounded-full ${editedEpisode.invoiceStatus === 'completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
-                              <span className="text-[#78716c]">{editedEpisode.invoiceStatus === 'completed' ? '발행 완료' : '세금계산서 미발행'}</span>
-                            </div>
-                            <ChevronRight size={18} className="text-gray-400 ml-1" />
+                          {/* 둘째 줄: 모바일에서 파트너/매니저/유보금 표시 */}
+                          <div className="flex sm:hidden items-center gap-3 mt-2 text-[11px]">
+                            <span><span className="text-[#a8a29e]">파트너</span> <span className="font-bold text-orange-600">{totalPartner.toLocaleString()}</span></span>
+                            <span><span className="text-[#a8a29e]">매니저</span> <span className="font-bold text-orange-600">{totalManagement.toLocaleString()}</span></span>
+                            <span><span className="text-[#a8a29e]">유보금</span> <span className="font-bold text-green-600">{reserve.toLocaleString()}</span></span>
+                          </div>
+                          {/* 데스크탑: 기존 인라인 표시 */}
+                          <div className="hidden sm:flex items-center gap-3 text-[13px] mt-2">
+                            <span><span className="text-[#a8a29e]">파트너</span> <span className="font-bold text-orange-600">{totalPartner.toLocaleString()}</span></span>
+                            <span><span className="text-[#a8a29e]">매니저</span> <span className="font-bold text-orange-600">{totalManagement.toLocaleString()}</span></span>
+                            <span><span className="text-[#a8a29e]">유보금</span> <span className="font-bold text-green-600">{reserve.toLocaleString()}</span></span>
                           </div>
                         </>
                       ) : (
-                        <>
+                        <div className="flex items-center justify-between">
                           <span className="text-[15px] font-bold text-[#44403c]">회차별 비용</span>
                           <ChevronDown size={18} className="text-gray-400" />
-                        </>
+                        </div>
                       )}
                     </div>
                   );
                 })()}
               </div>
               <div className={`transition-all duration-300 ease-in-out ${!collapsedSections.budget ? 'max-h-[3000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-                <div className="px-6 pb-6">
-                  {/* 총 제작비 + 입금/발행 */}
-                  <div className="flex items-center justify-between pb-4 border-b border-[#f0ece9]">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-[11px] font-semibold text-[#a8a29e]">총 제작비</span>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={formatCurrency(editedEpisode.budget?.totalAmount)}
-                          onChange={(e) => editEpisode(prev => prev ? {
-                            ...prev,
-                            budget: {
-                              totalAmount: parseCurrency(e.target.value),
-                              partnerPayment: prev.budget?.partnerPayment || 0,
-                              managementFee: prev.budget?.managementFee || 0,
-                            },
-                          } : prev)}
-                          placeholder="0"
-                          className="w-[160px] text-sm font-semibold px-3 py-2 border-[1.5px] border-[#ede9e6] rounded-[10px] bg-white text-right focus:border-[#44403c] focus:outline-none focus:ring-[3px] focus:ring-black/[0.04] transition-all"
-                        />
-                        <span className="text-xs text-[#a8a29e]">원</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {/* 입금: 상태 토글 + 날짜 */}
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => editEpisode(prev => prev ? { ...prev, paymentStatus: prev.paymentStatus === 'completed' ? 'pending' : 'completed' } : prev)}
-                          className={`flex items-center gap-[5px] px-3 py-[5px] rounded-lg border text-xs font-medium cursor-pointer transition-all ${
-                            editedEpisode.paymentStatus === 'completed'
-                              ? 'border-green-200 bg-green-50 text-green-700'
-                              : 'border-[#f0ece9] bg-[#fafaf9] text-[#78716c] hover:border-[#d6d3d1]'
-                          }`}
-                        >
-                          <span className={`w-[6px] h-[6px] rounded-full ${editedEpisode.paymentStatus === 'completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
-                          {editedEpisode.paymentStatus === 'completed' ? '입금 완료' : '입금 전'}
-                        </button>
-                        <DatePicker
-                          value={editedEpisode.paymentDueDate || ''}
-                          onChange={(val) => editEpisode(prev => prev ? { ...prev, paymentDueDate: val || undefined } : prev)}
-                          placeholder="입금 예정일"
-                        />
-                      </div>
-                      <div className="w-px h-4 bg-[#ede9e6]" />
-                      {/* 세금계산서: 상태 토글 + 날짜 */}
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => editEpisode(prev => prev ? { ...prev, invoiceStatus: prev.invoiceStatus === 'completed' ? 'pending' : 'completed' } : prev)}
-                          className={`flex items-center gap-[5px] px-3 py-[5px] rounded-lg border text-xs font-medium cursor-pointer transition-all ${
-                            editedEpisode.invoiceStatus === 'completed'
-                              ? 'border-green-200 bg-green-50 text-green-700'
-                              : 'border-[#f0ece9] bg-[#fafaf9] text-[#78716c] hover:border-[#d6d3d1]'
-                          }`}
-                        >
-                          <span className={`w-[6px] h-[6px] rounded-full ${editedEpisode.invoiceStatus === 'completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
-                          {editedEpisode.invoiceStatus === 'completed' ? '발행 완료' : '미발행'}
-                        </button>
-                        <DatePicker
-                          value={editedEpisode.invoiceDate || ''}
-                          onChange={(val) => editEpisode(prev => prev ? { ...prev, invoiceDate: val || undefined } : prev)}
-                          placeholder="발행일"
-                        />
-                      </div>
+                <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+                  {/* 총 제작비 */}
+                  <div className="flex items-center justify-between sm:justify-start gap-2.5 pb-4 border-b border-[#f0ece9]">
+                    <span className="text-[11px] font-semibold text-[#a8a29e]">총 제작비</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={formatCurrency(editedEpisode.budget?.totalAmount)}
+                        onChange={(e) => editEpisode(prev => prev ? {
+                          ...prev,
+                          budget: {
+                            totalAmount: parseCurrency(e.target.value),
+                            partnerPayment: prev.budget?.partnerPayment || 0,
+                            managementFee: prev.budget?.managementFee || 0,
+                          },
+                        } : prev)}
+                        placeholder="0"
+                        className="w-[160px] text-sm font-semibold px-3 py-2 border-[1.5px] border-[#ede9e6] rounded-[10px] bg-white text-right focus:border-[#44403c] focus:outline-none focus:ring-[3px] focus:ring-black/[0.04] transition-all"
+                      />
+                      <span className="text-xs text-[#a8a29e]">원</span>
                     </div>
                   </div>
 
-                  {/* 작업별 비용 — 2열 흰 배경 + 구분선 */}
-                  <div className="grid grid-cols-2 gap-x-8">
+                  {/* 입금/발행 상태 — 모바일: 세로 스택, 데스크탑: 가로 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-4 border-b border-[#f0ece9]">
+                    {/* 입금 */}
+                    <div className="flex items-center justify-between sm:justify-start gap-2 px-3 sm:px-0 py-2.5 sm:py-0 bg-[#fafaf9] sm:bg-transparent rounded-[10px] sm:rounded-none border border-[#f0ece9] sm:border-0">
+                      <button
+                        type="button"
+                        onClick={() => editEpisode(prev => prev ? { ...prev, paymentStatus: prev.paymentStatus === 'completed' ? 'pending' : 'completed' } : prev)}
+                        className={`flex items-center gap-[5px] px-3 py-[5px] rounded-lg border text-xs font-medium cursor-pointer transition-all ${
+                          editedEpisode.paymentStatus === 'completed'
+                            ? 'border-green-200 bg-green-50 text-green-700'
+                            : 'border-[#f0ece9] bg-white sm:bg-[#fafaf9] text-[#78716c] hover:border-[#d6d3d1]'
+                        }`}
+                      >
+                        <span className={`w-[6px] h-[6px] rounded-full ${editedEpisode.paymentStatus === 'completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                        {editedEpisode.paymentStatus === 'completed' ? '입금 완료' : '입금 전'}
+                      </button>
+                      <DatePicker
+                        value={editedEpisode.paymentDueDate || ''}
+                        onChange={(val) => editEpisode(prev => prev ? { ...prev, paymentDueDate: val || undefined } : prev)}
+                        placeholder="입금 예정일"
+                      />
+                    </div>
+                    <div className="w-px h-4 bg-[#ede9e6] hidden sm:block" />
+                    {/* 세금계산서 */}
+                    <div className="flex items-center justify-between sm:justify-start gap-2 px-3 sm:px-0 py-2.5 sm:py-0 bg-[#fafaf9] sm:bg-transparent rounded-[10px] sm:rounded-none border border-[#f0ece9] sm:border-0">
+                      <button
+                        type="button"
+                        onClick={() => editEpisode(prev => prev ? { ...prev, invoiceStatus: prev.invoiceStatus === 'completed' ? 'pending' : 'completed' } : prev)}
+                        className={`flex items-center gap-[5px] px-3 py-[5px] rounded-lg border text-xs font-medium cursor-pointer transition-all ${
+                          editedEpisode.invoiceStatus === 'completed'
+                            ? 'border-green-200 bg-green-50 text-green-700'
+                            : 'border-[#f0ece9] bg-white sm:bg-[#fafaf9] text-[#78716c] hover:border-[#d6d3d1]'
+                        }`}
+                      >
+                        <span className={`w-[6px] h-[6px] rounded-full ${editedEpisode.invoiceStatus === 'completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                        {editedEpisode.invoiceStatus === 'completed' ? '발행 완료' : '미발행'}
+                      </button>
+                      <DatePicker
+                        value={editedEpisode.invoiceDate || ''}
+                        onChange={(val) => editEpisode(prev => prev ? { ...prev, invoiceDate: val || undefined } : prev)}
+                        placeholder="발행일"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 작업별 비용 — 모바일: 1열 요약 카드 + 펼침, 데스크탑: 2열 그리드 */}
+                  {/* 모바일 레이아웃 */}
+                  <div className="sm:hidden">
+                    <span className="text-[11px] font-semibold text-[#a8a29e] block mt-4 mb-2">작업별 비용</span>
                     {activeWorkTypes.map((workType, idx) => {
                       const count = getStepCount(workType);
-                      const isLast = idx >= activeWorkTypes.length - 2; // 마지막 행(2열이므로 -2)
+                      const isExpanded = expandedBudgets[workType];
+                      const partnerPay = workBudgets[workType]?.partnerPayment || 0;
+                      const mgmtFee = workBudgets[workType]?.managementFee || 0;
+                      const total = getTotalBudget(workType);
+                      return (
+                        <div key={workType} className={`py-3 ${idx < activeWorkTypes.length - 1 ? 'border-b border-[#f5f4f2]' : ''}`}>
+                          <div
+                            className="flex items-center justify-between cursor-pointer"
+                            onClick={() => toggleBudget(workType)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-[14px] font-bold">{workType}</span>
+                              {count > 1 && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#fef9c3] text-[#92400e] font-bold">{count}편</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-right">
+                                <span className="text-[14px] font-bold">{total.toLocaleString()}</span>
+                                <span className="text-[11px] text-[#78716c]">원</span>
+                              </div>
+                              {isExpanded ? (
+                                <ChevronDown size={14} className="text-[#a8a29e]" />
+                              ) : (
+                                <ChevronRight size={14} className="text-[#a8a29e]" />
+                              )}
+                            </div>
+                          </div>
+                          {!isExpanded && (
+                            <div className="text-[10px] text-[#a8a29e] mt-1">
+                              파트너 {(partnerPay * count).toLocaleString()} · 매니징 {(mgmtFee * count).toLocaleString()}
+                              {count > 1 && <> ({(partnerPay + mgmtFee).toLocaleString()} × {count})</>}
+                            </div>
+                          )}
+                          {isExpanded && (
+                            <div className="mt-3 space-y-2">
+                              <div>
+                                <label className="text-[11px] font-semibold text-[#a8a29e] block mb-1">파트너 지급{count > 1 ? ' (단가)' : ''}</label>
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={formatCurrency(partnerPay)}
+                                    onChange={(e) => handleUpdateBudget(workType, 'partnerPayment', parseCurrency(e.target.value))}
+                                    placeholder="0"
+                                    className="w-full text-sm font-semibold px-3 py-2.5 border-[1.5px] border-[#ede9e6] rounded-[10px] bg-white focus:border-[#44403c] focus:outline-none focus:ring-[3px] focus:ring-black/[0.04] transition-all"
+                                  />
+                                  <span className="text-xs text-[#a8a29e]">원</span>
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-[11px] font-semibold text-[#a8a29e] block mb-1">매니징 비용{count > 1 ? ' (단가)' : ''}</label>
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={formatCurrency(mgmtFee)}
+                                    onChange={(e) => handleUpdateBudget(workType, 'managementFee', parseCurrency(e.target.value))}
+                                    placeholder="0"
+                                    className="w-full text-sm font-semibold px-3 py-2.5 border-[1.5px] border-[#ede9e6] rounded-[10px] bg-white focus:border-[#44403c] focus:outline-none focus:ring-[3px] focus:ring-black/[0.04] transition-all"
+                                  />
+                                  <span className="text-xs text-[#a8a29e]">원</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* 총합 바 */}
+                    {activeWorkTypes.length > 0 && (() => {
+                      const totalPartner = activeWorkTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.partnerPayment || 0) * getStepCount(wt), 0);
+                      const totalManagement = activeWorkTypes.reduce((sum, wt) => sum + (workBudgets[wt]?.managementFee || 0) * getStepCount(wt), 0);
+                      const totalAmount = editedEpisode.budget!.totalAmount;
+                      const reserve = totalAmount - totalPartner - totalManagement;
+                      return (
+                        <div className="mt-4 space-y-2">
+                          <div className="flex items-center justify-between px-4 py-3 bg-[#fafaf9] rounded-[12px]">
+                            <div>
+                              <div className="text-[12px] font-semibold text-[#78716c]">작업 합계</div>
+                              <div className="text-[10px] text-[#a8a29e] mt-0.5">파트너 {totalPartner.toLocaleString()} · 매니징 {totalManagement.toLocaleString()}</div>
+                            </div>
+                            <div className="text-[18px] font-extrabold tracking-tight">{(totalPartner + totalManagement).toLocaleString()}<span className="text-[12px] font-semibold text-[#78716c]">원</span></div>
+                          </div>
+                          <div className="flex items-center justify-between px-4 py-3 bg-[#f0fdf4] rounded-[12px] border border-[#dcfce7]">
+                            <span className="text-[12px] font-semibold text-[#166534]">유보금</span>
+                            <span className="text-[16px] font-extrabold text-[#166534]">{reserve.toLocaleString()}<span className="text-[11px] font-semibold">원</span></span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* 데스크탑 레이아웃 (기존 2열 그리드) */}
+                  <div className="hidden sm:grid grid-cols-2 gap-x-8">
+                    {activeWorkTypes.map((workType, idx) => {
+                      const count = getStepCount(workType);
+                      const isLast = idx >= activeWorkTypes.length - 2;
                       return (
                         <div key={workType} className={`py-4 ${!isLast ? 'border-b border-[#f5f4f2]' : ''}`}>
                           <div className="flex items-center justify-between mb-2.5">
@@ -1164,9 +1270,9 @@ export default function EpisodeDetailPage() {
           )}
 
           {/* 작업 체크리스트 */}
-          <div data-tour="tour-episode-checklist" className="bg-white rounded-xl border border-gray-100 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">작업 체크리스트</h3>
+          <div data-tour="tour-episode-checklist" className="bg-white rounded-xl border border-gray-100 p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">작업 체크리스트</h3>
             </div>
 
             <div className="flex items-center justify-between mb-4">
@@ -1510,8 +1616,80 @@ export default function EpisodeDetailPage() {
                                       animationDelay: `${index * 50}ms`
                                     }}
                                   >
-                                    {/* 한 줄: 카테고리 + 작업 단계 + 담당 파트너 + 진행 사항 + 시작일 + 마감일 */}
-                                    <div className="grid grid-cols-[80px_1fr_100px_72px_180px] gap-2.5 items-center px-3.5 py-2.5">
+                                    {/* 데스크탑: 5열 그리드 / 모바일: flex 압축 */}
+                                    {/* 모바일 레이아웃 */}
+                                    <div className="flex sm:hidden items-center gap-2 px-3 py-2.5 cursor-pointer active:bg-gray-50/50" onClick={() => setMobileStepEdit({ workType, stepId: step.id })}>
+                                      {/* 상태 드롭다운 */}
+                                      <div className="relative flex-shrink-0">
+                                        <div
+                                          onClick={(e) => { e.stopPropagation(); setEditingField(`${workType}-${step.id}-status`); }}
+                                          className={`flex items-center gap-0.5 px-2 py-1 rounded-lg cursor-pointer font-bold text-[10px] ${getStatusColor(step.status)}`}
+                                        >
+                                          <span>{getStatusLabel(step.status)}</span>
+                                          <ChevronDown size={9} className="opacity-40" />
+                                        </div>
+                                        <AnimatePresence>
+                                          {editingField === `${workType}-${step.id}-status` && (
+                                            <>
+                                              <motion.div
+                                                initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                                                transition={{ duration: 0.15 }}
+                                                className="absolute top-full left-0 mt-1 z-10 w-[90px] bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden"
+                                              >
+                                                {([
+                                                  { value: 'waiting', label: '대기', color: 'bg-gray-100 text-gray-800' },
+                                                  { value: 'in_progress', label: '진행중', color: 'bg-yellow-100 text-yellow-800' },
+                                                  { value: 'completed', label: '완료', color: 'bg-green-100 text-green-800' },
+                                                ] as const).map(opt => (
+                                                  <button
+                                                    key={opt.value}
+                                                    onClick={() => { handleUpdateWorkStep(workType, step.id, 'status', opt.value); setEditingField(null); }}
+                                                    className={`w-full px-2.5 py-2 text-[10px] font-semibold text-left hover:bg-gray-50 ${step.status === opt.value ? 'bg-gray-50' : ''}`}
+                                                    type="button"
+                                                  >
+                                                    <span className={`px-1.5 py-0.5 rounded ${opt.color}`}>{opt.label}</span>
+                                                  </button>
+                                                ))}
+                                              </motion.div>
+                                              <div className="fixed inset-0 z-0" onClick={() => setEditingField(null)} />
+                                            </>
+                                          )}
+                                        </AnimatePresence>
+                                      </div>
+                                      {/* 카테고리 + 작업명 */}
+                                      <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                                        {isFixedCategoryType(workType) ? (
+                                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-semibold flex-shrink-0">{workType}</span>
+                                        ) : index === 0 ? (
+                                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-semibold flex-shrink-0">원본전달</span>
+                                        ) : (
+                                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0 cursor-pointer ${(step.category || '가편') === '가편' ? 'bg-yellow-50 text-yellow-700' : 'bg-blue-50 text-blue-700'}`}
+                                            onClick={() => setEditingField(`${workType}-${step.id}-category`)}
+                                          >{step.category || '가편'}</span>
+                                        )}
+                                        <span className={`text-[12px] font-medium truncate ${step.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                                          {step.label || partners.find(p => p.id === step.assigneeId)?.name || '작업'}
+                                        </span>
+                                      </div>
+                                      {/* 담당자 + 날짜 */}
+                                      <div className="flex items-center gap-1 flex-shrink-0">
+                                        {step.assigneeId && (
+                                          <div className="w-4 h-4 bg-orange-100 rounded-full flex items-center justify-center text-[7px] font-bold text-orange-600">
+                                            {partners.find(p => p.id === step.assigneeId)?.name?.charAt(0) || '?'}
+                                          </div>
+                                        )}
+                                        {step.dueDate && (
+                                          <span className={`text-[10px] font-semibold ${step.status === 'completed' ? 'text-gray-400' : 'text-orange-600'}`}>
+                                            {(() => { const [,m,d] = step.dueDate.split('-').map(Number); return `${m}/${d}`; })()}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* 데스크탑 레이아웃 (기존) */}
+                                    <div className="hidden sm:grid grid-cols-[80px_1fr_100px_72px_180px] gap-2.5 items-center px-3.5 py-2.5">
                                       {/* 카테고리 */}
                                       <div>
                                         {isFixedCategoryType(workType) ? (
@@ -1792,6 +1970,175 @@ export default function EpisodeDetailPage() {
         </div>
 
       </div>
+
+      {/* 모바일 작업 단계 수정 바텀시트 */}
+      <AnimatePresence>
+        {mobileStepEdit && (() => {
+          const { workType: mwt, stepId: msid } = mobileStepEdit;
+          const mStep = workSteps[mwt]?.find(s => s.id === msid);
+          if (!mStep) return null;
+          const mPartner = partners.find(p => p.id === mStep.assigneeId);
+          const mIndex = workSteps[mwt]?.findIndex(s => s.id === msid) ?? 0;
+          return (
+            <>
+              <motion.div
+                className="fixed inset-0 z-[10000] bg-black/30"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                onClick={() => setMobileStepEdit(null)}
+              />
+              <motion.div
+                className="fixed bottom-0 left-0 right-0 z-[10001] bg-white rounded-t-2xl shadow-2xl max-h-[85vh] overflow-y-auto"
+                initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              >
+                {/* 핸들 */}
+                <div className="flex justify-center pt-3 pb-1">
+                  <div className="w-10 h-1 bg-gray-300 rounded-full" />
+                </div>
+                <div className="px-5 pb-6 space-y-4">
+                  {/* 헤더 */}
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[15px] font-bold text-gray-900">{mwt} — 작업 단계 수정</h3>
+                    <button onClick={() => setMobileStepEdit(null)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+                      <X size={16} className="text-gray-400" />
+                    </button>
+                  </div>
+
+                  {/* 카테고리 + 진행 상태 */}
+                  <div className="flex gap-3">
+                    {!isFixedCategoryType(mwt) && mIndex > 0 && (
+                      <div className="flex-1">
+                        <label className="text-[11px] font-semibold text-[#a8a29e] block mb-1.5">카테고리</label>
+                        <div className="flex gap-1.5">
+                          {['가편', '종편'].map(cat => (
+                            <button
+                              key={cat}
+                              onClick={() => handleUpdateWorkStep(mwt, msid, 'category', cat)}
+                              className={`flex-1 py-2 rounded-lg text-[12px] font-semibold transition-colors ${
+                                (mStep.category || '가편') === cat ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600'
+                              }`}
+                              type="button"
+                            >{cat}</button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className={!isFixedCategoryType(mwt) && mIndex > 0 ? 'flex-1' : 'w-full'}>
+                      <label className="text-[11px] font-semibold text-[#a8a29e] block mb-1.5">진행 상태</label>
+                      <div className="flex gap-1.5">
+                        {([
+                          { value: 'waiting' as const, label: '대기', color: 'bg-gray-100 text-gray-700' },
+                          { value: 'in_progress' as const, label: '진행중', color: 'bg-yellow-100 text-yellow-700' },
+                          { value: 'completed' as const, label: '완료', color: 'bg-green-100 text-green-700' },
+                        ]).map(opt => (
+                          <button
+                            key={opt.value}
+                            onClick={() => handleUpdateWorkStep(mwt, msid, 'status', opt.value)}
+                            className={`flex-1 py-2 rounded-lg text-[12px] font-semibold transition-colors ${
+                              mStep.status === opt.value ? 'bg-orange-500 text-white' : opt.color
+                            }`}
+                            type="button"
+                          >{opt.label}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 작업명 */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-[#a8a29e] block mb-1.5">작업명</label>
+                    <input
+                      type="text"
+                      value={mStep.label}
+                      onChange={(e) => handleUpdateWorkStep(mwt, msid, 'label', e.target.value)}
+                      placeholder="작업 단계 이름"
+                      className="w-full px-3 py-2.5 border-[1.5px] border-[#ede9e6] rounded-xl text-[14px] font-medium focus:border-orange-400 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* 담당자 */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-[#a8a29e] block mb-1.5">담당 파트너</label>
+                    <div className="relative">
+                      <div
+                        onClick={() => setEditingField(editingField === `mobile-step-assignee` ? null : `mobile-step-assignee`)}
+                        className="w-full flex items-center justify-between px-3 py-2.5 border-[1.5px] border-[#ede9e6] rounded-xl cursor-pointer hover:border-gray-300 transition-colors"
+                      >
+                        {mStep.assigneeId ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center text-[10px] font-bold text-orange-600 flex-shrink-0">
+                              {partners.find(p => p.id === mStep.assigneeId)?.name?.charAt(0) || '?'}
+                            </div>
+                            <span className="text-[14px] font-medium text-gray-900">{partners.find(p => p.id === mStep.assigneeId)?.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-[14px] text-gray-400">선택 안함</span>
+                        )}
+                        <ChevronDown size={14} className={`text-gray-400 transition-transform ${editingField === 'mobile-step-assignee' ? 'rotate-180' : ''}`} />
+                      </div>
+                      <AnimatePresence>
+                        {editingField === 'mobile-step-assignee' && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute left-0 right-0 top-full mt-1 z-10 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto"
+                          >
+                            <button
+                              onClick={() => { handleUpdateWorkStep(mwt, msid, 'assigneeId', ''); setEditingField(null); }}
+                              className={`w-full flex items-center px-3 py-2.5 hover:bg-gray-50 text-left border-b border-gray-100 ${!mStep.assigneeId ? 'bg-orange-50' : ''}`}
+                              type="button"
+                            >
+                              <span className="text-[13px] text-gray-500">선택 안함</span>
+                            </button>
+                            {partners.filter(p => p.status === 'active').map(p => (
+                              <button
+                                key={p.id}
+                                onClick={() => { handleUpdateWorkStep(mwt, msid, 'assigneeId', p.id); setEditingField(null); }}
+                                className={`w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 text-left ${mStep.assigneeId === p.id ? 'bg-orange-50' : ''}`}
+                                type="button"
+                              >
+                                <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                                  {p.name.charAt(0)}
+                                </div>
+                                <span className="text-[13px] font-medium text-gray-900">{p.name}</span>
+                              </button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+
+                  {/* 날짜 */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-[#a8a29e] block mb-1.5">기간</label>
+                    <DateRangePicker
+                      startDate={mStep.startDate}
+                      endDate={mStep.dueDate}
+                      onStartChange={(v) => handleUpdateWorkStep(mwt, msid, 'startDate', v)}
+                      onEndChange={(v) => handleUpdateWorkStep(mwt, msid, 'dueDate', v === 'tbd' ? '' : v)}
+                    />
+                  </div>
+
+                  {/* 삭제 버튼 */}
+                  <button
+                    onClick={() => {
+                      handleRemoveWorkStep(mwt, msid);
+                      setMobileStepEdit(null);
+                    }}
+                    className="w-full py-3 bg-red-50 text-red-500 rounded-xl text-[13px] font-semibold hover:bg-red-100 transition-colors"
+                    type="button"
+                  >
+                    작업 단계 삭제
+                  </button>
+                </div>
+              </motion.div>
+            </>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* 작업 삭제 확인 모달 */}
       <AnimatePresence>
