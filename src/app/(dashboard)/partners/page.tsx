@@ -218,7 +218,7 @@ export default function PartnersPage() {
   // 파트너 추가 핸들러
   const handleAddPartner = async () => {
     if (!newPartner.name) {
-      alert('파트너 이름을 입력해주세요.');
+      toast.warning('파트너 이름을 입력해주세요.');
       return;
     }
 

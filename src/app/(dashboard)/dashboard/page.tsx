@@ -119,7 +119,7 @@ export default function DashboardPage() {
   // 클라이언트 추가 핸들러
   const handleAddClient = async () => {
     if (!newClient.name) {
-      alert('클라이언트 이름을 입력해주세요.');
+      toast.warning('클라이언트 이름을 입력해주세요.');
       return;
     }
 
@@ -186,7 +186,7 @@ export default function DashboardPage() {
   // 파트너 추가 핸들러
   const handleAddPartner = async () => {
     if (!newPartner.name || !newPartner.email) {
-      alert('파트너 이름과 이메일을 입력해주세요.');
+      toast.warning('파트너 이름과 이메일을 입력해주세요.');
       return;
     }
 
@@ -217,7 +217,7 @@ export default function DashboardPage() {
   // 프로젝트 추가 핸들러
   const handleAddProject = async () => {
     if (!newProject.title || !newProject.client || !newProject.partnerId) {
-      alert('프로젝트 이름, 클라이언트, 담당자를 입력해주세요.');
+      toast.warning('프로젝트 이름, 클라이언트, 담당자를 입력해주세요.');
       return;
     }
 

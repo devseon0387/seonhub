@@ -13,6 +13,7 @@ import { Calendar, Plus, Bell, X, Link2, Search, ChevronLeft, ChevronRight, User
 import { Project, Episode, Partner, Client, WorkContentType, WorkStep } from '@/types';
 import Link from 'next/link';
 import ProjectWizardModal from '@/components/ProjectWizardModal';
+import { useToast } from '@/contexts/ToastContext';
 import DateTimePicker, { RepeatType } from '@/components/DateTimePicker';
 import { useTutorial } from '@/components/tutorial/useTutorial';
 import { APP_VERSION_LABEL } from '@/config/version';
@@ -82,6 +83,7 @@ function itemToRow(item: ChecklistItem): Omit<ChecklistRow, 'id' | 'user_id' | '
 }
 
 export default function ManagementMain() {
+  const toast = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -238,7 +240,7 @@ export default function ManagementMain() {
     };
     const saved = await insertChecklist(itemToRow(newItem));
     if (!saved) {
-      alert('체크리스트 추가에 실패했습니다. 다시 시도해주세요.');
+      toast.error('체크리스트 추가에 실패했습니다. 다시 시도해주세요.');
       return;
     }
     await refreshChecklists();
@@ -344,7 +346,7 @@ export default function ManagementMain() {
     if (!item) return;
     const ok = await updateChecklist(id, { completed: !item.completed });
     if (!ok) {
-      alert('체크리스트 업데이트에 실패했습니다.');
+      toast.error('체크리스트 업데이트에 실패했습니다.');
       return;
     }
     await refreshChecklists();
@@ -353,7 +355,7 @@ export default function ManagementMain() {
   const deleteChecklistItem = async (id: string) => {
     const ok = await deleteChecklist(id);
     if (!ok) {
-      alert('체크리스트 삭제에 실패했습니다.');
+      toast.error('체크리스트 삭제에 실패했습니다.');
       return;
     }
     await refreshChecklists();

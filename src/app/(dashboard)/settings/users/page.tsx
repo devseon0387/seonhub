@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getMyProfile, getAllUserProfiles, updateUserRole, getCustomRoles, addCustomRole, deleteCustomRole } from '@/lib/supabase/db';
 import { Shield, Users, Crown, Plus, X, Tag, Trash2, UserCheck, Pencil, Eye, EyeOff, Copy, Check, UserPlus, RefreshCw, Clock } from 'lucide-react';
+import { useToast } from '@/contexts/ToastContext';
 
 type UserProfile = {
   id: string;
@@ -54,6 +55,7 @@ function getRoleLabel(role: string, customRoles: string[]) {
 
 export default function UsersSettingsPage() {
   const router = useRouter();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [myId, setMyId] = useState<string>('');
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
@@ -131,7 +133,7 @@ export default function UsersSettingsPage() {
         prev.map(p => (p.id === userId ? { ...p, role: newRole } : p))
       );
     } else {
-      alert('역할 변경에 실패했습니다. 다시 시도해주세요.');
+      toast.error('역할 변경에 실패했습니다. 다시 시도해주세요.');
     }
     setUpdatingId(null);
   };
@@ -148,7 +150,7 @@ export default function UsersSettingsPage() {
       setCustomRoles(prev => [...prev, trimmed]);
       setNewRoleName('');
     } else {
-      alert('역할 추가에 실패했습니다. 다시 시도해주세요.');
+      toast.error('역할 추가에 실패했습니다. 다시 시도해주세요.');
     }
     setAddingRole(false);
   };
@@ -158,7 +160,7 @@ export default function UsersSettingsPage() {
     if (ok) {
       setCustomRoles(prev => prev.filter(r => r !== name));
     } else {
-      alert('역할 삭제에 실패했습니다. 다시 시도해주세요.');
+      toast.error('역할 삭제에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -207,10 +209,10 @@ export default function UsersSettingsPage() {
         } catch {
           errMsg = '서버 응답 오류 (HTTP ' + res.status + ')';
         }
-        alert(errMsg);
+        toast.error(errMsg);
       }
     } catch (err) {
-      alert('계정 생성 중 오류: ' + String(err));
+      toast.error('계정 생성 중 오류: ' + String(err));
     }
     setCreating(false);
   };
@@ -241,10 +243,10 @@ export default function UsersSettingsPage() {
         setProfiles(prev => prev.filter(p => p.id !== userId));
       } else {
         const data = await res.json();
-        alert(data.error || '삭제에 실패했습니다.');
+        toast.error(data.error || '삭제에 실패했습니다.');
       }
     } catch {
-      alert('삭제 중 오류가 발생했습니다.');
+      toast.error('삭제 중 오류가 발생했습니다.');
     }
     setDeletingId(null);
   };
@@ -282,10 +284,10 @@ export default function UsersSettingsPage() {
         setEditingUser(null);
       } else {
         const data = await res.json();
-        alert(data.error || '수정에 실패했습니다.');
+        toast.error(data.error || '수정에 실패했습니다.');
       }
     } catch {
-      alert('수정 중 오류가 발생했습니다.');
+      toast.error('수정 중 오류가 발생했습니다.');
     }
     setEditSaving(false);
   };

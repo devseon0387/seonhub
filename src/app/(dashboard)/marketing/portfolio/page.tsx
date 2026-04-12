@@ -292,16 +292,16 @@ export default function PortfolioPage() {
 
   const handleAddItem = async () => {
     if (!newItem.title || !newItem.client) {
-      alert('제목과 클라이언트는 필수 입력 항목입니다.');
+      toast.warning('제목과 클라이언트는 필수 입력 항목입니다.');
       return;
     }
     if (!newItem.youtubeUrl) {
-      alert('유튜브 URL을 입력해주세요.');
+      toast.warning('유튜브 URL을 입력해주세요.');
       return;
     }
     const videoId = extractYouTubeId(newItem.youtubeUrl);
     if (!videoId) {
-      alert('올바른 유튜브 URL을 입력해주세요.\n예: https://www.youtube.com/watch?v=VIDEO_ID');
+      toast.warning('올바른 유튜브 URL을 입력해주세요. (예: https://www.youtube.com/watch?v=VIDEO_ID)');
       return;
     }
 
@@ -319,7 +319,7 @@ export default function PortfolioPage() {
 
     const inserted = await insertPortfolioItem(itemToInsert);
     if (!inserted) {
-      alert('포트폴리오 추가에 실패했습니다. 다시 시도해주세요.');
+      toast.error('포트폴리오 추가에 실패했습니다. 다시 시도해주세요.');
       return;
     }
     setPortfolioItems(prev => [inserted, ...prev]);

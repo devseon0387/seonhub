@@ -15,6 +15,7 @@ import EpisodeDetailModal from '@/components/EpisodeDetailModal';
 import DateRangePicker from '@/components/DateRangePicker';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTutorial } from '@/components/tutorial/useTutorial';
+import { useToast } from '@/contexts/ToastContext';
 
 interface EpisodeWithProjectId extends Episode {
   projectId: string;
@@ -23,6 +24,7 @@ interface EpisodeWithProjectId extends Episode {
 export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
   const projectId = params.id as string;
 
   const [project, setProject] = useState<Project | null>(null);
@@ -497,7 +499,7 @@ export default function ProjectDetailPage() {
   const saveProjectEditModal = async () => {
     if (isSavingProject) return;
     if (!project || !tempEditedProject.title) {
-      alert('프로젝트 이름을 입력해주세요.');
+      toast.warning('프로젝트 이름을 입력해주세요.');
       return;
     }
     setIsSavingProject(true);
