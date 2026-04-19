@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { ProjectBudget, Episode } from "@/types"
+import { ProjectBudget, Episode, ProjectStatus } from "@/types"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -34,9 +34,15 @@ export function formatDate(dateString: string): string {
 export type ComputedProjectStatus = 'active' | 'standby' | 'dormant' | 'inactive';
 
 export function getComputedProjectStatus(
-  projectEpisodes: Episode[]
+  projectEpisodes: Episode[],
+  projectStatus?: ProjectStatus
 ): ComputedProjectStatus {
-  if (projectEpisodes.length === 0) return 'inactive';
+  if (projectEpisodes.length === 0) {
+    // 에피소드 없이 생성된 프로젝트: 프로젝트 자체 상태로 판정
+    if (projectStatus === 'planning' || projectStatus === 'in_progress') return 'active';
+    if (projectStatus === 'on_hold') return 'dormant';
+    return 'inactive';
+  }
 
   const hasNonCompleted = projectEpisodes.some(ep => ep.status !== 'completed');
   if (hasNonCompleted) return 'active';
@@ -113,7 +119,7 @@ export function getStatusText(status: string): string {
 // 프로젝트 상태별 색상
 export function getStatusColor(status: string): string {
   const colorMap: Record<string, string> = {
-    planning: 'bg-orange-100 text-orange-800',
+    planning: 'bg-blue-100 text-blue-900',
     in_progress: 'bg-yellow-100 text-yellow-800',
     completed: 'bg-green-100 text-green-800',
     on_hold: 'bg-gray-100 text-gray-800',

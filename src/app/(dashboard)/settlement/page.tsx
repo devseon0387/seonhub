@@ -9,7 +9,7 @@ import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { groupByClient, groupByPartner, calculateManagerTotal } from '@/lib/settlement';
 
 const statusConfig: Record<string, { label: string; dot: string; badge: string }> = {
-  planning:    { label: '시작 전', dot: 'bg-orange-400',   badge: 'bg-orange-50 text-orange-600' },
+  planning:    { label: '시작 전', dot: 'bg-blue-400',   badge: 'bg-blue-50 text-blue-800' },
   in_progress: { label: '진행 중', dot: 'bg-yellow-400', badge: 'bg-yellow-50 text-yellow-700' },
   completed:   { label: '종료',   dot: 'bg-gray-300',   badge: 'bg-gray-100 text-gray-500' },
 };
@@ -98,7 +98,7 @@ export default function SettlementPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <p className="text-gray-500">데이터를 불러오는데 실패했습니다.</p>
-        <button onClick={loadData} className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm font-medium">
+        <button onClick={loadData} className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-800 transition-colors text-sm font-medium">
           다시 시도
         </button>
       </div>
@@ -112,7 +112,7 @@ export default function SettlementPage() {
         <div>
           <div className="flex items-center gap-2 sm:gap-3">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">이번 달 정산</h1>
-            <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-orange-100 text-orange-600 text-xs sm:text-sm rounded-full font-semibold">
+            <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-blue-100 text-blue-800 text-xs sm:text-sm rounded-full font-semibold">
               {new Date().getMonth() + 1}월
             </span>
           </div>
@@ -133,23 +133,23 @@ export default function SettlementPage() {
         <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 sm:gap-3 sm:flex-wrap">
           <div className="sm:flex-1 sm:min-w-[100px]">
             <p className="text-[11px] sm:text-xs text-gray-400 mb-1 flex items-center gap-1.5">
-              <Briefcase size={11} className="text-orange-400" />클라이언트 수금
+              <Briefcase size={11} className="text-blue-400" />클라이언트 수금
             </p>
-            <p className="text-lg sm:text-xl font-bold text-orange-600">{(clientGrandTotal / 10000).toFixed(0)}<span className="text-xs sm:text-sm font-medium text-orange-300 ml-0.5">만원</span></p>
+            <p className="text-lg sm:text-xl font-bold text-blue-800">{(clientGrandTotal / 10000).toFixed(0)}<span className="text-xs sm:text-sm font-medium text-blue-300 ml-0.5">만원</span></p>
           </div>
           <ArrowRight size={14} className="text-gray-200 flex-shrink-0 hidden sm:block" />
           <div className="sm:flex-1 sm:min-w-[100px]">
             <p className="text-[11px] sm:text-xs text-gray-400 mb-1 flex items-center gap-1.5">
-              <Users size={11} className="text-orange-400" />파트너 지급
+              <Users size={11} className="text-blue-400" />파트너 지급
             </p>
-            <p className="text-lg sm:text-xl font-bold text-orange-600">{(partnerGrandTotal / 10000).toFixed(0)}<span className="text-xs sm:text-sm font-medium text-orange-300 ml-0.5">만원</span></p>
+            <p className="text-lg sm:text-xl font-bold text-blue-800">{(partnerGrandTotal / 10000).toFixed(0)}<span className="text-xs sm:text-sm font-medium text-blue-300 ml-0.5">만원</span></p>
           </div>
           <ArrowRight size={14} className="text-gray-200 flex-shrink-0 hidden sm:block" />
           <div className="sm:flex-1 sm:min-w-[100px]">
             <p className="text-[11px] sm:text-xs text-gray-400 mb-1 flex items-center gap-1.5">
-              <ClipboardCheck size={11} className="text-orange-400" />매니저 지급
+              <ClipboardCheck size={11} className="text-blue-400" />매니저 지급
             </p>
-            <p className="text-lg sm:text-xl font-bold text-orange-500">{(managerTotal / 10000).toFixed(0)}<span className="text-xs sm:text-sm font-medium text-orange-300 ml-0.5">만원</span></p>
+            <p className="text-lg sm:text-xl font-bold text-blue-500">{(managerTotal / 10000).toFixed(0)}<span className="text-xs sm:text-sm font-medium text-blue-300 ml-0.5">만원</span></p>
           </div>
           <ArrowRight size={14} className="text-gray-200 flex-shrink-0 hidden sm:block" />
           <div className="sm:flex-1 sm:min-w-[100px]">
@@ -167,7 +167,7 @@ export default function SettlementPage() {
               <span className="text-gray-600">완료 {paidEpisodes}건</span>
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
               <span className="text-gray-600">대기 {unpaidEpisodes}건</span>
             </span>
           </div>
@@ -176,7 +176,7 @@ export default function SettlementPage() {
 
       {loading && (
         <div className="flex items-center justify-center h-32">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800" />
         </div>
       )}
 
@@ -191,7 +191,7 @@ export default function SettlementPage() {
             {activeTab === key && (
               <motion.div
                 layoutId="settlement-tab-pill"
-                className="absolute inset-0 bg-orange-500 rounded-lg sm:rounded-xl shadow-lg shadow-orange-500/30"
+                className="absolute inset-0 bg-blue-500 rounded-lg sm:rounded-xl shadow-lg shadow-blue-700/30"
                 transition={{ type: 'spring', stiffness: 380, damping: 30 }}
               />
             )}
@@ -226,11 +226,11 @@ export default function SettlementPage() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Briefcase size={16} className="text-orange-500" />
+                  <Briefcase size={16} className="text-blue-500" />
                   <h2 className="font-semibold text-gray-900">클라이언트별 정산 내역</h2>
                 </div>
                 {clientSettlements.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 font-bold">{clientSettlements.length}개</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold">{clientSettlements.length}개</span>
                 )}
               </div>
 
@@ -306,12 +306,12 @@ export default function SettlementPage() {
                                         {episodes.map(ep => (
                                           <div key={ep.id} className="pl-16 pr-5 py-2.5 flex items-center justify-between border-t border-gray-50 bg-gray-50/50">
                                             <div className="flex items-center gap-2 min-w-0">
-                                              <span className="text-xs text-orange-400 font-semibold flex-shrink-0">{ep.episodeNumber}편</span>
+                                              <span className="text-xs text-blue-400 font-semibold flex-shrink-0">{ep.episodeNumber}편</span>
                                               <span className="text-sm text-gray-600 truncate">{ep.title}</span>
                                               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
                                                 ep.paymentStatus === 'completed'
                                                   ? 'bg-green-50 text-green-600'
-                                                  : 'bg-orange-50 text-orange-500'
+                                                  : 'bg-blue-50 text-blue-500'
                                               }`}>
                                                 {ep.paymentStatus === 'completed' ? '입금완료' : '입금대기'}
                                               </span>
@@ -347,11 +347,11 @@ export default function SettlementPage() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Users size={16} className="text-orange-500" />
+                  <Users size={16} className="text-blue-500" />
                   <h2 className="font-semibold text-gray-900">파트너별 정산 내역</h2>
                 </div>
                 {partnerSettlements.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 font-bold">{partnerSettlements.length}명</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold">{partnerSettlements.length}명</span>
                 )}
               </div>
 
@@ -427,12 +427,12 @@ export default function SettlementPage() {
                                         {episodes.map(ep => (
                                           <div key={ep.id} className="pl-16 pr-5 py-2.5 flex items-center justify-between border-t border-gray-50 bg-gray-50/50">
                                             <div className="flex items-center gap-2 min-w-0">
-                                              <span className="text-xs text-orange-400 font-semibold flex-shrink-0">{ep.episodeNumber}편</span>
+                                              <span className="text-xs text-blue-400 font-semibold flex-shrink-0">{ep.episodeNumber}편</span>
                                               <span className="text-sm text-gray-600 truncate">{ep.title}</span>
                                               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
                                                 ep.paymentStatus === 'completed'
                                                   ? 'bg-green-50 text-green-600'
-                                                  : 'bg-orange-50 text-orange-500'
+                                                  : 'bg-blue-50 text-blue-500'
                                               }`}>
                                                 {ep.paymentStatus === 'completed' ? '지급완료' : '지급대기'}
                                               </span>
@@ -456,7 +456,7 @@ export default function SettlementPage() {
                   ))}
                   <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
                     <span className="text-sm font-semibold text-gray-500">총 지급 예정</span>
-                    <span className="text-base font-bold text-orange-600">{(partnerGrandTotal / 10000).toFixed(0)}만원</span>
+                    <span className="text-base font-bold text-blue-800">{(partnerGrandTotal / 10000).toFixed(0)}만원</span>
                   </div>
                 </>
               )}
@@ -468,7 +468,7 @@ export default function SettlementPage() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <ClipboardCheck size={16} className="text-orange-500" />
+                  <ClipboardCheck size={16} className="text-blue-500" />
                   <h2 className="font-semibold text-gray-900">프로젝트별 매니징 비용</h2>
                 </div>
                 <span className="text-xs text-gray-400">평균 마진율 {avgMarginRate}%</span>
@@ -502,7 +502,7 @@ export default function SettlementPage() {
                             </div>
                           </div>
                           <p className="text-[13px] sm:text-sm text-gray-600 text-right hidden sm:block">{(project.budget.totalAmount / 10000).toFixed(0)}만</p>
-                          <p className="text-[13px] sm:text-sm font-semibold text-orange-500 text-right">{(project.budget.managementFee / 10000).toFixed(0)}만원</p>
+                          <p className="text-[13px] sm:text-sm font-semibold text-blue-500 text-right">{(project.budget.managementFee / 10000).toFixed(0)}만원</p>
                           <p className="text-[13px] sm:text-sm font-semibold text-emerald-600 text-right hidden sm:block">{project.budget.marginRate}%</p>
                         </div>
                       );
@@ -511,7 +511,7 @@ export default function SettlementPage() {
                   <div className="px-3 sm:px-5 py-3 sm:py-4 border-t border-gray-100 grid grid-cols-[1fr_70px_80px] sm:grid-cols-[1fr_72px_84px_60px] gap-2 sm:gap-3 items-center">
                     <span className="text-[13px] sm:text-sm font-semibold text-gray-500">총 매니징 비용</span>
                     <span className="text-[13px] sm:text-sm text-gray-400 text-right hidden sm:block">{(clientGrandTotal / 10000).toFixed(0)}만</span>
-                    <span className="text-[14px] sm:text-base font-bold text-orange-500 text-right">{(managerTotal / 10000).toFixed(0)}만원</span>
+                    <span className="text-[14px] sm:text-base font-bold text-blue-500 text-right">{(managerTotal / 10000).toFixed(0)}만원</span>
                     <span className="text-sm font-semibold text-emerald-600 text-right">{avgMarginRate}%</span>
                   </div>
                   </div>

@@ -10,7 +10,7 @@ import { groupByClient, groupByPartner } from '@/lib/settlement';
 import Link from 'next/link';
 
 const statusConfig: Record<string, { label: string; dot: string }> = {
-  planning:    { label: '시작 전', dot: 'bg-orange-400' },
+  planning:    { label: '시작 전', dot: 'bg-blue-400' },
   in_progress: { label: '진행 중', dot: 'bg-yellow-400' },
   completed:   { label: '종료',   dot: 'bg-gray-300' },
 };
@@ -84,7 +84,7 @@ export default function SettlementHistoryPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-32">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800" />
       </div>
     );
   }
@@ -117,19 +117,19 @@ export default function SettlementHistoryPage() {
               <button
                 key={yearMonth}
                 onClick={() => setSelectedMonth(yearMonth)}
-                className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:border-orange-200 hover:shadow-md transition-all text-left group"
+                className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:border-blue-200 hover:shadow-md transition-all text-left group"
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
-                      <Calendar size={18} className="text-orange-500" />
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                      <Calendar size={18} className="text-blue-500" />
                     </div>
                     <div>
                       <h3 className="text-lg font-bold text-gray-900">{formatYearMonth(yearMonth)}</h3>
                       <p className="text-xs text-gray-400">{mp.length}개 프로젝트</p>
                     </div>
                   </div>
-                  <ChevronDown size={16} className="-rotate-90 text-gray-300 group-hover:text-orange-400 transition-colors" />
+                  <ChevronDown size={16} className="-rotate-90 text-gray-300 group-hover:text-blue-400 transition-colors" />
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
@@ -196,11 +196,11 @@ export default function SettlementHistoryPage() {
             <p className="text-[10px] font-bold text-[#a8a29e] uppercase tracking-wider">지출 구성</p>
             <div>
               <div className="flex justify-between items-baseline mb-1.5">
-                <span className="text-[12px] text-gray-600 font-medium flex items-center gap-1.5"><Users size={11} className="text-orange-400" />파트너</span>
+                <span className="text-[12px] text-gray-600 font-medium flex items-center gap-1.5"><Users size={11} className="text-blue-400" />파트너</span>
                 <span className="text-[14px] font-bold text-gray-900">{(md.partnerTotal / 10000).toFixed(0)}만</span>
               </div>
               <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${partnerPct}%` }} transition={{ duration: 0.6 }} className="h-full bg-orange-400 rounded-full" />
+                <motion.div initial={{ width: 0 }} animate={{ width: `${partnerPct}%` }} transition={{ duration: 0.6 }} className="h-full bg-blue-400 rounded-full" />
               </div>
               <p className="text-[10px] text-gray-400 mt-1">{partnerPct}% · {partnerSettlements.length}명</p>
             </div>
@@ -230,13 +230,13 @@ export default function SettlementHistoryPage() {
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-orange-50 flex items-center justify-center">
-                  <Briefcase size={12} className="text-orange-500" />
+                <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <Briefcase size={12} className="text-blue-500" />
                 </div>
                 <h2 className="text-[14px] font-bold text-gray-900">클라이언트별 수금</h2>
               </div>
               {clientSettlements.length > 0 && (
-                <span className="text-[11px] px-2.5 py-1 rounded-full bg-orange-50 text-orange-600 font-bold">{clientSettlements.length}개사</span>
+                <span className="text-[11px] px-2.5 py-1 rounded-full bg-blue-50 text-blue-800 font-bold">{clientSettlements.length}개사</span>
               )}
             </div>
 
@@ -251,14 +251,14 @@ export default function SettlementHistoryPage() {
                   <div key={clientName}>
                     <button
                       onClick={() => toggleGroup(`c-${clientName}`)}
-                      className="w-full px-5 py-3.5 hover:bg-orange-50/30 transition-colors flex items-center justify-between cursor-pointer group"
+                      className="w-full px-5 py-3.5 hover:bg-blue-50/30 transition-colors flex items-center justify-between cursor-pointer group"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-100 to-orange-50 flex items-center justify-center text-[11px] font-extrabold text-orange-600 flex-shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center text-[11px] font-extrabold text-blue-800 flex-shrink-0">
                           {clientName.charAt(0)}
                         </div>
                         <div className="text-left">
-                          <p className="text-[13px] font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">{clientName}</p>
+                          <p className="text-[13px] font-semibold text-gray-900 group-hover:text-blue-800 transition-colors">{clientName}</p>
                           <p className="text-[11px] text-gray-400">
                             {cp.length}건{clientInfo?.company ? ` · ${clientInfo.company}` : ''}
                           </p>
@@ -362,7 +362,7 @@ export default function SettlementHistoryPage() {
                 ))}
                 <div className="px-5 py-4 bg-gray-50/50 flex items-center justify-between">
                   <span className="text-[13px] font-semibold text-gray-500">총 지급 예정</span>
-                  <span className="text-[14px] font-extrabold text-orange-600">{(md.partnerTotal / 10000).toFixed(0)}만원</span>
+                  <span className="text-[14px] font-extrabold text-blue-800">{(md.partnerTotal / 10000).toFixed(0)}만원</span>
                 </div>
               </div>
             )}
@@ -406,7 +406,7 @@ export default function SettlementHistoryPage() {
                             </div>
                           </div>
                           <p className="text-[13px] text-gray-600 text-right">{(project.budget.totalAmount / 10000).toFixed(0)}만</p>
-                          <p className="text-[13px] font-semibold text-orange-500 text-right">{(project.budget.managementFee / 10000).toFixed(0)}만원</p>
+                          <p className="text-[13px] font-semibold text-blue-500 text-right">{(project.budget.managementFee / 10000).toFixed(0)}만원</p>
                           <p className="text-[13px] font-semibold text-emerald-600 text-right">{project.budget.marginRate}%</p>
                         </div>
                       );
@@ -415,7 +415,7 @@ export default function SettlementHistoryPage() {
                   <div className="px-5 py-4 bg-gray-50/50 grid grid-cols-[1fr_72px_84px_60px] gap-3 items-center">
                     <span className="text-[13px] font-semibold text-gray-500">총 매니징 비용</span>
                     <span className="text-[13px] text-gray-400 text-right">{(md.clientTotal / 10000).toFixed(0)}만</span>
-                    <span className="text-[14px] font-extrabold text-orange-500 text-right">{(md.managerTotal / 10000).toFixed(0)}만원</span>
+                    <span className="text-[14px] font-extrabold text-blue-500 text-right">{(md.managerTotal / 10000).toFixed(0)}만원</span>
                     <span></span>
                   </div>
                 </div>

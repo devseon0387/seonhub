@@ -334,7 +334,7 @@ export default function EpisodeDetailModal({
     const statusMap: Record<string, string> = {
       waiting: 'bg-gray-100 text-gray-800',
       in_progress: 'bg-yellow-100 text-yellow-800',
-      review: 'bg-orange-100 text-orange-800',
+      review: 'bg-blue-100 text-blue-900',
       completed: 'bg-green-100 text-green-800',
     };
     return statusMap[status] || statusMap.waiting;
@@ -419,7 +419,7 @@ export default function EpisodeDetailModal({
                     <span className="text-sm text-gray-500">
                       {getCompletedStepsCount()} / {getTotalStepsCount()} 완료
                     </span>
-                    <span className="text-sm font-semibold text-orange-600">
+                    <span className="text-sm font-semibold text-blue-800">
                       {calculateProgress()}%
                     </span>
                   </div>
@@ -431,7 +431,7 @@ export default function EpisodeDetailModal({
                 <div className="mb-4">
                   <div className="w-full bg-gray-200 rounded-full h-2.5">
                     <div
-                      className="bg-orange-600 h-2.5 rounded-full transition-all duration-300"
+                      className="bg-blue-800 h-2.5 rounded-full transition-all duration-300"
                       style={{ width: `${calculateProgress()}%` }}
                     />
                   </div>
@@ -479,7 +479,7 @@ export default function EpisodeDetailModal({
                                   e.stopPropagation();
                                   toggleBudget(workType);
                                 }}
-                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-blue-50 rounded transition-colors"
                                 title="비용 상세"
                               >
                                 <span>💰</span>
@@ -505,7 +505,7 @@ export default function EpisodeDetailModal({
                             <div className="px-4 pb-4">
                               {/* 비용 상세 입력 폼 (펼쳐졌을 때만 표시) */}
                               {expandedBudgets[workType] && (
-                                <div className="mb-3 p-3 bg-orange-50 rounded-lg border border-orange-100">
+                                <div className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
                                   <h4 className="text-xs font-semibold text-gray-700 mb-2">비용 상세</h4>
                                   <div className="grid grid-cols-2 gap-3">
                                     <div>
@@ -516,7 +516,7 @@ export default function EpisodeDetailModal({
                                           value={workBudgets[workType].partnerPayment || ''}
                                           onChange={(e) => handleUpdateBudget(workType, 'partnerPayment', Number(e.target.value))}
                                           placeholder="0"
-                                          className="w-full text-sm px-2 py-1 border border-gray-300 rounded focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
+                                          className="w-full text-sm px-2 py-1 border border-gray-300 rounded focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
                                         />
                                         <span className="ml-1 text-xs text-gray-600">원</span>
                                       </div>
@@ -529,16 +529,16 @@ export default function EpisodeDetailModal({
                                           value={workBudgets[workType].managementFee || ''}
                                           onChange={(e) => handleUpdateBudget(workType, 'managementFee', Number(e.target.value))}
                                           placeholder="0"
-                                          className="w-full text-sm px-2 py-1 border border-gray-300 rounded focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
+                                          className="w-full text-sm px-2 py-1 border border-gray-300 rounded focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
                                         />
                                         <span className="ml-1 text-xs text-gray-600">원</span>
                                       </div>
                                     </div>
                                   </div>
-                                  <div className="mt-2 pt-2 border-t border-orange-200">
+                                  <div className="mt-2 pt-2 border-t border-blue-200">
                                     <div className="flex justify-between items-center">
                                       <span className="text-xs font-medium text-gray-700">합계</span>
-                                      <span className="text-sm font-bold text-orange-600">
+                                      <span className="text-sm font-bold text-blue-800">
                                         {getTotalBudget(workType).toLocaleString()}원
                                       </span>
                                     </div>
@@ -561,7 +561,7 @@ export default function EpisodeDetailModal({
                                         value={step.label}
                                         onChange={(e) => handleUpdateWorkStep(workType, step.id, 'label', e.target.value)}
                                         placeholder="예: 1차 종편"
-                                        className="w-full text-sm px-3 py-2 border border-gray-200 rounded focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-500 bg-white"
+                                        className="w-full text-sm px-3 py-2 border border-gray-200 rounded focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-700 bg-white"
                                       />
                                     </div>
 
@@ -570,7 +570,7 @@ export default function EpisodeDetailModal({
                                       <label className="text-xs text-gray-500 block mb-1">담당 파트너</label>
                                       {editingField === `${workType}-${step.id}-assignee` ? (
                                         <div className="relative">
-                                          <div className="absolute z-10 w-full mt-1 bg-white border border-orange-300 rounded-lg shadow-lg max-h-48 overflow-auto">
+                                          <div className="absolute z-10 w-full mt-1 bg-white border border-blue-300 rounded-lg shadow-lg max-h-48 overflow-auto">
                                             <button
                                               onClick={() => {
                                                 handleUpdateWorkStep(workType, step.id, 'assigneeId', '');
@@ -587,9 +587,9 @@ export default function EpisodeDetailModal({
                                                   handleUpdateWorkStep(workType, step.id, 'assigneeId', p.id);
                                                   setEditingField(null);
                                                 }}
-                                                className="w-full flex items-center px-3 py-2 hover:bg-orange-50 transition-colors text-left"
+                                                className="w-full flex items-center px-3 py-2 hover:bg-blue-50 transition-colors text-left"
                                               >
-                                                <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
+                                                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
                                                   {p.name.charAt(0)}
                                                 </div>
                                                 <span className="text-sm text-gray-900 truncate">{p.name}</span>
@@ -604,12 +604,12 @@ export default function EpisodeDetailModal({
                                       ) : (
                                         <div
                                           onClick={() => setEditingField(`${workType}-${step.id}-assignee`)}
-                                          className="w-full flex items-center px-3 py-2 border border-gray-200 rounded cursor-pointer hover:border-orange-300 transition-colors bg-white"
+                                          className="w-full flex items-center px-3 py-2 border border-gray-200 rounded cursor-pointer hover:border-blue-300 transition-colors bg-white"
                                         >
                                           {step.assigneeId ? (
                                             <>
-                                              <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mr-2">
-                                                <User size={12} className="text-orange-500" />
+                                              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mr-2">
+                                                <User size={12} className="text-blue-500" />
                                               </div>
                                               <span className="text-sm text-gray-900 truncate">
                                                 {partners.find(p => p.id === step.assigneeId)?.name}
@@ -631,7 +631,7 @@ export default function EpisodeDetailModal({
                                       <select
                                         value={step.status}
                                         onChange={(e) => handleUpdateWorkStep(workType, step.id, 'status', e.target.value)}
-                                        className={`w-full text-sm px-3 py-2 rounded border-0 focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer font-medium ${getStatusColor(step.status)}`}
+                                        className={`w-full text-sm px-3 py-2 rounded border-0 focus:outline-none focus:ring-1 focus:ring-blue-700 cursor-pointer font-medium ${getStatusColor(step.status)}`}
                                       >
                                         <option value="waiting">대기</option>
                                         <option value="in_progress">진행 중</option>
@@ -646,7 +646,7 @@ export default function EpisodeDetailModal({
                                         type="date"
                                         value={step.startDate}
                                         onChange={(e) => handleUpdateWorkStep(workType, step.id, 'startDate', e.target.value)}
-                                        className="w-full text-sm px-3 py-2 border border-gray-200 rounded focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-500 bg-white"
+                                        className="w-full text-sm px-3 py-2 border border-gray-200 rounded focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-700 bg-white"
                                       />
                                     </div>
 
@@ -657,7 +657,7 @@ export default function EpisodeDetailModal({
                                         type="date"
                                         value={step.dueDate}
                                         onChange={(e) => handleUpdateWorkStep(workType, step.id, 'dueDate', e.target.value)}
-                                        className="w-full text-sm px-3 py-2 border border-gray-200 rounded focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-500 bg-white"
+                                        className="w-full text-sm px-3 py-2 border border-gray-200 rounded focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-700 bg-white"
                                       />
                                     </div>
                                   </div>
@@ -681,10 +681,10 @@ export default function EpisodeDetailModal({
                             {/* 작업 단계 추가 버튼 */}
                             <button
                               onClick={() => handleAddWorkStep(workType)}
-                              className="w-full flex items-center justify-center px-3 py-2 border border-dashed border-gray-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-colors group text-sm"
+                              className="w-full flex items-center justify-center px-3 py-2 border border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors group text-sm"
                             >
-                              <Plus size={14} className="mr-1 text-gray-400 group-hover:text-orange-500" />
-                              <span className="text-gray-500 group-hover:text-orange-600">작업 단계 추가</span>
+                              <Plus size={14} className="mr-1 text-gray-400 group-hover:text-blue-500" />
+                              <span className="text-gray-500 group-hover:text-blue-800">작업 단계 추가</span>
                             </button>
                               </div>
                             </div>
@@ -710,12 +710,12 @@ export default function EpisodeDetailModal({
                       <button
                         key={workType}
                         onClick={() => handleAddWorkType(workType)}
-                        className="w-full flex items-center justify-between px-4 py-3 border border-dashed border-gray-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-colors group"
+                        className="w-full flex items-center justify-between px-4 py-3 border border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors group"
                       >
-                        <span className="text-sm text-gray-500 group-hover:text-orange-600">
+                        <span className="text-sm text-gray-500 group-hover:text-blue-800">
                           {workType}
                         </span>
-                        <div className="flex items-center space-x-1 text-xs text-gray-400 group-hover:text-orange-500">
+                        <div className="flex items-center space-x-1 text-xs text-gray-400 group-hover:text-blue-500">
                           <Plus size={14} />
                           <span>작업 추가</span>
                         </div>
@@ -739,7 +739,7 @@ export default function EpisodeDetailModal({
                       value={editedEpisode.title}
                       onChange={(e) => handleFieldChange('title', e.target.value)}
                       onBlur={handleFieldBlur}
-                      className="text-base font-medium text-gray-900 w-full border border-orange-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="text-base font-medium text-gray-900 w-full border border-blue-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-700"
                     />
                   ) : (
                     <p
@@ -760,7 +760,7 @@ export default function EpisodeDetailModal({
                         value={editedEpisode.startDate}
                         onChange={(e) => handleFieldChange('startDate', e.target.value)}
                         onBlur={handleFieldBlur}
-                        className="w-full border border-orange-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        className="w-full border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-700"
                       />
                     ) : (
                       <p
@@ -780,7 +780,7 @@ export default function EpisodeDetailModal({
                         value={editedEpisode.dueDate || ''}
                         onChange={(e) => handleFieldChange('dueDate', e.target.value)}
                         onBlur={handleFieldBlur}
-                        className="w-full border border-orange-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        className="w-full border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-700"
                       />
                     ) : (
                       <p
@@ -823,13 +823,13 @@ export default function EpisodeDetailModal({
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">파트너 지급</p>
-                      <p className="text-xl font-bold text-orange-600 mt-1">
+                      <p className="text-xl font-bold text-blue-800 mt-1">
                         {episode.budget.partnerPayment.toLocaleString()}원
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">매니징 비용</p>
-                      <p className="text-xl font-bold text-orange-600 mt-1">
+                      <p className="text-xl font-bold text-blue-800 mt-1">
                         {episode.budget.managementFee.toLocaleString()}원
                       </p>
                     </div>
@@ -855,7 +855,7 @@ export default function EpisodeDetailModal({
             </p>
             <button
               onClick={handleClose}
-              className="px-4 py-2 bg-orange-600 text-white hover:bg-orange-700 rounded-lg transition-colors font-medium"
+              className="px-4 py-2 bg-blue-800 text-white hover:bg-blue-900 rounded-lg transition-colors font-medium"
             >
               저장하고 닫기
             </button>

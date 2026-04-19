@@ -162,7 +162,7 @@ export default function PartnerEditModal({ partner, onClose, onSaved }: PartnerE
                                   setIsBankDropdownOpen(false);
                                 }}
                                 className={`flex flex-col items-center gap-1.5 p-2 rounded-xl transition-colors ${
-                                  isSelected ? 'bg-orange-50 ring-2 ring-orange-400' : 'hover:bg-gray-50'
+                                  isSelected ? 'bg-blue-50 ring-2 ring-blue-400' : 'hover:bg-gray-50'
                                 }`}
                               >
                                 <span
@@ -187,7 +187,7 @@ export default function PartnerEditModal({ partner, onClose, onSaved }: PartnerE
                     placeholder="계좌번호 입력"
                     value={editForm.bankAccount}
                     onChange={(e) => setEditForm({ ...editForm, bankAccount: e.target.value })}
-                    className="flex-1 h-12 px-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 text-sm text-gray-900 placeholder-gray-400 transition-colors"
+                    className="flex-1 h-12 px-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-700/20 text-sm text-gray-900 placeholder-gray-400 transition-colors"
                   />
                 </div>
               </div>
@@ -199,7 +199,7 @@ export default function PartnerEditModal({ partner, onClose, onSaved }: PartnerE
                     onClick={() => setEditForm({ ...editForm, partnerType: 'freelancer' })}
                     className={`h-12 rounded-xl font-semibold transition-colors ${
                       editForm.partnerType === 'freelancer'
-                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30'
+                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-700/30'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -210,7 +210,7 @@ export default function PartnerEditModal({ partner, onClose, onSaved }: PartnerE
                     onClick={() => setEditForm({ ...editForm, partnerType: 'business' })}
                     className={`h-12 rounded-xl font-semibold transition-colors ${
                       editForm.partnerType === 'business'
-                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30'
+                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-700/30'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -240,7 +240,7 @@ export default function PartnerEditModal({ partner, onClose, onSaved }: PartnerE
                             setIsGenerationDropdownOpen(false);
                           }}
                           className={`w-full px-4 py-3 text-left transition-colors first:rounded-t-xl last:rounded-b-xl ${
-                            editForm.generation === gen ? 'bg-orange-50 text-orange-700 font-semibold' : 'hover:bg-orange-50 text-gray-900'
+                            editForm.generation === gen ? 'bg-blue-50 text-blue-900 font-semibold' : 'hover:bg-blue-50 text-gray-900'
                           }`}
                         >
                           {gen}기
@@ -273,7 +273,7 @@ export default function PartnerEditModal({ partner, onClose, onSaved }: PartnerE
                         setIsStatusDropdownOpen(false);
                       }}
                       className={`w-full px-3 py-2 text-left transition-colors ${
-                        editForm.status === 'active' ? 'bg-orange-50 text-orange-700 font-medium' : 'hover:bg-gray-50 text-gray-900'
+                        editForm.status === 'active' ? 'bg-blue-50 text-blue-900 font-medium' : 'hover:bg-gray-50 text-gray-900'
                       }`}
                     >
                       활성
@@ -285,7 +285,7 @@ export default function PartnerEditModal({ partner, onClose, onSaved }: PartnerE
                         setIsStatusDropdownOpen(false);
                       }}
                       className={`w-full px-3 py-2 text-left transition-colors ${
-                        editForm.status === 'inactive' ? 'bg-orange-50 text-orange-700 font-medium' : 'hover:bg-gray-50 text-gray-900'
+                        editForm.status === 'inactive' ? 'bg-blue-50 text-blue-900 font-medium' : 'hover:bg-gray-50 text-gray-900'
                       }`}
                     >
                       비활성
@@ -305,7 +305,7 @@ export default function PartnerEditModal({ partner, onClose, onSaved }: PartnerE
             <button
               onClick={handleSave}
               disabled={!editForm.name}
-              className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors active:scale-[0.97] disabled:bg-gray-300 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-800 transition-colors active:scale-[0.97] disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               저장
             </button>

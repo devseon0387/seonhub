@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getProjects, insertProject, insertClient, getClients as fetchClients, getAllEpisodes, getPartners, upsertEpisodes } from '@/lib/supabase/db';
+import { getProjects, insertProject, insertClient, getClients as fetchClients, getAllEpisodes, getPartners, upsertEpisodes, upsertSprints, upsertContentItems } from '@/lib/supabase/db';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
-import { Calendar, User, X, ChevronDown, Search, ArrowRight, Plus, Building2 } from 'lucide-react';
+import { Calendar, User, X, ChevronDown, Search } from 'lucide-react';
 import { calculateReserve, getComputedProjectStatus, compareProjects, ComputedProjectStatus } from '@/lib/utils';
 import Link from 'next/link';
 import { Project, Client, Episode, WorkContentType, Partner } from '@/types';
@@ -70,6 +70,7 @@ export default function ProjectsPage() {
   }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'amount' | 'name'>('recent');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'video' | 'dev' | 'content'>('all');
 
   // 작업 타입 모달 상태
   const [selectedWorkTypeModal, setSelectedWorkTypeModal] = useState<{ episodeId: string; workType: WorkContentType } | null>(null);
@@ -100,7 +101,7 @@ export default function ProjectsPage() {
   projects.forEach(project => {
     const projectEpisodes = episodes.filter(e => e.projectId === project.id);
     projectEpisodesMap.set(project.id, projectEpisodes);
-    projectStatusMap.set(project.id, getComputedProjectStatus(projectEpisodes));
+    projectStatusMap.set(project.id, getComputedProjectStatus(projectEpisodes, project.status));
   });
 
   // 필터링 및 정렬된 프로젝트 목록
@@ -118,6 +119,9 @@ export default function ProjectsPage() {
         const s = projectStatusMap.get(project.id);
         if (s !== 'standby' && s !== 'dormant') return false;
       } else if (activeFilter !== 'all' && projectStatusMap.get(project.id) !== activeFilter) return false;
+
+      // 타입 필터
+      if (typeFilter !== 'all' && (project.type || 'video') !== typeFilter) return false;
 
       // 검색 적용
       if (searchQuery) {
@@ -183,6 +187,8 @@ export default function ProjectsPage() {
         if (found) clientName = found.name;
       }
 
+      const projectType: 'video' | 'dev' | 'content' = data.project.type || 'video';
+
       // 프로젝트 생성
       const saved = await insertProject({
         title: data.project.title,
@@ -196,32 +202,72 @@ export default function ProjectsPage() {
         budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0, marginRate: 0 },
         workContent: [],
         tags: [],
-      });
+        type: projectType,
+        meta: data.project.meta,
+      } as any);
 
       if (!saved) {
         globalToast.error('프로젝트 생성에 실패했습니다. 다시 시도해주세요.');
         return;
       }
 
-      // 회차 생성
+      // 하위 단위 생성 (타입별 분기)
       if (data.episodes.shouldCreate && data.episodes.count) {
-        const newEpisodes = Array.from({ length: data.episodes.count }, (_, i) => ({
-          id: crypto.randomUUID(),
-          projectId: saved.id,
-          episodeNumber: i + 1,
-          title: '',
-          workContent: [] as WorkContentType[],
-          status: 'waiting' as const,
-          assignee: data.project.partnerIds[0] || '',
-          manager: '',
-          startDate: data.episodes.dates?.[i]?.startDate || new Date().toISOString(),
-          dueDate: data.episodes.dates?.[i]?.endDate || undefined,
-          budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0 },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }));
-        await upsertEpisodes(newEpisodes);
-        setEpisodes(prev => [...prev, ...newEpisodes]);
+        const count: number = data.episodes.count;
+        const now = new Date().toISOString();
+
+        if (projectType === 'video') {
+          const newEpisodes = Array.from({ length: count }, (_, i) => ({
+            id: crypto.randomUUID(),
+            projectId: saved.id,
+            episodeNumber: i + 1,
+            title: '',
+            workContent: [] as WorkContentType[],
+            status: 'waiting' as const,
+            assignee: data.project.partnerIds[0] || '',
+            manager: '',
+            startDate: data.episodes.dates?.[i]?.startDate || now,
+            dueDate: data.episodes.dates?.[i]?.endDate || undefined,
+            budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0 },
+            createdAt: now,
+            updatedAt: now,
+          }));
+          await upsertEpisodes(newEpisodes);
+          setEpisodes(prev => [...prev, ...newEpisodes]);
+        } else if (projectType === 'dev') {
+          const newSprints = Array.from({ length: count }, (_, i) => ({
+            id: crypto.randomUUID(),
+            projectId: saved.id,
+            sprintNumber: i + 1,
+            title: `Sprint ${i + 1}`,
+            status: 'planning' as const,
+            startDate: data.episodes.dates?.[i]?.startDate || now,
+            endDate: data.episodes.dates?.[i]?.endDate || undefined,
+            issueCount: 0,
+            completedIssueCount: 0,
+            assigneeIds: [],
+            budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0 },
+            createdAt: now,
+            updatedAt: now,
+          }));
+          await upsertSprints(newSprints);
+        } else if (projectType === 'content') {
+          const newContentItems = Array.from({ length: count }, (_, i) => ({
+            id: crypto.randomUUID(),
+            projectId: saved.id,
+            itemNumber: i + 1,
+            title: '',
+            status: 'draft' as const,
+            platform: 'other' as const,
+            publishDate: data.episodes.dates?.[i]?.endDate || undefined,
+            viewCount: 0,
+            assigneeIds: [],
+            budget: { totalAmount: 0, partnerPayment: 0, managementFee: 0 },
+            createdAt: now,
+            updatedAt: now,
+          }));
+          await upsertContentItems(newContentItems);
+        }
       }
       setProjects(prev => [saved, ...prev]);
       globalToast.success('프로젝트가 생성되었습니다!');
@@ -235,7 +281,7 @@ export default function ProjectsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800" />
       </div>
     );
   }
@@ -286,7 +332,7 @@ export default function ProjectsPage() {
         <button
           data-tour="tour-proj-new"
           onClick={() => setIsAddModalOpen(true)}
-          className="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors flex-shrink-0"
+          className="px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-semibold hover:bg-blue-800 transition-colors flex-shrink-0"
         >
           + 새 프로젝트
         </button>
@@ -317,7 +363,7 @@ export default function ProjectsPage() {
               {activeFilter === key && (
                 <motion.div
                   layoutId="project-filter-pill"
-                  className="absolute inset-0 bg-orange-500 rounded-lg sm:rounded-xl shadow-lg shadow-orange-500/30"
+                  className="absolute inset-0 bg-blue-500 rounded-lg sm:rounded-xl shadow-lg shadow-blue-700/30"
                   transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                 />
               )}
@@ -352,6 +398,16 @@ export default function ProjectsPage() {
               </button>
             )}
           </div>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as 'all' | 'video' | 'dev' | 'content')}
+            className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none text-xs text-gray-600"
+          >
+            <option value="all">전체 타입</option>
+            <option value="video">🎬 영상</option>
+            <option value="dev">💻 개발</option>
+            <option value="content">📱 콘텐츠</option>
+          </select>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'recent' | 'amount' | 'name')}
@@ -402,63 +458,90 @@ export default function ProjectsPage() {
                   href={`/projects/${project.id}`}
                   className="group block bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-200 p-4"
                 >
-                  {/* 클라이언트 + 상태 */}
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-gray-500 truncate">{project.client}</span>
+                  {/* 타입 + 클라이언트 + 상태 */}
+                  <div className="flex items-center justify-between mb-1 gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <ProjectTypeBadge type={project.type || 'video'} />
+                      <span className="text-xs font-medium text-gray-500 truncate">{project.client}</span>
+                    </div>
                     <StatusBadge status={projectStatusMap.get(project.id) || 'inactive'} />
                   </div>
 
                   {/* 프로젝트명 */}
-                  <h3 className="font-semibold text-gray-900 group-hover:text-orange-600 transition-colors text-lg leading-snug line-clamp-1 mb-3">
+                  <h3 className="font-semibold text-gray-900 group-hover:text-blue-800 transition-colors text-lg leading-snug line-clamp-1 mb-3">
                     {project.title}
                   </h3>
 
-                  {/* 파트너 */}
-                  <div className="flex items-center gap-3 text-xs text-gray-400 mb-2">
-                    {partner ? (
-                      <div className="flex items-center gap-1 flex-1 min-w-0">
-                        <div className="w-4 h-4 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <User size={8} className="text-orange-500" />
-                        </div>
-                        <span className="truncate">{partner.name}</span>
-                      </div>
-                    ) : (
-                      <div className="flex-1" />
-                    )}
-                    {projectEpisodes.length > 0 && (
+                  {projectEpisodes.length > 0 && (
+                    <div className="flex items-center justify-end text-xs text-gray-400 mb-2">
                       <span className="flex-shrink-0">{completedEpisodes}/{projectEpisodes.length}회차</span>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
-                  {/* 작업 현황 */}
-                  {projectEpisodes.length > 0 && (() => {
-                    const inProgressLong = projectEpisodes.filter(ep =>
-                      ep.workContent.includes('롱폼') &&
-                      (ep.workSteps?.['롱폼'] || []).some(s => s.status === 'in_progress')
-                    ).length;
-                    const inProgressShort = projectEpisodes.filter(ep =>
-                      (ep.workContent.includes('기획 숏폼') || ep.workContent.includes('본편 숏폼')) &&
-                      ((ep.workSteps?.['기획 숏폼'] || []).some(s => s.status === 'in_progress') ||
-                       (ep.workSteps?.['본편 숏폼'] || []).some(s => s.status === 'in_progress'))
-                    ).length;
-                    const totalLong = projectEpisodes.filter(ep => ep.workContent.includes('롱폼')).length;
-                    const totalShort = projectEpisodes.filter(ep =>
-                      ep.workContent.includes('기획 숏폼') || ep.workContent.includes('본편 숏폼')
-                    ).length;
-
+                  {/* 작업 현황 (타입별 분기) */}
+                  {(() => {
+                    const ptype = project.type || 'video';
+                    if (ptype === 'video') {
+                      if (projectEpisodes.length === 0) return null;
+                      const inProgressLong = projectEpisodes.filter(ep =>
+                        ep.workContent.includes('롱폼') &&
+                        (ep.workSteps?.['롱폼'] || []).some(s => s.status === 'in_progress')
+                      ).length;
+                      const inProgressShort = projectEpisodes.filter(ep =>
+                        (ep.workContent.includes('기획 숏폼') || ep.workContent.includes('본편 숏폼')) &&
+                        ((ep.workSteps?.['기획 숏폼'] || []).some(s => s.status === 'in_progress') ||
+                         (ep.workSteps?.['본편 숏폼'] || []).some(s => s.status === 'in_progress'))
+                      ).length;
+                      const totalLong = projectEpisodes.filter(ep => ep.workContent.includes('롱폼')).length;
+                      const totalShort = projectEpisodes.filter(ep =>
+                        ep.workContent.includes('기획 숏폼') || ep.workContent.includes('본편 숏폼')
+                      ).length;
+                      return (
+                        <div className="pt-2 border-t border-gray-50 space-y-1 text-[11px]">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-1 h-1 rounded-full bg-green-500 flex-shrink-0" />
+                            <span className="text-gray-500">작업 진행 중</span>
+                            <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-600 font-medium">롱폼 {inProgressLong}개</span>
+                            <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-800 font-medium">숏폼 {inProgressShort}개</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-1 h-1 rounded-full bg-gray-300 flex-shrink-0" />
+                            <span className="text-gray-400">누적 작업 수</span>
+                            <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-600 font-medium">롱폼 {totalLong}개</span>
+                            <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-800 font-medium">숏폼 {totalShort}개</span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    if (ptype === 'dev') {
+                      // TODO: 실제 스프린트/이슈 데이터 연결
+                      return (
+                        <div className="pt-2 border-t border-gray-50 space-y-1 text-[11px]">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-1 h-1 rounded-full bg-indigo-500 flex-shrink-0" />
+                            <span className="text-gray-500">이번 스프린트</span>
+                            <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-medium">스프린트 없음</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-1 h-1 rounded-full bg-gray-300 flex-shrink-0" />
+                            <span className="text-gray-400">오픈 이슈</span>
+                            <span className="px-1.5 py-0.5 rounded bg-gray-50 text-gray-500 font-medium">0개</span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    // content
                     return (
                       <div className="pt-2 border-t border-gray-50 space-y-1 text-[11px]">
                         <div className="flex items-center gap-1.5">
-                          <span className="w-1 h-1 rounded-full bg-green-500 flex-shrink-0" />
-                          <span className="text-gray-500">작업 진행 중</span>
-                          <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-600 font-medium">롱폼 {inProgressLong}개</span>
-                          <span className="px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 font-medium">숏폼 {inProgressShort}개</span>
+                          <span className="w-1 h-1 rounded-full bg-fuchsia-500 flex-shrink-0" />
+                          <span className="text-gray-500">이번 주 발행</span>
+                          <span className="px-1.5 py-0.5 rounded bg-fuchsia-50 text-fuchsia-700 font-medium">발행 없음</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span className="w-1 h-1 rounded-full bg-gray-300 flex-shrink-0" />
-                          <span className="text-gray-400">누적 작업 수</span>
-                          <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-600 font-medium">롱폼 {totalLong}개</span>
-                          <span className="px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 font-medium">숏폼 {totalShort}개</span>
+                          <span className="text-gray-400">누적 발행</span>
+                          <span className="px-1.5 py-0.5 rounded bg-gray-50 text-gray-500 font-medium">0개</span>
                         </div>
                       </div>
                     );
@@ -476,7 +559,6 @@ export default function ProjectsPage() {
         onClose={() => setIsAddModalOpen(false)}
         onComplete={handleWizardComplete}
         clients={clients}
-        partners={allPartners}
       />
 
       {/* 작업 목록 모달 */}
@@ -587,8 +669,8 @@ export default function ProjectsPage() {
                                   <div className="flex items-center gap-4 text-sm text-gray-600">
                                     {partner && (
                                       <div className="flex items-center gap-1">
-                                        <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                          <User size={10} className="text-orange-500" />
+                                        <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                          <User size={10} className="text-blue-500" />
                                         </div>
                                         <span>{partner.name}</span>
                                       </div>
@@ -718,7 +800,7 @@ function TabButton({
       onClick={onClick}
       className={`px-4 py-3 font-medium text-sm transition-colors ${
         active
-          ? 'text-orange-600 border-b-2 border-orange-600'
+          ? 'text-blue-800 border-b-2 border-blue-800'
           : 'text-gray-600 hover:text-gray-900'
       }`}
     >
@@ -728,11 +810,25 @@ function TabButton({
 }
 
 // 상태 배지 컴포넌트
+function ProjectTypeBadge({ type }: { type: 'video' | 'dev' | 'content' }) {
+  const typeMap: Record<string, { label: string; color: string }> = {
+    video:   { label: '영상',   color: 'bg-red-50 text-red-700' },
+    dev:     { label: '개발',   color: 'bg-indigo-50 text-indigo-700' },
+    content: { label: '콘텐츠', color: 'bg-fuchsia-50 text-fuchsia-700' },
+  };
+  const { label, color } = typeMap[type] || typeMap.video;
+  return (
+    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap flex-shrink-0 ${color}`}>
+      {label}
+    </span>
+  );
+}
+
 function StatusBadge({ status }: { status: string }) {
   const statusMap: Record<string, { label: string; color: string }> = {
     active: { label: '진행 중', color: 'bg-green-50 text-green-600' },
     standby: { label: '대기', color: 'bg-blue-50 text-blue-600' },
-    dormant: { label: '휴면', color: 'bg-orange-50 text-orange-600' },
+    dormant: { label: '휴면', color: 'bg-blue-50 text-blue-800' },
     inactive: { label: '비활성', color: 'bg-gray-100 text-gray-500' },
   };
 

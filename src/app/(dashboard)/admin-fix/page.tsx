@@ -30,7 +30,7 @@ export default function AdminFixPage() {
       <button
         onClick={handleFix}
         disabled={loading}
-        className="px-6 py-3 bg-orange-600 text-white rounded-xl font-semibold hover:bg-orange-700 disabled:bg-gray-300 transition-colors"
+        className="px-6 py-3 bg-blue-800 text-white rounded-xl font-semibold hover:bg-blue-900 disabled:bg-gray-300 transition-colors"
       >
         {loading ? '처리 중...' : '비용 재계산 실행'}
       </button>

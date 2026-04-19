@@ -75,7 +75,7 @@ function MiniCalendar({ label, value, onChange, isMissing, disabled }: DateField
             </span>
           )}
           {!disabled && isMissing && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-500 font-semibold">
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-500 font-semibold">
               미입력
             </span>
           )}
@@ -108,7 +108,7 @@ function MiniCalendar({ label, value, onChange, isMissing, disabled }: DateField
       <div className="grid grid-cols-7 mb-0.5">
         {DAYS.map((d, i) => (
           <div key={d} className={`text-center text-[10px] font-semibold py-1 ${
-            i === 0 ? 'text-red-300' : i === 6 ? 'text-orange-300' : 'text-gray-300'
+            i === 0 ? 'text-red-300' : i === 6 ? 'text-blue-300' : 'text-gray-300'
           }`}>
             {d}
           </div>
@@ -138,20 +138,20 @@ function MiniCalendar({ label, value, onChange, isMissing, disabled }: DateField
                     ? 'bg-green-400 text-white'
                     : 'text-gray-300 cursor-default'
                   : isSelected
-                    ? 'bg-orange-500 text-white shadow-sm shadow-orange-200'
+                    ? 'bg-blue-500 text-white shadow-sm shadow-blue-200'
                     : isToday
-                    ? 'bg-orange-50 text-orange-600 font-bold'
+                    ? 'bg-blue-50 text-blue-800 font-bold'
                     : colIdx === 0
                     ? 'text-red-400 hover:bg-red-50'
                     : colIdx === 6
-                    ? 'text-orange-400 hover:bg-orange-50'
+                    ? 'text-blue-400 hover:bg-blue-50'
                     : 'text-gray-700 hover:bg-gray-100'
                 }
               `}
             >
               {day}
               {isToday && !isSelected && !disabled && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0.5 h-0.5 rounded-full bg-orange-400" />
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0.5 h-0.5 rounded-full bg-blue-400" />
               )}
             </motion.button>
           );
@@ -164,7 +164,7 @@ function MiniCalendar({ label, value, onChange, isMissing, disabled }: DateField
           <button
             type="button"
             onClick={() => onChange(todayStr)}
-            className="w-full text-[11px] text-orange-500 hover:text-orange-600 font-medium py-1 hover:bg-orange-50 rounded-lg transition-colors"
+            className="w-full text-[11px] text-blue-500 hover:text-blue-800 font-medium py-1 hover:bg-blue-50 rounded-lg transition-colors"
           >
             오늘
           </button>
@@ -215,7 +215,7 @@ export default function DateTripleModal({ fields, isOpen, onClose }: DateTripleM
               ))}
             </div>
             <div className="mt-4 flex justify-end">
-              <button type="button" onClick={onClose} className="px-4 py-2 bg-orange-500 text-white rounded-xl text-[13px] font-semibold hover:bg-orange-600 transition-colors shadow-sm shadow-orange-500/20">
+              <button type="button" onClick={onClose} className="px-4 py-2 bg-blue-500 text-white rounded-xl text-[13px] font-semibold hover:bg-blue-800 transition-colors shadow-sm shadow-blue-700/20">
                 확인
               </button>
             </div>

@@ -1,10 +1,16 @@
 'use client';
 
-import { useContext } from 'react';
-import { TutorialContext, TutorialContextValue } from './TutorialProvider';
+import type { TutorialContextValue } from './TutorialProvider';
 
 export function useTutorial(): TutorialContextValue {
-  const ctx = useContext(TutorialContext);
-  if (!ctx) throw new Error('useTutorial must be used within TutorialProvider');
-  return ctx;
+  return {
+    isActive: false,
+    currentStepIndex: 0,
+    steps: [],
+    pageKey: null,
+    startTutorial: () => {},
+    nextStep: () => {},
+    prevStep: () => {},
+    skip: () => {},
+  };
 }

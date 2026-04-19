@@ -160,11 +160,11 @@ export default function GlobalSearch() {
   const getIcon = (type: string) => {
     switch (type) {
       case 'partner':
-        return <Users size={22} className="text-orange-500" />;
+        return <Users size={22} className="text-blue-500" />;
       case 'client':
         return <Briefcase size={22} className="text-green-500" />;
       case 'project':
-        return <FolderOpen size={22} className="text-orange-500" />;
+        return <FolderOpen size={22} className="text-blue-500" />;
       default:
         return <FileText size={22} className="text-gray-500" />;
     }
@@ -200,7 +200,7 @@ export default function GlobalSearch() {
             : 'opacity-0 scale-75 pointer-events-none'
         }`}
       >
-        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-orange-400 to-orange-400 flex items-center justify-center shadow-md">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-400 to-blue-400 flex items-center justify-center shadow-md">
           <Search size={20} className="text-white" />
         </div>
       </div>
@@ -219,11 +219,11 @@ export default function GlobalSearch() {
             setIsOpen(true);
             setTimeout(() => inputRef.current?.focus(), 100);
           }}
-          className="w-full flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-orange-50 to-orange-50 hover:from-orange-100 hover:to-orange-100 border border-orange-200 rounded-lg transition-all group shadow-lg hover:shadow-xl"
+          className="w-full flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-blue-50 to-blue-50 hover:from-blue-100 hover:to-blue-100 border border-blue-200 rounded-lg transition-all group shadow-lg hover:shadow-xl"
         >
-          <Search size={18} className="text-orange-500 group-hover:text-orange-600" />
+          <Search size={18} className="text-blue-500 group-hover:text-blue-800" />
           <span className="text-sm text-gray-700 flex-1 text-left font-medium">검색...</span>
-          <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 bg-white border border-orange-200 rounded text-xs text-orange-600 font-semibold">
+          <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 bg-white border border-blue-200 rounded text-xs text-blue-800 font-semibold">
             ⌘K
           </kbd>
         </button>
@@ -245,8 +245,8 @@ export default function GlobalSearch() {
           {/* 모달 컨텐츠 */}
           <div className="relative w-full max-w-2xl bg-white rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-top-4 duration-200">
             {/* 검색 입력 */}
-            <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-orange-50">
-              <Search size={20} className="text-orange-500 flex-shrink-0 sm:w-6 sm:h-6" />
+            <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-50">
+              <Search size={20} className="text-blue-500 flex-shrink-0 sm:w-6 sm:h-6" />
               <input
                 ref={inputRef}
                 type="text"
@@ -280,8 +280,8 @@ export default function GlobalSearch() {
             <div className="max-h-[60vh] sm:max-h-[60vh] overflow-y-auto">
             {query === '' ? (
               <div className="p-8 sm:p-12 text-center">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 rounded-full bg-gradient-to-r from-orange-100 to-orange-100 flex items-center justify-center">
-                  <Search size={32} className="text-orange-500 sm:w-10 sm:h-10" />
+                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 rounded-full bg-gradient-to-r from-blue-100 to-blue-100 flex items-center justify-center">
+                  <Search size={32} className="text-blue-500 sm:w-10 sm:h-10" />
                 </div>
                 <p className="text-base sm:text-lg font-medium text-gray-700 mb-2">무엇을 찾으시나요?</p>
                 <p className="text-sm text-gray-500">파트너, 클라이언트, 프로젝트를 빠르게 검색하세요</p>
@@ -312,7 +312,7 @@ export default function GlobalSearch() {
                     onClick={() => handleResultClick(result)}
                     className={`w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 transition-all ${
                       index === selectedIndex
-                        ? 'bg-gradient-to-r from-orange-50 to-orange-50 border-l-4 border-orange-500'
+                        ? 'bg-gradient-to-r from-blue-50 to-blue-50 border-l-4 border-blue-500'
                         : 'hover:bg-gray-50 border-l-4 border-transparent'
                     }`}
                     onMouseEnter={() => setSelectedIndex(index)}

@@ -3,19 +3,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, Users, FolderOpen, Settings, Briefcase, Trash2,
-  Megaphone, LogOut, ClipboardCheck, Building2, Mail, Inbox, Send, MailPlus, Archive,
-  Wallet, Receipt, FileText, Target, Shield, Layers, Menu, X, Calendar,
-  MessageSquarePlus, CreditCard,
+  LayoutDashboard, FolderOpen, Settings, Briefcase, Trash2,
+  Megaphone, LogOut, Shield, Menu, X, CreditCard, ClipboardCheck,
+  Code2, Palette, Frame, Map, Database,
 } from 'lucide-react';
 import DashboardContent from '@/components/DashboardContent';
-import GlobalFAB from '@/components/GlobalFAB';
+import BibotWidget from '@/components/BibotWidget';
 import GlobalSearch from '@/components/GlobalSearch';
-import TutorialProvider from '@/components/tutorial/TutorialProvider';
-import TutorialOverlay from '@/components/tutorial/TutorialOverlay';
 import NotificationDropdown from '@/components/NotificationDropdown';
 
-import FeedbackModal from '@/components/FeedbackModal';
 import UpdateNoticeModal from '@/components/UpdateNoticeModal';
 import { APP_VERSION, APP_LAST_UPDATED } from '@/config/version';
 import Link from 'next/link';
@@ -42,56 +38,16 @@ const SECTIONS: Section[] = [
       { type: 'link', href: '/management', label: '매니지먼트', icon: ClipboardCheck  },
       { type: 'link', href: '/projects',   label: '프로젝트',   icon: FolderOpen      },
       { type: 'divider' },
-      { type: 'link', href: '/finance/partner-settlement', label: '정산 관리', icon: Users },
+      { type: 'link', href: '/finance/expenses', label: '지출 관리', icon: CreditCard },
       { type: 'divider' },
       { type: 'link', href: '/clients',    label: '클라이언트 관리', icon: Briefcase       },
-      { type: 'link', href: '/partners',   label: '파트너 관리',     icon: Users           },
       { type: 'divider' },
-      { type: 'link', href: '/feedback',   label: '피드백',   icon: MessageSquarePlus },
+      { type: 'link', href: '/dev',        label: 'Dev Workspace', icon: Code2 },
+      { type: 'link', href: '/design',     label: '디자인 시스템', icon: Palette },
+      { type: 'link', href: '/wireframes', label: '와이어프레임', icon: Frame },
+      { type: 'link', href: '/roadmap',    label: '로드맵', icon: Map },
+      { type: 'link', href: '/erd',        label: 'ERD', icon: Database },
       { type: 'link', href: '/updates',    label: '업데이트', icon: Megaphone },
-    ],
-  },
-  {
-    key: 'finance',
-    icon: Wallet,
-    label: '재무',
-    items: [
-      { type: 'link', href: '/finance/invoices',   label: '세금계산서',   icon: FileText,   badge: '준비중' },
-      { type: 'link', href: '/finance/payments',   label: '입금 관리',    icon: Receipt,    badge: '준비중' },
-      { type: 'link', href: '/finance/expenses',   label: '지출 관리',    icon: CreditCard },
-      { type: 'divider' },
-      { type: 'link', href: '/settlement', label: '정산',       icon: Receipt, badge: '준비중', sub: [
-        { href: '/settlement/history', label: '월별 내역', icon: Calendar },
-      ] },
-    ],
-  },
-  {
-    key: 'manage',
-    icon: Building2,
-    label: '경영',
-    items: [
-      { type: 'link', href: '/contracts',    label: '계약',       icon: FileText, badge: '준비중' },
-      { type: 'link', href: '/strategy',   label: '전략',       icon: Target,   badge: '준비중' },
-      { type: 'link', href: '/operations', label: '운영',       icon: Layers,   badge: '준비중' },
-      { type: 'divider' },
-      { type: 'link', href: '/marketing',  label: '마케팅',     icon: Megaphone, sub: [
-        { href: '/marketing/portfolio', label: '포트폴리오', icon: Megaphone },
-        { href: '/marketing/inquiries', label: '문의', icon: MessageSquarePlus },
-      ] },
-    ],
-  },
-  {
-    key: 'mail',
-    icon: Mail,
-    label: '메일',
-    items: [
-      { type: 'link', href: '/mail/compose', label: '메일 쓰기', icon: MailPlus },
-      { type: 'divider' },
-      { type: 'link', href: '/mail', label: '전체 메일함', icon: Archive },
-      { type: 'link', href: '/mail/inbox', label: '받은 메일함', icon: Inbox },
-      { type: 'link', href: '/mail/sent', label: '보낸 메일함', icon: Send },
-      { type: 'divider' },
-      { type: 'link', href: '/mail/trash', label: '휴지통', icon: Trash2 },
     ],
   },
 ];
@@ -115,7 +71,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [expanded,      setExpanded     ] = useState<string | null>(null);
   const [mobileMenu,    setMobileMenu  ] = useState(false);
   const [mobileSection, setMobileSection] = useState<string | null>(null);
-  const [feedbackOpen,  setFeedbackOpen] = useState(false);
 
   // breadcrumb 동적 이름
   const [breadcrumbProject, setBreadcrumbProject] = useState<string | null>(null);
@@ -145,14 +100,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [pathname]);
 
-  // fab:action → feedback 이벤트 리스닝
-  useEffect(() => {
-    const handler = (e: Event) => {
-      if ((e as CustomEvent).detail === 'feedback') setFeedbackOpen(true);
-    };
-    window.addEventListener('fab:action', handler);
-    return () => window.removeEventListener('fab:action', handler);
-  }, []);
 
   const panelOpen = activeSection !== null;
   const totalW    = RAIL_W + (panelOpen ? PANEL_W : 0);
@@ -235,7 +182,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const currentSection = SECTIONS.find(s => s.key === activeSection) ?? null;
 
   return (
-    <TutorialProvider>
     <div style={{ minHeight: '100vh', background: '#f5f4f2' }}>
       {/* 글로벌 검색 (Cmd+K / FAB로 열림, 버튼 UI는 숨기고 모달 리스너만 유지) */}
       <div className="hidden md:block" style={{ position: 'fixed', width: 0, height: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 0 }}>
@@ -268,6 +214,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .vm-header { left: 0 !important; }
           .vm-main { margin-left: 0 !important; }
           .vm-hamburger { display: flex !important; }
+        }
+        /* 비봇 사이드바 모드일 때 메인 컨텐츠를 왼쪽으로 밀기 */
+        @media (min-width: 900px) {
+          .vm-main { margin-right: var(--bibot-pad, 0px); transition: margin-right 0.25s cubic-bezier(0.4,0,0.2,1), margin-left 0.2s cubic-bezier(0.4,0,0.2,1); }
+          .vm-header { right: var(--bibot-pad, 0px); transition: right 0.25s cubic-bezier(0.4,0,0.2,1); }
         }
       `}</style>
       {/* ══════════════════════════════════════════
@@ -304,15 +255,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             borderBottom:   '1px solid rgba(255,255,255,0.07)',
           }}
         >
-          <img
-            src="/logo-white.png"
-            alt="VIMO"
+          <div
             style={{
-              width:  '28px',
-              height: '28px',
-              objectFit: 'contain',
+              width:  '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: '#1e3a8a',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '13px',
+              fontWeight: 900,
+              letterSpacing: '-0.02em',
             }}
-          />
+          >SH</div>
         </Link>
 
         {/* 섹션 아이콘들 */}
@@ -342,8 +299,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   alignItems:     'center',
                   justifyContent: 'center',
                   cursor:         'pointer',
-                  background:     isSel ? 'rgba(234,88,12,0.18)' : 'transparent',
-                  color:          isSel ? '#ea580c' : hasActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)',
+                  background:     isSel ? 'rgba(30,58,138,0.18)' : 'transparent',
+                  color:          isSel ? '#1e3a8a' : hasActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)',
                   transition:     'background 0.15s, color 0.15s',
                 }}
                 onMouseEnter={e => { if (!isSel) { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; } }}
@@ -352,7 +309,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Icon size={19} />
                 {/* 활성 경로 있으면 오렌지 점 */}
                 {hasActive && !isSel && (
-                  <span style={{ position: 'absolute', top: '5px', right: '5px', width: '5px', height: '5px', borderRadius: '50%', background: '#ea580c' }} />
+                  <span style={{ position: 'absolute', top: '5px', right: '5px', width: '5px', height: '5px', borderRadius: '50%', background: '#1e3a8a' }} />
                 )}
               </button>
             );
@@ -403,8 +360,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   alignItems:     'center',
                   justifyContent: 'center',
                   textDecoration: 'none',
-                  background:     sysActive ? 'rgba(234,88,12,0.18)' : 'transparent',
-                  color:          sysActive ? '#ea580c' : 'rgba(255,255,255,0.35)',
+                  background:     sysActive ? 'rgba(30,58,138,0.18)' : 'transparent',
+                  color:          sysActive ? '#1e3a8a' : 'rgba(255,255,255,0.35)',
                   transition:     'background 0.15s, color 0.15s',
                 }}
                 onMouseEnter={e => { if (!sysActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; } }}
@@ -447,7 +404,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               width:          '30px',
               height:         '30px',
               borderRadius:   '9px',
-              background:     '#ea580c',
+              background:     '#1e3a8a',
               display:        'flex',
               alignItems:     'center',
               justifyContent: 'center',
@@ -500,7 +457,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               }}
             >
               <div>
-                <p style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#ea580c', lineHeight: 1 }}>
+                <p style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#1e3a8a', lineHeight: 1 }}>
                   {currentSection.label}
                 </p>
               </div>
@@ -551,7 +508,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           cursor:         'pointer',
                           marginBottom:   '1px',
                           transition:     'background 0.12s, color 0.12s',
-                          background:     isActive ? '#ea580c' : 'transparent',
+                          background:     isActive ? '#1e3a8a' : 'transparent',
                           color:          isActive ? '#ffffff' : '#44403c',
                         }}
                         onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = '#f5f3f1'; } }}
@@ -576,7 +533,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           textDecoration: 'none',
                           marginBottom:   '1px',
                           transition:     'background 0.12s, color 0.12s',
-                          background:     isActive ? '#ea580c' : 'transparent',
+                          background:     isActive ? '#1e3a8a' : 'transparent',
                           color:          isActive ? '#ffffff' : '#44403c',
                         }}
                         onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = '#f5f3f1'; } }}
@@ -612,8 +569,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     gap:            '8px',
                                     padding:        '7px 10px',
                                     borderRadius:   '8px',
-                                    background:     subActive ? '#fef4ed' : 'transparent',
-                                    color:          subActive ? '#ea580c' : '#78716c',
+                                    background:     subActive ? '#eff6ff' : 'transparent',
+                                    color:          subActive ? '#1e3a8a' : '#78716c',
                                     textDecoration: 'none',
                                     fontSize:       '14px',
                                     fontWeight:     subActive ? 600 : 400,
@@ -641,7 +598,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* 패널 하단 — 브랜드 워드마크 */}
             <div style={{ flexShrink: 0, padding: '12px 16px', borderTop: '1px solid #f0ece9' }}>
-              <p style={{ fontSize: '10px', fontWeight: 700, color: '#d6cec8', letterSpacing: '0.1em' }}>VIMO ERP <span style={{ fontWeight: 500, color: '#e0d9d3' }}>{APP_VERSION}</span> <span style={{ fontWeight: 400, color: '#e0d9d3', marginLeft: '4px' }}>· {APP_LAST_UPDATED}</span></p>
+              <p style={{ fontSize: '10px', fontWeight: 700, color: '#d6cec8', letterSpacing: '0.1em' }}>SEON Hub <span style={{ fontWeight: 500, color: '#e0d9d3' }}>{APP_VERSION}</span> <span style={{ fontWeight: 400, color: '#e0d9d3', marginLeft: '4px' }}>· {APP_LAST_UPDATED}</span></p>
             </div>
           </motion.div>
         )}
@@ -656,7 +613,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           position:    'fixed',
           top:         0,
           left:        totalW,
-          right:       0,
+          right:       'var(--bibot-pad, 0px)',
           height:      '56px',
           zIndex:      30,
           display:     'flex',
@@ -665,7 +622,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           gap:         '12px',
           background:  '#ffffff',
           borderBottom:'1px solid #ede9e6',
-          transition:  'left 0.2s cubic-bezier(0.4,0,0.2,1)',
+          transition:  'right 0.25s cubic-bezier(0.4,0,0.2,1), left 0.2s cubic-bezier(0.4,0,0.2,1)',
         }}
       >
         {/* 모바일 햄버거 */}
@@ -727,7 +684,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         color: '#a8a29e', fontWeight: 500, fontSize: '14px',
                         transition: 'color 0.15s',
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.color = '#ea580c'; }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#1e3a8a'; }}
                       onMouseLeave={e => { e.currentTarget.style.color = '#a8a29e'; }}
                     >
                       {sec.label}
@@ -735,7 +692,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <span style={{ color: '#d6cec8' }}>/</span>
                     {isProjectSubpage ? (
                       <Link href="/projects" style={{ color: '#a8a29e', fontWeight: 500, textDecoration: 'none', transition: 'color 0.15s' }}
-                        onMouseEnter={e => { e.currentTarget.style.color = '#ea580c'; }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#1e3a8a'; }}
                         onMouseLeave={e => { e.currentTarget.style.color = '#a8a29e'; }}
                       >
                         {found.label}
@@ -754,7 +711,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <span style={{ color: '#d6cec8' }}>/</span>
                         {breadcrumbProject && (
                           <Link href={`/projects/${pathname.match(/^\/projects\/([^/]+)/)?.[1]}`} style={{ color: '#a8a29e', fontWeight: 500, textDecoration: 'none', transition: 'color 0.15s' }}
-                            onMouseEnter={e => { e.currentTarget.style.color = '#ea580c'; }}
+                            onMouseEnter={e => { e.currentTarget.style.color = '#1e3a8a'; }}
                             onMouseLeave={e => { e.currentTarget.style.color = '#a8a29e'; }}
                           >
                             {breadcrumbProject}
@@ -823,8 +780,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       style={{
                         width: '40px', height: '40px', borderRadius: '10px', border: 'none',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                        background: isSel ? 'rgba(234,88,12,0.18)' : 'transparent',
-                        color: isSel ? '#ea580c' : hasActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)',
+                        background: isSel ? 'rgba(30,58,138,0.18)' : 'transparent',
+                        color: isSel ? '#1e3a8a' : hasActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)',
                         marginBottom: '4px',
                       }}
                     >
@@ -845,7 +802,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         style={{
                           width: '40px', height: '40px', borderRadius: '10px', textDecoration: 'none',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: active ? '#ea580c' : 'rgba(255,255,255,0.35)',
+                          color: active ? '#1e3a8a' : 'rgba(255,255,255,0.35)',
                         }}
                       >
                         <Icon size={18} />
@@ -890,7 +847,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             style={{
                               display: 'flex', alignItems: 'center', gap: '10px',
                               padding: '10px 10px', borderRadius: '10px', textDecoration: 'none',
-                              background: active ? '#ea580c' : 'transparent',
+                              background: active ? '#1e3a8a' : 'transparent',
                               color: active ? '#fff' : '#44403c',
                               fontSize: '14px', fontWeight: active ? 600 : 400,
                               marginBottom: '2px',
@@ -917,22 +874,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main
         className="vm-main"
         style={{
-          marginLeft: totalW,
-          marginTop:  '56px',
-          minHeight:  'calc(100vh - 56px)',
-          transition: 'margin-left 0.2s cubic-bezier(0.4,0,0.2,1)',
+          marginLeft:  totalW,
+          marginRight: 'var(--bibot-pad, 0px)',
+          marginTop:   '56px',
+          minHeight:   'calc(100vh - 56px)',
+          transition:  'margin-left 0.2s cubic-bezier(0.4,0,0.2,1), margin-right 0.25s cubic-bezier(0.4,0,0.2,1)',
         }}
       >
         <div className="p-4 sm:p-6 lg:p-8 pb-24 sm:pb-6 lg:pb-8">
           <DashboardContent>{children}</DashboardContent>
         </div>
       </main>
-      <GlobalFAB />
-      <TutorialOverlay />
-      <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      <BibotWidget />
       <UpdateNoticeModal />
     </div>
-    </TutorialProvider>
   );
 }
 
@@ -945,8 +900,8 @@ function PanelBadge({ label, active }: { label: string; active: boolean }) {
       borderRadius:'999px',
       whiteSpace:  'nowrap',
       flexShrink:  0,
-      background:  active ? 'rgba(255,255,255,0.25)' : '#fef4ed',
-      color:       active ? '#ffffff' : '#ea580c',
+      background:  active ? 'rgba(255,255,255,0.25)' : '#eff6ff',
+      color:       active ? '#ffffff' : '#1e3a8a',
     }}>
       {label}
     </span>

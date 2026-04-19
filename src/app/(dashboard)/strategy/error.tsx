@@ -15,7 +15,7 @@ export default function StrategyError({
       </p>
       <button
         onClick={reset}
-        className="mt-6 rounded-xl bg-orange-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 transition-colors"
+        className="mt-6 rounded-xl bg-blue-800 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-900 transition-colors"
       >
         다시 시도
       </button>

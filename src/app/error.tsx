@@ -23,7 +23,7 @@ export default function Error({
         style={{
           marginTop: '24px',
           padding: '10px 24px',
-          background: '#ea580c',
+          background: '#1e3a8a',
           color: '#fff',
           borderRadius: '12px',
           border: 'none',
@@ -34,7 +34,7 @@ export default function Error({
       >
         다시 시도
       </button>
-      <p style={{ marginTop: '32px', fontSize: '11px', color: '#d6cec8', letterSpacing: '0.1em' }}>VIMO ERP</p>
+      <p style={{ marginTop: '32px', fontSize: '11px', color: '#d6cec8', letterSpacing: '0.1em' }}>SEON Hub</p>
     </div>
   );
 }

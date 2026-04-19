@@ -23,9 +23,9 @@ export default function NavItem({ href, icon, children, onClick }: NavItemProps)
       style={
         isActive
           ? {
-              borderLeft: '3px solid #ea580c',
-              background: 'rgba(234,88,12,0.07)',
-              color: '#ea580c',
+              borderLeft: '3px solid #1e3a8a',
+              background: 'rgba(30,58,138,0.07)',
+              color: '#1e3a8a',
               fontWeight: 600,
               marginLeft: 0,
             }

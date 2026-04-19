@@ -101,7 +101,7 @@ export default function ManagersPage() {
         </div>
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="px-5 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-colors shadow-lg shadow-orange-500/30 font-semibold flex items-center gap-2 text-sm"
+          className="px-5 py-3 bg-gradient-to-r from-blue-700 to-blue-800 text-white rounded-xl hover:from-blue-800 hover:to-blue-900 transition-colors shadow-lg shadow-blue-700/30 font-semibold flex items-center gap-2 text-sm"
         >
           <Plus size={18} />
           매니저 추가
@@ -213,7 +213,7 @@ export default function ManagersPage() {
                   <button
                     onClick={handleAdd}
                     disabled={!newMember.name || saving}
-                    className="flex-1 h-14 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none shadow-lg shadow-orange-500/30"
+                    className="flex-1 h-14 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-800 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none shadow-lg shadow-blue-700/30"
                   >
                     {saving ? '추가 중...' : '매니저 추가하기'}
                   </button>
@@ -244,7 +244,7 @@ export default function ManagersPage() {
                   <span className="font-semibold text-gray-900">&quot;{deleteTarget.name}&quot;</span> 매니저를<br />
                   정말 삭제하시겠습니까?
                 </p>
-                <p className="text-sm text-orange-600 text-center">
+                <p className="text-sm text-blue-800 text-center">
                   휴지통으로 이동되며, 30일 이내에 복구할 수 있습니다.
                 </p>
               </div>

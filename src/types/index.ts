@@ -24,6 +24,9 @@ export interface Partner {
 // 프로젝트 상태
 export type ProjectStatus = 'planning' | 'in_progress' | 'completed' | 'on_hold' | 'archived';
 
+// 프로젝트 유형 (영상 제작 / 개발 / 콘텐츠 제작)
+export type ProjectType = 'video' | 'dev' | 'content';
+
 // 프로젝트 비용 정보
 export interface ProjectBudget {
   totalAmount: number; // 전체 프로젝트 비용 (클라이언트로부터 받는 총 금액)
@@ -36,6 +39,7 @@ export interface ProjectBudget {
 export interface Project {
   id: string;
   title: string;
+  type?: ProjectType; // 프로젝트 유형 (영상 / 개발 / 콘텐츠)
   description: string;
   client: string;
   clientId?: string; // 클라이언트 FK (client_id)
@@ -55,6 +59,87 @@ export interface Project {
   completedAt?: string;
   workTypeCosts?: { [key in WorkContentType]?: { partnerCost: number; managementCost: number } }; // 작업별 비용 정보
   totalAmount?: number; // 전체 금액
+  meta?: ProjectMeta; // 프로젝트 타입별 메타데이터
+}
+
+// 프로젝트 타입별 메타데이터
+export interface VideoMeta {
+  channels?: string[];
+  category?: string;
+}
+
+export interface DevMeta {
+  repoUrl?: string;
+  stack?: string[];
+  deployUrl?: string;
+  developers?: string[];
+}
+
+export interface ContentMeta {
+  primaryPlatform?: ContentPlatform;
+  publishCycle?: string;
+}
+
+export interface ProjectMeta {
+  video?: VideoMeta;
+  dev?: DevMeta;
+  content?: ContentMeta;
+}
+
+// ─── Sprint (개발 프로젝트) ─────────────────────────────
+export type SprintStatus = 'planning' | 'in_progress' | 'completed';
+
+export interface SprintBudget {
+  totalAmount: number;
+  partnerPayment: number;
+  managementFee: number;
+}
+
+export interface Sprint {
+  id: string;
+  projectId: string;
+  sprintNumber: number;
+  title: string;
+  description?: string;
+  status: SprintStatus;
+  startDate: string;
+  endDate?: string;
+  goal?: string;
+  issueCount: number;
+  completedIssueCount: number;
+  assigneeIds: string[];
+  budget: SprintBudget;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── ContentItem (콘텐츠 제작 프로젝트) ────────────────
+export type ContentItemStatus = 'draft' | 'scheduled' | 'published';
+export type ContentPlatform = 'youtube' | 'instagram' | 'blog' | 'threads' | 'x' | 'other';
+
+export interface ContentItemBudget {
+  totalAmount: number;
+  partnerPayment: number;
+  managementFee: number;
+}
+
+export interface ContentItem {
+  id: string;
+  projectId: string;
+  itemNumber: number;
+  title: string;
+  description?: string;
+  status: ContentItemStatus;
+  platform: ContentPlatform;
+  contentKind?: string;
+  publishDate?: string;
+  publishedAt?: string;
+  publishedUrl?: string;
+  viewCount: number;
+  assigneeIds: string[];
+  budget: ContentItemBudget;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // 회차 상태
@@ -134,10 +219,13 @@ export type PaymentType = 'one_time' | 'monthly' | 'yearly';
 export type SubscriptionStatus = 'active' | 'cancelling' | 'cancelled';
 
 // 지출 타입
+export type Currency = 'KRW' | 'USD';
+
 export interface Expense {
   id: string;
   title: string;
   amount: number;
+  currency: Currency;
   category: ExpenseCategory;
   paymentType: PaymentType;
   expenseDate: string;

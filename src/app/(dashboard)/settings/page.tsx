@@ -114,15 +114,15 @@ export default function SettingsPage() {
 
       {/* 바로가기 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link href="/settings/design/components">
-          <div className="bg-gradient-to-br from-orange-50 to-orange-50 border-2 border-orange-200/50 rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer h-full">
+        <Link href="/design">
+          <div className="bg-white border border-ink-200 rounded-xl p-6 hover:border-ink-300 hover:shadow-sm transition-all cursor-pointer h-full">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-orange-500 rounded-lg">
-                <Palette className="text-white" size={24} />
+              <div className="p-2 bg-brand-600 rounded-lg">
+                <Palette className="text-white" size={20} />
               </div>
-              <h2 className="text-xl font-semibold text-gray-900">디자인 시스템</h2>
+              <h2 className="text-[17px] font-semibold text-ink-900">디자인 시스템</h2>
             </div>
-            <p className="text-gray-600">컴포넌트, 토스트, 모달 등 디자인 요소 보기</p>
+            <p className="text-[13px] text-ink-500">토큰·primitive·컴포넌트 쇼케이스</p>
           </div>
         </Link>
         <Link href="/settings/changelog">
@@ -166,7 +166,7 @@ export default function SettingsPage() {
               <button
                 onClick={handleSaveProfile}
                 disabled={profileLoading}
-                className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
+                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-800 transition-colors disabled:opacity-50"
               >
                 {profileLoading ? '저장 중...' : '저장'}
               </button>
@@ -206,7 +206,7 @@ export default function SettingsPage() {
               <button
                 onClick={handleChangePassword}
                 disabled={passwordLoading}
-                className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
+                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-800 transition-colors disabled:opacity-50"
               >
                 {passwordLoading ? '변경 중...' : '비밀번호 변경'}
               </button>
@@ -230,7 +230,7 @@ export default function SettingsPage() {
                 type="checkbox"
                 checked={notifNewProject}
                 onChange={(e) => setNotifNewProject(e.target.checked)}
-                className="w-5 h-5 text-orange-500"
+                className="w-5 h-5 text-blue-500"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -242,7 +242,7 @@ export default function SettingsPage() {
                 type="checkbox"
                 checked={notifNewPartner}
                 onChange={(e) => setNotifNewPartner(e.target.checked)}
-                className="w-5 h-5 text-orange-500"
+                className="w-5 h-5 text-blue-500"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -254,7 +254,7 @@ export default function SettingsPage() {
                 type="checkbox"
                 checked={notifProjectDone}
                 onChange={(e) => setNotifProjectDone(e.target.checked)}
-                className="w-5 h-5 text-orange-500"
+                className="w-5 h-5 text-blue-500"
               />
             </div>
             {notifMsg && (
@@ -266,7 +266,7 @@ export default function SettingsPage() {
             <div>
               <button
                 onClick={handleSaveNotifications}
-                className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-800 transition-colors"
               >
                 저장
               </button>

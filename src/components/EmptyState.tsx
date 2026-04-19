@@ -58,7 +58,7 @@ export default function EmptyState({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
           onClick={action.onClick}
-          className="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium shadow-lg hover:shadow-xl"
+          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-800 transition-colors font-medium shadow-lg hover:shadow-xl"
         >
           {action.label}
         </motion.button>
@@ -82,8 +82,8 @@ export function EmptyProjects({ onAdd }: { onAdd?: () => void }) {
             }
           : undefined
       }
-      iconColor="text-orange-500"
-      iconBgColor="bg-orange-50"
+      iconColor="text-blue-500"
+      iconBgColor="bg-blue-50"
     />
   );
 }
@@ -102,8 +102,8 @@ export function EmptyEpisodes({ onAdd }: { onAdd?: () => void }) {
             }
           : undefined
       }
-      iconColor="text-orange-500"
-      iconBgColor="bg-orange-50"
+      iconColor="text-blue-500"
+      iconBgColor="bg-blue-50"
     />
   );
 }
@@ -142,8 +142,8 @@ export function EmptyClients({ onAdd }: { onAdd?: () => void }) {
             }
           : undefined
       }
-      iconColor="text-orange-500"
-      iconBgColor="bg-orange-50"
+      iconColor="text-blue-500"
+      iconBgColor="bg-blue-50"
     />
   );
 }
@@ -190,8 +190,8 @@ export function EmptyDeadlines() {
       icon={require('lucide-react').Calendar}
       title="다가오는 마감일이 없습니다"
       description="7일 이내에 마감되는 작업이 없습니다. 여유롭게 작업을 진행하세요!"
-      iconColor="text-orange-400"
-      iconBgColor="bg-orange-50"
+      iconColor="text-blue-400"
+      iconBgColor="bg-blue-50"
     />
   );
 }

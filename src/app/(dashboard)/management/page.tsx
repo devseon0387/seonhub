@@ -5,8 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import ManagementMain from './ManagementMain';
 import ManagementMissing from './ManagementMissing';
+import ManagementReport from './ManagementReport';
 
-type Tab = 'main' | 'missing';
+type Tab = 'main' | 'missing' | 'report';
 
 export default function ManagementPage() {
   const [activeTab, setActiveTab] = useState<Tab>('main');
@@ -21,6 +22,7 @@ export default function ManagementPage() {
   const tabs: { key: Tab; label: string }[] = [
     { key: 'main', label: '메인' },
     { key: 'missing', label: '미기입' },
+    { key: 'report', label: '리포트' },
   ];
 
   return (
@@ -46,7 +48,7 @@ export default function ManagementPage() {
               {activeTab === tab.key && (
                 <motion.div
                   layoutId="mgmt-tab"
-                  className="absolute inset-0 bg-orange-500 rounded-lg shadow-sm shadow-orange-500/20"
+                  className="absolute inset-0 bg-blue-500 rounded-lg shadow-sm shadow-blue-700/20"
                   transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                 />
               )}
@@ -77,7 +79,7 @@ export default function ManagementPage() {
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.15 }}
                 onClick={() => window.dispatchEvent(new CustomEvent('mgmt:new-project'))}
-                className="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors"
+                className="px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-semibold hover:bg-blue-800 transition-colors"
               >
                 + 새 프로젝트
               </motion.button>
@@ -98,8 +100,10 @@ export default function ManagementPage() {
           >
             {activeTab === 'main' ? (
               <ManagementMain />
-            ) : (
+            ) : activeTab === 'missing' ? (
               <ManagementMissing onMissingCount={handleMissingCount} />
+            ) : (
+              <ManagementReport />
             )}
           </motion.div>
         </AnimatePresence>

@@ -10,6 +10,7 @@ export interface ExpenseRow {
   id: string;
   title: string;
   amount: number;
+  currency: string | null;
   category: string;
   payment_type: string;
   expense_date: string;
@@ -29,6 +30,7 @@ export function expenseFromRow(row: ExpenseRow): Expense {
     id: row.id,
     title: row.title,
     amount: Number(row.amount),
+    currency: (row.currency as Expense['currency']) ?? 'KRW',
     category: row.category as Expense['category'],
     paymentType: row.payment_type as Expense['paymentType'],
     expenseDate: row.expense_date,
@@ -47,6 +49,7 @@ export function expenseToInsert(expense: Omit<Expense, 'createdAt' | 'updatedAt'
     id: expense.id,
     title: expense.title,
     amount: expense.amount,
+    currency: expense.currency ?? 'KRW',
     category: expense.category,
     payment_type: expense.paymentType,
     expense_date: expense.expenseDate,
@@ -62,6 +65,7 @@ export function expenseToUpdate(fields: Partial<Expense>) {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (fields.title !== undefined) row.title = fields.title;
   if (fields.amount !== undefined) row.amount = fields.amount;
+  if (fields.currency !== undefined) row.currency = fields.currency;
   if (fields.category !== undefined) row.category = fields.category;
   if (fields.paymentType !== undefined) row.payment_type = fields.paymentType;
   if (fields.expenseDate !== undefined) row.expense_date = fields.expenseDate;

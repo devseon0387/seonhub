@@ -1,118 +1,53 @@
-import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { verifySession, AUTH_COOKIE } from '@/lib/local-db/session';
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  // 세션 토큰 자동 갱신 (IMPORTANT: getUser 호출 필수)
-  const { data: { user } } = await supabase.auth.getUser();
-
   const { pathname } = request.nextUrl;
-  // /signup 접근 시 /login으로 리다이렉트
+  const token = request.cookies.get(AUTH_COOKIE)?.value;
+  const user = await verifySession(token);
+
   if (pathname.startsWith('/signup')) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = '/login';
-    return NextResponse.redirect(loginUrl);
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
   }
 
-  // API key 인증: /api/mcp 경로 (외부 전용)
   if (pathname.startsWith('/api/mcp')) {
     const apiKey = request.headers.get('x-api-key');
     const expectedKey = process.env.API_SECRET_KEY;
     if (!expectedKey || apiKey !== expectedKey) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    return supabaseResponse;
+    return NextResponse.next({ request });
   }
 
-  // /api/strategy: API key 또는 로그인 세션 인증
   if (pathname.startsWith('/api/strategy')) {
     const apiKey = request.headers.get('x-api-key');
     const expectedKey = process.env.API_SECRET_KEY;
-    if (apiKey && expectedKey && apiKey === expectedKey) {
-      return supabaseResponse;
-    }
-    if (user) {
-      return supabaseResponse;
-    }
+    if (apiKey && expectedKey && apiKey === expectedKey) return NextResponse.next({ request });
+    if (user) return NextResponse.next({ request });
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/api/auth');
-  const isApiRoute = pathname.startsWith('/api/');
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/api/auth') || pathname.startsWith('/api/local-db');
 
   if (!user && !isAuthPage) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = '/login';
-    return NextResponse.redirect(loginUrl);
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
   }
 
-  // 인증된 사용자가 대시보드에 접근할 때 승인 여부 및 비밀번호 변경 확인
-  if (user && !isAuthPage && !isApiRoute) {
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('approved, role, needs_password_change')
-      .eq('id', user.id)
-      .single();
-
-    // 프로필이 없거나 미승인 비관리자 → 로그인 페이지로
-    if (!profile || (profile.role !== 'admin' && profile.approved !== true)) {
-      // 세션 쿠키 제거
-      await supabase.auth.signOut();
-      const loginUrl = request.nextUrl.clone();
-      loginUrl.pathname = '/login';
-      return NextResponse.redirect(loginUrl);
-    }
-
-    // 비밀번호 변경이 필요한 경우 → /change-password로 강제 이동
-    if (profile.needs_password_change === true && !pathname.startsWith('/change-password')) {
-      const cpUrl = request.nextUrl.clone();
-      cpUrl.pathname = '/change-password';
-      return NextResponse.redirect(cpUrl);
-    }
+  if (user && pathname.startsWith('/login')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/management';
+    return NextResponse.redirect(url);
   }
 
-  if (user && isAuthPage) {
-    // 승인된 사용자만 대시보드로 리다이렉트
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('approved, role')
-      .eq('id', user.id)
-      .single();
-
-    if (profile && (profile.role === 'admin' || profile.approved === true)) {
-      const dashboardUrl = request.nextUrl.clone();
-      dashboardUrl.pathname = '/management';
-      return NextResponse.redirect(dashboardUrl);
-    }
-  }
-
-  return supabaseResponse;
+  return NextResponse.next({ request });
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|manifest\\.json|sw\\.js|icons/.*|opengraph-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest\\.json|sw\\.js|icons/.*|opengraph-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|html)$).*)',
   ],
 };

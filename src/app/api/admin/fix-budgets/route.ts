@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/admin';
 
 /**
  * 기존 에피소드들의 budget_partner / budget_management를 올바르게 재계산합니다.

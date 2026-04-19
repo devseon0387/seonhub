@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Plus, Search, Bell, Sparkles, FolderOpen, Briefcase, Users, HelpCircle, MessageSquarePlus, FilePlus } from 'lucide-react';
+import { Plus, Search, Bell, Sparkles, FolderOpen, Briefcase, Users, HelpCircle, MessageSquarePlus, FilePlus, Bot } from 'lucide-react';
 
 interface FABAction {
   label: string;
@@ -27,12 +27,12 @@ function hasTutorial(pathname: string): boolean {
 function getPageActions(pathname: string): FABAction[] {
   const common: FABAction[] = [
     {
-      label: '개선사항',
-      icon: MessageSquarePlus,
-      onClick: () => window.dispatchEvent(new CustomEvent('fab:action', { detail: 'feedback' })),
-      bg: 'bg-white',
-      text: 'text-gray-700',
-      iconColor: 'text-orange-500',
+      label: '비봇',
+      icon: Bot,
+      onClick: () => window.dispatchEvent(new CustomEvent('fab:action', { detail: 'bibot' })),
+      bg: 'bg-gradient-to-r from-blue-700 to-pink-500',
+      text: 'text-white',
+      iconColor: 'text-white',
     },
     {
       label: '검색',
@@ -42,7 +42,7 @@ function getPageActions(pathname: string): FABAction[] {
       },
       bg: 'bg-white',
       text: 'text-gray-700',
-      iconColor: 'text-orange-500',
+      iconColor: 'text-blue-500',
     },
     {
       label: '알림',
@@ -53,7 +53,7 @@ function getPageActions(pathname: string): FABAction[] {
       },
       bg: 'bg-white',
       text: 'text-gray-700',
-      iconColor: 'text-orange-500',
+      iconColor: 'text-blue-500',
     },
   ];
 
@@ -65,7 +65,7 @@ function getPageActions(pathname: string): FABAction[] {
       onClick: () => window.dispatchEvent(new CustomEvent('fab:action', { detail: 'replay-tutorial' })),
       bg: 'bg-white',
       text: 'text-gray-700',
-      iconColor: 'text-orange-500',
+      iconColor: 'text-blue-500',
     });
   }
 
@@ -76,7 +76,7 @@ function getPageActions(pathname: string): FABAction[] {
         label: '새 프로젝트 시작',
         icon: Sparkles,
         onClick: () => window.dispatchEvent(new CustomEvent('fab:action', { detail: 'new-project' })),
-        bg: 'bg-gradient-to-r from-orange-500 to-orange-600',
+        bg: 'bg-gradient-to-r from-blue-700 to-blue-800',
         text: 'text-white',
         iconColor: 'text-white',
       },
@@ -90,7 +90,7 @@ function getPageActions(pathname: string): FABAction[] {
         label: '새 프로젝트',
         icon: FolderOpen,
         onClick: () => window.dispatchEvent(new CustomEvent('fab:action', { detail: 'new-project' })),
-        bg: 'bg-gradient-to-r from-orange-500 to-orange-600',
+        bg: 'bg-gradient-to-r from-blue-700 to-blue-800',
         text: 'text-white',
         iconColor: 'text-white',
       },
@@ -104,7 +104,7 @@ function getPageActions(pathname: string): FABAction[] {
         label: '새 클라이언트',
         icon: Briefcase,
         onClick: () => window.dispatchEvent(new CustomEvent('fab:action', { detail: 'new-client' })),
-        bg: 'bg-gradient-to-r from-orange-500 to-orange-600',
+        bg: 'bg-gradient-to-r from-blue-700 to-blue-800',
         text: 'text-white',
         iconColor: 'text-white',
       },
@@ -119,7 +119,7 @@ function getPageActions(pathname: string): FABAction[] {
         label: '새 회차',
         icon: FilePlus,
         onClick: () => window.dispatchEvent(new CustomEvent('fab:action', { detail: 'new-episode' })),
-        bg: 'bg-gradient-to-r from-orange-500 to-orange-600',
+        bg: 'bg-gradient-to-r from-blue-700 to-blue-800',
         text: 'text-white',
         iconColor: 'text-white',
       },
@@ -133,7 +133,7 @@ function getPageActions(pathname: string): FABAction[] {
         label: '새 파트너',
         icon: Users,
         onClick: () => window.dispatchEvent(new CustomEvent('fab:action', { detail: 'new-partner' })),
-        bg: 'bg-gradient-to-r from-orange-500 to-orange-600',
+        bg: 'bg-gradient-to-r from-blue-700 to-blue-800',
         text: 'text-white',
         iconColor: 'text-white',
       },
@@ -159,7 +159,13 @@ export default function GlobalFAB() {
   const actions = getPageActions(pathname);
 
   return (
-    <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-40 flex flex-col items-end gap-3">
+    <div
+      className="fixed bottom-6 sm:bottom-8 z-40 flex flex-col items-end gap-3"
+      style={{
+        right: 'calc(1.5rem + var(--bibot-pad, 0px))',
+        transition: 'right 0.25s cubic-bezier(0.4,0,0.2,1)',
+      }}
+    >
       {/* 배경 오버레이 */}
       <AnimatePresence>
         {isOpen && (
@@ -210,7 +216,7 @@ export default function GlobalFAB() {
         animate={{ rotate: isOpen ? 45 : 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
         data-tour="tour-fab"
-        className="w-14 h-14 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-2xl hover:from-orange-600 hover:to-orange-700 transition-colors active:scale-[0.93] shadow-xl shadow-orange-500/30 flex items-center justify-center"
+        className="w-14 h-14 bg-gradient-to-r from-blue-700 to-blue-800 text-white rounded-2xl hover:from-blue-800 hover:to-blue-900 transition-colors active:scale-[0.93] shadow-xl shadow-blue-700/30 flex items-center justify-center"
       >
         <Plus size={24} strokeWidth={2.5} />
       </motion.button>

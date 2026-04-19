@@ -26,7 +26,7 @@ function getClientComputedStatus(
 
   for (const proj of clientProjects) {
     const projEpisodes = allEpisodes.filter(e => e.projectId === proj.id);
-    const status = getComputedProjectStatus(projEpisodes);
+    const status = getComputedProjectStatus(projEpisodes, proj.status);
     if (status === 'active' || status === 'standby') return 'active';
   }
   return 'inactive';
@@ -236,7 +236,7 @@ export default function ClientsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800" />
       </div>
     );
   }
@@ -245,7 +245,7 @@ export default function ClientsPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <p className="text-gray-500">데이터를 불러오는데 실패했습니다.</p>
-        <button onClick={loadData} className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm font-medium">
+        <button onClick={loadData} className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-800 transition-colors text-sm font-medium">
           다시 시도
         </button>
       </div>
@@ -277,7 +277,7 @@ export default function ClientsPage() {
         <button
           data-tour="tour-client-new"
           onClick={() => setIsAddModalOpen(true)}
-          className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm font-semibold flex-shrink-0"
+          className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-800 transition-colors text-sm font-semibold flex-shrink-0"
         >
           + 새 클라이언트
         </button>
@@ -288,8 +288,8 @@ export default function ClientsPage() {
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-5">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <p className="text-[11px] sm:text-sm font-medium text-gray-500">전체</p>
-            <div className="w-7 h-7 sm:w-9 sm:h-9 bg-orange-50 rounded-lg sm:rounded-xl flex items-center justify-center">
-              <Building2 size={14} className="text-orange-500 sm:w-[18px] sm:h-[18px]" />
+            <div className="w-7 h-7 sm:w-9 sm:h-9 bg-blue-50 rounded-lg sm:rounded-xl flex items-center justify-center">
+              <Building2 size={14} className="text-blue-500 sm:w-[18px] sm:h-[18px]" />
             </div>
           </div>
           <p className="text-xl sm:text-3xl font-bold text-gray-900">{clients.length}</p>
@@ -386,8 +386,8 @@ export default function ClientsPage() {
                   >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Building2 size={18} className="text-orange-500" />
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Building2 size={18} className="text-blue-500" />
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{client.name}</div>
@@ -457,10 +457,10 @@ export default function ClientsPage() {
                           e.stopPropagation();
                           handleEditClient(client);
                         }}
-                        className="p-2 hover:bg-orange-50 rounded-lg transition-colors group"
+                        className="p-2 hover:bg-blue-50 rounded-lg transition-colors group"
                         title="수정"
                       >
-                        <Pencil size={16} className="text-gray-400 group-hover:text-orange-500" />
+                        <Pencil size={16} className="text-gray-400 group-hover:text-blue-500" />
                       </button>
                       <button
                         onClick={(e) => {
@@ -501,8 +501,8 @@ export default function ClientsPage() {
               {/* 헤더 - 클라이언트 정보 */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center flex-1 min-w-0">
-                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Building2 size={18} className="text-orange-500" />
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Building2 size={18} className="text-blue-500" />
                   </div>
                   <div className="ml-2.5 flex-1 min-w-0">
                     <h3 className="text-[14px] font-semibold text-gray-900 truncate">
@@ -573,7 +573,7 @@ export default function ClientsPage() {
                       e.stopPropagation();
                       handleEditClient(client);
                     }}
-                    className="p-2 hover:bg-orange-50 rounded-lg transition-colors"
+                    className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
                     title="수정"
                   >
                     <Pencil size={16} className="text-gray-400" />
@@ -610,7 +610,7 @@ export default function ClientsPage() {
               {isClientSuccess ? (
                 /* 성공 화면 */
                 <div className="px-6 sm:px-8 py-16 flex flex-col items-center justify-center">
-                  <div className="checkmark-circle w-24 h-24 bg-orange-500 rounded-full flex items-center justify-center mb-6">
+                  <div className="checkmark-circle w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center mb-6">
                     <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
                       <path
                         className="checkmark-check"
@@ -722,7 +722,7 @@ export default function ClientsPage() {
                       <button
                         onClick={handleAddClient}
                         disabled={!newClient.name}
-                        className="flex-1 h-14 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98] shadow-lg shadow-orange-500/30"
+                        className="flex-1 h-14 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-800 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98] shadow-lg shadow-blue-700/30"
                       >
                         클라이언트 추가하기
                       </button>
@@ -830,7 +830,7 @@ export default function ClientsPage() {
                   <button
                     onClick={handleSaveEdit}
                     disabled={!editingClient.name}
-                    className="flex-1 h-14 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed active:scale-[0.98] shadow-lg shadow-orange-500/30"
+                    className="flex-1 h-14 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-800 transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed active:scale-[0.98] shadow-lg shadow-blue-700/30"
                   >
                     저장하기
                   </button>
@@ -867,7 +867,7 @@ export default function ClientsPage() {
                   <span className="font-semibold text-gray-900">&quot;{clientToDelete.name}&quot;</span> 클라이언트를<br />
                   정말 삭제하시겠습니까?
                 </p>
-                <p className="text-sm text-orange-600 text-center">
+                <p className="text-sm text-blue-800 text-center">
                   휴지통으로 이동되며, 30일 이내에 복구할 수 있습니다.
                 </p>
               </div>

@@ -178,7 +178,7 @@ export default function PushNotificationSetup() {
             <button
               onClick={subscribe}
               disabled={loading || permission === 'denied'}
-              className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-800 disabled:opacity-50"
             >
               <Bell size={16} /> 알림 구독
             </button>

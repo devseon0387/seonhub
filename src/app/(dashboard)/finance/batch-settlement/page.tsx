@@ -312,7 +312,7 @@ export default function BatchSettlementPage() {
     const edited = edits[epId]?.[field] !== undefined;
     const filled = edited && getVal({ episode: { id: epId } } as BatchRow, field) !== '';
     if (edited && filled) return 'border-green-400 bg-green-50/50 text-green-700';
-    if (isMissing) return 'border-dashed border-orange-300 bg-orange-50/30';
+    if (isMissing) return 'border-dashed border-blue-300 bg-blue-50/30';
     return 'border-[#ede9e6] bg-[#fafaf9]';
   };
 
@@ -323,7 +323,7 @@ export default function BatchSettlementPage() {
     if (!ed) {
       const cnt = countMissing(row.missing);
       if (cnt >= 4) return <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#fee2e2] text-red-500 font-semibold">{cnt}개 미입력</span>;
-      if (cnt >= 2) return <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#fff7ed] text-orange-500 font-semibold">{cnt}개 미입력</span>;
+      if (cnt >= 2) return <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#eff6ff] text-blue-500 font-semibold">{cnt}개 미입력</span>;
       return <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#fef9c3] text-yellow-600 font-semibold">1개 미입력</span>;
     }
     return (
@@ -352,9 +352,9 @@ export default function BatchSettlementPage() {
     placeholder: string,
   ) => {
     const isManager = field === 'manager';
-    const accentBg = isManager ? 'bg-purple-500' : 'bg-orange-500';
-    const accentBgLight = isManager ? 'bg-purple-50' : 'bg-orange-50';
-    const accentText = isManager ? 'text-purple-500' : 'text-orange-500';
+    const accentBg = isManager ? 'bg-purple-500' : 'bg-blue-500';
+    const accentBgLight = isManager ? 'bg-purple-50' : 'bg-blue-50';
+    const accentText = isManager ? 'text-purple-500' : 'text-blue-500';
 
     const dropdownId = `${epId}-${field}`;
     const isOpen = openDropdown === dropdownId;
@@ -375,9 +375,9 @@ export default function BatchSettlementPage() {
             edited && selectedPartner
               ? 'border-green-400 bg-green-50/50'
               : isMissing
-                ? 'border-dashed border-orange-300 bg-orange-50/30'
+                ? 'border-dashed border-blue-300 bg-blue-50/30'
                 : 'border-[#ede9e6] bg-[#fafaf9]'
-          } ${isOpen ? 'border-orange-500 bg-white shadow-[0_0_0_3px_rgba(234,88,12,0.08)]' : 'hover:border-[#d6cec8]'}`}
+          } ${isOpen ? 'border-blue-500 bg-white shadow-[0_0_0_3px_rgba(30,58,138,0.08)]' : 'hover:border-[#d6cec8]'}`}
         >
           {selectedPartner ? (
             <>
@@ -478,9 +478,9 @@ export default function BatchSettlementPage() {
             <span className="text-[20px] sm:text-[22px] font-extrabold tracking-tight">
               {rows.length}<span className="text-[13px] text-[#a8a29e] font-medium ml-1">건</span>
             </span>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#fff7ed] rounded-full">
-              <AlertTriangle size={12} className="text-orange-500" />
-              <span className="text-[11px] font-semibold text-orange-500">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#eff6ff] rounded-full">
+              <AlertTriangle size={12} className="text-blue-500" />
+              <span className="text-[11px] font-semibold text-blue-500">
                 비용 {missingCostCount} · 정산일 {missingDateCount} · 담당자 {missingPersonCount} · 일정 {missingScheduleCount}
               </span>
             </div>
@@ -497,7 +497,7 @@ export default function BatchSettlementPage() {
                   {filter === tab.key && (
                     <motion.div
                       layoutId="batch-tab"
-                      className="absolute inset-0 bg-orange-500 rounded-lg shadow-sm shadow-orange-500/20"
+                      className="absolute inset-0 bg-blue-500 rounded-lg shadow-sm shadow-blue-700/20"
                       transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                     />
                   )}
@@ -525,7 +525,7 @@ export default function BatchSettlementPage() {
                       onChange={v => setBulkDate(v)}
                       placeholder="날짜 선택"
                     />
-                    <button onClick={applyBulkDate} className="px-3 py-2 bg-orange-500 text-white rounded-lg text-[12px] font-semibold hover:bg-orange-600 transition-colors whitespace-nowrap">
+                    <button onClick={applyBulkDate} className="px-3 py-2 bg-blue-500 text-white rounded-lg text-[12px] font-semibold hover:bg-blue-800 transition-colors whitespace-nowrap">
                       적용
                     </button>
                   </div>
@@ -539,7 +539,7 @@ export default function BatchSettlementPage() {
               disabled={editCount === 0 || saving}
               className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[13px] font-semibold transition-all ${
                 editCount > 0
-                  ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-sm shadow-orange-500/20'
+                  ? 'bg-blue-500 text-white hover:bg-blue-800 shadow-sm shadow-blue-700/20'
                   : 'bg-[#e7e5e4] text-[#a8a29e] cursor-not-allowed'
               }`}
             >
@@ -556,7 +556,7 @@ export default function BatchSettlementPage() {
         {/* 테이블 */}
         {loading ? (
           <div className="flex items-center justify-center h-40">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-20 text-center">
@@ -569,7 +569,7 @@ export default function BatchSettlementPage() {
             {/* 헤더 */}
             <div className="grid grid-cols-[32px_1fr_120px_110px_110px_120px_100px_100px_100px_70px] gap-1.5 px-4 py-2.5 text-[10px] font-semibold text-[#a8a29e] border-b border-[#f0ece9] bg-[#fafaf9] min-w-[1080px] uppercase tracking-wide">
               <div className="flex items-center justify-center">
-                <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-[14px] h-[14px] accent-orange-500 cursor-pointer" />
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-[14px] h-[14px] accent-blue-700 cursor-pointer" />
               </div>
               <span>프로젝트 · 회차</span>
               <span>담당 파트너</span>
@@ -595,12 +595,12 @@ export default function BatchSettlementPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.15, delay: Math.min(idx * 0.015, 0.4) }}
                     className={`grid grid-cols-[32px_1fr_120px_110px_110px_120px_100px_100px_100px_70px] gap-1.5 px-4 py-2.5 items-center transition-colors ${
-                      edited ? 'bg-orange-50/40' : 'hover:bg-[#fafaf9]'
+                      edited ? 'bg-blue-50/40' : 'hover:bg-[#fafaf9]'
                     }`}
                   >
                     {/* 체크 */}
                     <div className="flex items-center justify-center">
-                      <input type="checkbox" checked={selected.has(epId)} onChange={() => toggleRow(epId)} className="w-[14px] h-[14px] accent-orange-500 cursor-pointer" />
+                      <input type="checkbox" checked={selected.has(epId)} onChange={() => toggleRow(epId)} className="w-[14px] h-[14px] accent-blue-700 cursor-pointer" />
                     </div>
 
                     {/* 프로젝트 · 회차 */}
@@ -625,7 +625,7 @@ export default function BatchSettlementPage() {
                         {row.suggestedCost && row.missing.cost && !edits[epId]?.cost && (
                           <button
                             onClick={() => applySuggestion(epId, row.suggestedCost!)}
-                            className="flex items-center gap-0.5 px-1 py-0.5 bg-orange-50 text-orange-600 rounded text-[9px] font-semibold hover:bg-orange-100 transition-colors flex-shrink-0"
+                            className="flex items-center gap-0.5 px-1 py-0.5 bg-blue-50 text-blue-800 rounded text-[9px] font-semibold hover:bg-blue-100 transition-colors flex-shrink-0"
                           >
                             <Sparkles size={8} />
                             {(row.suggestedCost / 10000)}만
@@ -644,7 +644,7 @@ export default function BatchSettlementPage() {
                             updateEdit(epId, 'cost', raw ? parseInt(raw) : 0);
                           }}
                           placeholder="0원"
-                          className={`w-[100px] px-2 py-1.5 text-right text-[12px] font-medium rounded-lg border outline-none transition-all ${inputCls(epId, 'cost', row.missing.cost)} focus:border-orange-500 focus:bg-white focus:shadow-[0_0_0_3px_rgba(234,88,12,0.08)]`}
+                          className={`w-[100px] px-2 py-1.5 text-right text-[12px] font-medium rounded-lg border outline-none transition-all ${inputCls(epId, 'cost', row.missing.cost)} focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_3px_rgba(30,58,138,0.08)]`}
                         />
                       </div>
                     </div>
@@ -664,7 +664,7 @@ export default function BatchSettlementPage() {
                           updateEdit(epId, 'mgmt', raw ? parseInt(raw) : 0);
                         }}
                         placeholder="0원"
-                        className={`w-[100px] px-2 py-1.5 text-right text-[12px] font-medium rounded-lg border outline-none transition-all ${inputCls(epId, 'mgmt', row.missing.mgmt)} focus:border-orange-500 focus:bg-white focus:shadow-[0_0_0_3px_rgba(234,88,12,0.08)]`}
+                        className={`w-[100px] px-2 py-1.5 text-right text-[12px] font-medium rounded-lg border outline-none transition-all ${inputCls(epId, 'mgmt', row.missing.mgmt)} focus:border-blue-500 focus:bg-white focus:shadow-[0_0_0_3px_rgba(30,58,138,0.08)]`}
                       />
                     </div>
 
@@ -688,7 +688,7 @@ export default function BatchSettlementPage() {
                                 : hasVal
                                   ? 'border-[#ede9e6] bg-[#fafaf9] text-gray-700'
                                   : missing
-                                    ? 'border-dashed border-orange-300 bg-orange-50/30 text-[#a8a29e]'
+                                    ? 'border-dashed border-blue-300 bg-blue-50/30 text-[#a8a29e]'
                                     : 'border-[#ede9e6] bg-[#fafaf9] text-[#a8a29e]'
                             } hover:border-[#d6cec8]`}
                           >

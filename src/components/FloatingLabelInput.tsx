@@ -32,7 +32,7 @@ export function FloatingLabelInput({ label, required, className = '', ...props }
         }}
         className={`
           w-full px-4 pt-6 pb-2 border border-gray-300 rounded-lg
-          focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent
+          focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent
           transition-all duration-200
           ${className}
         `}
@@ -42,7 +42,7 @@ export function FloatingLabelInput({ label, required, className = '', ...props }
         className={`
           absolute left-4 transition-all duration-200 pointer-events-none
           ${isFloating
-            ? 'top-1.5 text-xs text-orange-600 font-medium'
+            ? 'top-1.5 text-xs text-blue-800 font-medium'
             : 'top-1/2 -translate-y-1/2 text-base text-gray-500'
           }
         `}
@@ -75,7 +75,7 @@ export function FloatingLabelTextarea({ label, required, className = '', rows = 
         }}
         className={`
           w-full px-4 pt-6 pb-2 border border-gray-300 rounded-lg
-          focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent
+          focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent
           transition-all duration-200 resize-none
           ${className}
         `}
@@ -85,7 +85,7 @@ export function FloatingLabelTextarea({ label, required, className = '', rows = 
         className={`
           absolute left-4 transition-all duration-200 pointer-events-none
           ${isFloating
-            ? 'top-1.5 text-xs text-orange-600 font-medium'
+            ? 'top-1.5 text-xs text-blue-800 font-medium'
             : 'top-4 text-base text-gray-500'
           }
         `}

@@ -185,8 +185,8 @@ export default function PartnerSettlementDetailPage() {
     loadData();
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" /></div>;
-  if (!partner) return <div className="flex flex-col items-center justify-center h-64 gap-4"><p className="text-gray-500">파트너를 찾을 수 없습니다.</p><Link href="/finance/partner-settlement" className="text-sm text-orange-500">← 목록으로</Link></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800" /></div>;
+  if (!partner) return <div className="flex flex-col items-center justify-center h-64 gap-4"><p className="text-gray-500">파트너를 찾을 수 없습니다.</p><Link href="/finance/partner-settlement" className="text-sm text-blue-500">← 목록으로</Link></div>;
 
   return (
     <div className="space-y-5">
@@ -196,7 +196,7 @@ export default function PartnerSettlementDetailPage() {
           <Link href="/finance/partner-settlement" className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
             <ArrowLeft size={18} className="text-[#a8a29e]" />
           </Link>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${partner.position === 'executive' ? 'bg-purple-500' : 'bg-orange-500'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${partner.position === 'executive' ? 'bg-purple-500' : 'bg-blue-500'}`}>
             {partner.name.charAt(0)}
           </div>
           <div>
@@ -228,7 +228,7 @@ export default function PartnerSettlementDetailPage() {
             </motion.div>
             <div className="h-[6px] bg-[#f0ece9] rounded-full overflow-hidden flex gap-0.5">
               <motion.div initial={{ width: 0 }} animate={{ width: `${paidPct}%` }} transition={{ duration: 0.6, delay: 0.2, ease: [0.4, 0, 0.2, 1] }} className="h-full bg-green-500 rounded-full" />
-              <motion.div initial={{ width: 0 }} animate={{ width: `${100 - paidPct}%` }} transition={{ duration: 0.6, delay: 0.3, ease: [0.4, 0, 0.2, 1] }} className="h-full bg-orange-500 rounded-full" />
+              <motion.div initial={{ width: 0 }} animate={{ width: `${100 - paidPct}%` }} transition={{ duration: 0.6, delay: 0.3, ease: [0.4, 0, 0.2, 1] }} className="h-full bg-blue-500 rounded-full" />
             </div>
           </div>
         )}
@@ -285,11 +285,11 @@ export default function PartnerSettlementDetailPage() {
           </div>
           <div className="h-[6px] bg-[#f0ece9] rounded-full overflow-hidden flex gap-0.5 mb-1.5">
             <motion.div initial={false} animate={{ width: `${paidPct}%` }} transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }} className="h-full bg-green-500 rounded-full" />
-            <motion.div initial={false} animate={{ width: `${100 - paidPct}%` }} transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }} className="h-full bg-orange-500 rounded-full" />
+            <motion.div initial={false} animate={{ width: `${100 - paidPct}%` }} transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }} className="h-full bg-blue-500 rounded-full" />
           </div>
           <motion.div key={`legend-${selectedYM}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.1 }} className="flex justify-between text-[12px]">
             <div className="flex items-center gap-1.5"><div className="w-2 h-1 bg-green-500 rounded-sm" /><span className="text-green-600 font-semibold">완료 {paidAmount.toLocaleString()}</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-2 h-1 bg-orange-500 rounded-sm" /><span className="text-orange-500 font-semibold">대기 {unpaidAmount.toLocaleString()}</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-1 bg-blue-500 rounded-sm" /><span className="text-blue-500 font-semibold">대기 {unpaidAmount.toLocaleString()}</span></div>
           </motion.div>
         </div>
 
@@ -446,7 +446,7 @@ export default function PartnerSettlementDetailPage() {
                     {copiedId ? <Check size={10} className="text-green-500" /> : <Copy size={10} className="text-[#d6d3d1]" />}
                   </button>
                 ) : (
-                  <Link href="/partners" className="text-[10px] px-2 py-0.5 bg-orange-50 text-orange-500 rounded-lg hover:bg-orange-100 transition-colors">
+                  <Link href="/partners" className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition-colors">
                     계좌 미등록
                   </Link>
                 )}
@@ -471,7 +471,7 @@ export default function PartnerSettlementDetailPage() {
                   {copiedId ? <Check size={11} className="text-green-500" /> : <Copy size={11} className="text-[#d6d3d1]" />}
                 </button>
               ) : (
-                <Link href="/partners" className="text-[11px] px-2.5 py-1 bg-orange-50 text-orange-500 rounded-lg hover:bg-orange-100 transition-colors">
+                <Link href="/partners" className="text-[11px] px-2.5 py-1 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition-colors">
                   계좌 미등록
                 </Link>
               )}
@@ -507,7 +507,7 @@ export default function PartnerSettlementDetailPage() {
                   <p style={{ fontSize: '11px', color: '#a8a29e', margin: '2px 0 0' }}>발행일 {new Date().toLocaleDateString('ko-KR')}</p>
                 </div>
               </div>
-              <div style={{ height: '2px', background: 'linear-gradient(to right, #ea580c, #f97316)', borderRadius: '1px', marginBottom: '24px' }} />
+              <div style={{ height: '2px', background: 'linear-gradient(to right, #1e3a8a, #3b82f6)', borderRadius: '1px', marginBottom: '24px' }} />
 
               {/* 요약 */}
               <div style={{ display: 'flex', gap: '16px', marginBottom: '28px' }}>
@@ -574,7 +574,7 @@ export default function PartnerSettlementDetailPage() {
 
               {/* 푸터 */}
               <div style={{ marginTop: '32px', textAlign: 'center', fontSize: '10px', color: '#d6d3d1' }}>
-                VIMO ERP · 비모
+                SEON Hub
               </div>
             </>
           );
@@ -631,7 +631,7 @@ export default function PartnerSettlementDetailPage() {
                       onClick={() => setEditStatus('pending')}
                       className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
                         editStatus === 'pending'
-                          ? 'bg-orange-500 text-white'
+                          ? 'bg-blue-500 text-white'
                           : 'bg-[#f5f5f4] text-[#78716c] hover:bg-[#ede9e6]'
                       }`}
                     >
@@ -661,7 +661,7 @@ export default function PartnerSettlementDetailPage() {
                       inputMode="numeric"
                       value={editAmount ? parseInt(editAmount).toLocaleString() : ''}
                       onChange={e => setEditAmount(e.target.value.replace(/[^0-9]/g, ''))}
-                      className="w-full px-3 py-2.5 border border-[#ede9e6] rounded-xl text-[14px] font-semibold tabular-nums focus:outline-none focus:border-orange-400 transition-colors pr-8"
+                      className="w-full px-3 py-2.5 border border-[#ede9e6] rounded-xl text-[14px] font-semibold tabular-nums focus:outline-none focus:border-blue-400 transition-colors pr-8"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-[#a8a29e]">원</span>
                   </div>
@@ -671,7 +671,7 @@ export default function PartnerSettlementDetailPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="w-full py-3 bg-orange-500 text-white rounded-xl text-[14px] font-bold hover:bg-orange-600 transition-colors disabled:opacity-50"
+                  className="w-full py-3 bg-blue-500 text-white rounded-xl text-[14px] font-bold hover:bg-blue-800 transition-colors disabled:opacity-50"
                 >
                   {saving ? '저장 중...' : '저장'}
                 </button>

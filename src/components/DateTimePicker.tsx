@@ -101,7 +101,7 @@ function TimeWheel({
 
       {/* 메인 숫자 박스 */}
       <div
-        className="relative w-[72px] h-16 bg-gradient-to-b from-orange-50 to-orange-50/60 rounded-2xl border-2 border-orange-200 flex items-center justify-center cursor-ns-resize overflow-hidden"
+        className="relative w-[72px] h-16 bg-gradient-to-b from-blue-50 to-blue-50/60 rounded-2xl border-2 border-blue-200 flex items-center justify-center cursor-ns-resize overflow-hidden"
         style={{ touchAction: 'none' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -118,7 +118,7 @@ function TimeWheel({
             onChange={e => setDraft(e.target.value)}
             onBlur={commitEdit}
             onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(false); }}
-            className="w-full text-center text-2xl font-bold text-orange-600 bg-transparent focus:outline-none tabular-nums"
+            className="w-full text-center text-2xl font-bold text-blue-800 bg-transparent focus:outline-none tabular-nums"
             maxLength={2}
           />
         ) : (
@@ -129,7 +129,7 @@ function TimeWheel({
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: animDir * -20, opacity: 0 }}
               transition={{ duration: 0.12, ease: 'easeOut' }}
-              className="text-2xl font-bold text-orange-600 tabular-nums"
+              className="text-2xl font-bold text-blue-800 tabular-nums"
             >
               {display}
             </motion.span>
@@ -293,11 +293,11 @@ export default function DateTimePicker({
               <div>
                 <span className="text-sm font-bold text-gray-900">알림 설정</span>
                 {selectedDate ? (
-                  <span className="ml-2 text-xs text-orange-500 font-medium">
+                  <span className="ml-2 text-xs text-blue-500 font-medium">
                     {selectedDate.split('-').slice(1).join('월 ')}일 {selectedTime || '09:00'}
                   </span>
                 ) : repeat && repeat !== 'none' ? (
-                  <span className="ml-2 text-xs text-orange-500 font-medium">
+                  <span className="ml-2 text-xs text-blue-500 font-medium">
                     {REPEAT_LABELS[repeat]} 반복{selectedTime ? ` · ${selectedTime}` : ''}
                   </span>
                 ) : null}
@@ -330,7 +330,7 @@ export default function DateTimePicker({
                 {/* 요일 헤더 */}
                 <div className="grid grid-cols-7 mb-1">
                   {DAYS.map((d, i) => (
-                    <div key={d} className={`text-center text-xs font-semibold py-1 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-orange-400' : 'text-gray-400'}`}>
+                    <div key={d} className={`text-center text-xs font-semibold py-1 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-400'}`}>
                       {d}
                     </div>
                   ))}
@@ -355,21 +355,21 @@ export default function DateTimePicker({
                           whileTap={{ scale: 0.82 }}
                           className={`relative w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-colors
                             ${isSelected
-                              ? 'bg-orange-500 text-white shadow-md shadow-orange-200'
+                              ? 'bg-blue-500 text-white shadow-md shadow-blue-200'
                               : isToday
-                              ? 'bg-orange-50 text-orange-600 font-bold'
+                              ? 'bg-blue-50 text-blue-800 font-bold'
                               : isHover
                               ? 'bg-gray-100'
                               : colIdx === 0
                               ? 'text-red-400 hover:bg-red-50'
                               : colIdx === 6
-                              ? 'text-orange-400 hover:bg-orange-50'
+                              ? 'text-blue-400 hover:bg-blue-50'
                               : 'text-gray-700 hover:bg-gray-100'
                             }`}
                         >
                           {day}
                           {isToday && !isSelected && (
-                            <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-orange-400" />
+                            <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-400" />
                           )}
                         </motion.button>
                       </div>
@@ -385,7 +385,7 @@ export default function DateTimePicker({
                   </button>
                   <button type="button"
                     onClick={() => handleDayClick(todayStr)}
-                    className="text-xs text-orange-500 hover:text-orange-600 font-medium transition-colors">
+                    className="text-xs text-blue-500 hover:text-blue-800 font-medium transition-colors">
                     오늘
                   </button>
                 </div>
@@ -403,7 +403,7 @@ export default function DateTimePicker({
                       max={23} step={1} label="시"
                       onChange={h => handleTimeChange(`${String(h).padStart(2, '0')}:${selectedTime.split(':')[1] || '00'}`)}
                     />
-                    <span className="text-2xl font-bold text-orange-200 mb-6">:</span>
+                    <span className="text-2xl font-bold text-blue-200 mb-6">:</span>
                     <TimeWheel
                       value={parseInt(selectedTime.split(':')[1] || '0')}
                       max={59} step={1} label="분"
@@ -430,8 +430,8 @@ export default function DateTimePicker({
                           }}
                           className={`py-1.5 rounded-xl text-[11px] font-semibold transition-all ${
                             repeat === type
-                              ? 'bg-orange-500 text-white shadow-md shadow-orange-200'
-                              : 'bg-gray-50 text-gray-500 hover:bg-orange-50 hover:text-orange-600 border border-gray-100'
+                              ? 'bg-blue-500 text-white shadow-md shadow-blue-200'
+                              : 'bg-gray-50 text-gray-500 hover:bg-blue-50 hover:text-blue-800 border border-gray-100'
                           }`}
                         >
                           {REPEAT_LABELS[type]}
@@ -469,8 +469,8 @@ export default function DateTimePicker({
                                   }}
                                   className={`flex-1 h-8 rounded-lg text-[11px] font-bold transition-all ${
                                     isDaySelected
-                                      ? isSun ? 'bg-red-500 text-white' : isSat ? 'bg-orange-500 text-white' : 'bg-amber-500 text-white'
-                                      : isSun ? 'bg-red-50 text-red-400 border border-red-100' : isSat ? 'bg-orange-50 text-orange-400 border border-orange-100' : 'bg-gray-50 text-gray-500 border border-gray-100'
+                                      ? isSun ? 'bg-red-500 text-white' : isSat ? 'bg-blue-500 text-white' : 'bg-amber-500 text-white'
+                                      : isSun ? 'bg-red-50 text-red-400 border border-red-100' : isSat ? 'bg-blue-50 text-blue-400 border border-blue-100' : 'bg-gray-50 text-gray-500 border border-gray-100'
                                   }`}
                                 >
                                   {label}
@@ -500,7 +500,7 @@ export default function DateTimePicker({
                 whileTap={{ scale: 0.97 }}
                 onClick={handleSave}
                 disabled={!selectedDate && (!repeat || repeat === 'none')}
-                className="flex-2 px-8 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                className="flex-2 px-8 py-2.5 bg-blue-500 text-white rounded-xl text-sm font-semibold hover:bg-blue-800 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
                 {selectedDate
                   ? `${selectedDate.slice(5).replace('-', '월 ')}일 ${selectedTime || '09:00'} 저장`

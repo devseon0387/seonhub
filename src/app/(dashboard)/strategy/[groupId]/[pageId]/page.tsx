@@ -184,8 +184,8 @@ function BlockEl({
         style={{
           marginTop: '3px',
           width: '17px', height: '17px', borderRadius: '4px', flexShrink: 0,
-          border: block.checked ? '2px solid #ea580c' : '2px solid #d6cec8',
-          background: block.checked ? '#ea580c' : 'transparent',
+          border: block.checked ? '2px solid #1e3a8a' : '2px solid #d6cec8',
+          background: block.checked ? '#1e3a8a' : 'transparent',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', transition: 'all 0.15s',
         }}
@@ -347,7 +347,7 @@ export default function PageEditor() {
     return (
       <div className="text-center py-24">
         <p className="text-gray-400">페이지를 찾을 수 없어요</p>
-        <button onClick={() => router.push(`/strategy/${groupId}`)} className="mt-4 text-sm text-orange-500 hover:text-orange-700 transition-colors">
+        <button onClick={() => router.push(`/strategy/${groupId}`)} className="mt-4 text-sm text-blue-500 hover:text-blue-900 transition-colors">
           그룹으로 돌아가기
         </button>
       </div>
@@ -406,7 +406,7 @@ export default function PageEditor() {
             background: '#fff7f3', border: '1px solid #fde8d8',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <FileText size={22} style={{ color: '#ea580c' }} />
+            <FileText size={22} style={{ color: '#1e3a8a' }} />
           </div>
         </div>
 

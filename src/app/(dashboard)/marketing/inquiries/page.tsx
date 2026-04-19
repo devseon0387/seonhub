@@ -38,7 +38,7 @@ type FilterStatus = 'all' | InquiryStatus;
 const STATUS_CONFIG: Record<InquiryStatus, { label: string; bgColor: string; textColor: string; dotColor: string }> = {
   new: { label: '새 문의', bgColor: 'bg-blue-100', textColor: 'text-blue-800', dotColor: 'bg-blue-500' },
   contacted: { label: '연락 완료', bgColor: 'bg-yellow-100', textColor: 'text-yellow-800', dotColor: 'bg-yellow-500' },
-  in_progress: { label: '진행 중', bgColor: 'bg-orange-100', textColor: 'text-orange-800', dotColor: 'bg-orange-500' },
+  in_progress: { label: '진행 중', bgColor: 'bg-blue-100', textColor: 'text-blue-900', dotColor: 'bg-blue-500' },
   completed: { label: '완료', bgColor: 'bg-green-100', textColor: 'text-green-800', dotColor: 'bg-green-500' },
   rejected: { label: '거절', bgColor: 'bg-red-100', textColor: 'text-red-800', dotColor: 'bg-red-500' },
 };
@@ -231,8 +231,8 @@ export default function InquiriesPage() {
               <p className="text-sm font-medium text-gray-600">전체 문의</p>
               <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</p>
             </div>
-            <div className="p-3 bg-orange-100 rounded-full">
-              <MessageSquare className="text-orange-500" size={24} />
+            <div className="p-3 bg-blue-100 rounded-full">
+              <MessageSquare className="text-blue-500" size={24} />
             </div>
           </div>
         </div>
@@ -251,10 +251,10 @@ export default function InquiriesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">진행 중</p>
-              <p className="text-3xl font-bold text-orange-600 mt-2">{stats.in_progress}</p>
+              <p className="text-3xl font-bold text-blue-800 mt-2">{stats.in_progress}</p>
             </div>
-            <div className="p-3 bg-orange-100 rounded-full">
-              <Clock className="text-orange-500" size={24} />
+            <div className="p-3 bg-blue-100 rounded-full">
+              <Clock className="text-blue-500" size={24} />
             </div>
           </div>
         </div>
@@ -282,7 +282,7 @@ export default function InquiriesPage() {
                 placeholder="이름, 연락처, 프로젝트 유형 검색..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-700 focus:border-transparent"
               />
             </div>
             <div className="flex items-center gap-2 border border-gray-300 rounded-lg p-1">
@@ -299,7 +299,7 @@ export default function InquiriesPage() {
                   type="button"
                   onClick={() => setFilter(f.value)}
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-                    filter === f.value ? 'bg-orange-500 text-white' : 'text-gray-700 hover:bg-gray-100'
+                    filter === f.value ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
                   {f.label}
@@ -352,8 +352,8 @@ export default function InquiriesPage() {
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <User size={14} className="text-orange-500" />
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <User size={14} className="text-blue-500" />
                           </div>
                           <div>
                             <p className="text-sm font-medium text-gray-900">{inquiry.name}</p>
@@ -494,7 +494,7 @@ export default function InquiriesPage() {
                           href={link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-orange-600 hover:text-orange-700 hover:underline"
+                          className="flex items-center gap-2 text-sm text-blue-800 hover:text-blue-900 hover:underline"
                         >
                           <ExternalLink size={12} />
                           {link}
@@ -530,13 +530,13 @@ export default function InquiriesPage() {
                                 if (embedUrl) setPlayingVideoUrl(embedUrl);
                               }
                             }}
-                            className={`w-full flex items-center gap-3 bg-gray-50 rounded-lg p-3 text-left transition-colors ${hasVideo ? 'hover:bg-orange-50 cursor-pointer' : 'cursor-default'}`}
+                            className={`w-full flex items-center gap-3 bg-gray-50 rounded-lg p-3 text-left transition-colors ${hasVideo ? 'hover:bg-blue-50 cursor-pointer' : 'cursor-default'}`}
                           >
-                            <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${hasVideo ? 'bg-red-100' : 'bg-orange-100'}`}>
+                            <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${hasVideo ? 'bg-red-100' : 'bg-blue-100'}`}>
                               {hasVideo ? (
                                 <div className="w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-l-[9px] border-l-red-500 ml-0.5" />
                               ) : (
-                                <Briefcase size={14} className="text-orange-500" />
+                                <Briefcase size={14} className="text-blue-500" />
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -565,7 +565,7 @@ export default function InquiriesPage() {
                     <button
                       type="button"
                       onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white flex items-center justify-between"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-700 focus:border-transparent bg-white flex items-center justify-between"
                     >
                       <div className="flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full ${STATUS_CONFIG[editStatus].dotColor}`} />
@@ -581,7 +581,7 @@ export default function InquiriesPage() {
                             type="button"
                             onClick={() => handleStatusChange(option.value)}
                             className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm ${
-                              editStatus === option.value ? 'bg-orange-50 text-orange-700 font-medium' : 'text-gray-700'
+                              editStatus === option.value ? 'bg-blue-50 text-blue-900 font-medium' : 'text-gray-700'
                             }`}
                           >
                             <span className={`w-2 h-2 rounded-full ${STATUS_CONFIG[option.value].dotColor}`} />
@@ -604,14 +604,14 @@ export default function InquiriesPage() {
                     onChange={(e) => setEditNotes(e.target.value)}
                     rows={4}
                     placeholder="문의에 대한 메모를 작성하세요..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-700 focus:border-transparent resize-none text-sm"
                   />
                   <div className="flex justify-end mt-2">
                     <button
                       type="button"
                       onClick={handleSaveNotes}
                       disabled={isSavingNotes}
-                      className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-800 transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50"
                     >
                       <Save size={14} />
                       {isSavingNotes ? '저장 중...' : '메모 저장'}

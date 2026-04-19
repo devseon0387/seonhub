@@ -28,6 +28,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+
     try {
       const supabase = createClient();
       const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
@@ -95,7 +96,7 @@ export default function LoginPage() {
           position: absolute;
           top: -40%; right: -20%;
           width: 600px; height: 600px;
-          background: radial-gradient(circle, rgba(234,88,12,0.04) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(30,58,138,0.05) 0%, transparent 70%);
           border-radius: 50%;
           pointer-events: none;
         }
@@ -104,7 +105,7 @@ export default function LoginPage() {
           position: absolute;
           bottom: -30%; left: -15%;
           width: 500px; height: 500px;
-          background: radial-gradient(circle, rgba(234,88,12,0.03) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(30,58,138,0.04) 0%, transparent 70%);
           border-radius: 50%;
           pointer-events: none;
         }
@@ -160,8 +161,8 @@ export default function LoginPage() {
         }
         .vm-field-input:focus {
           background: #ffffff;
-          border-color: #ea580c;
-          box-shadow: 0 0 0 4px rgba(234,88,12,0.06);
+          border-color: #1e3a8a;
+          box-shadow: 0 0 0 4px rgba(30,58,138,0.08);
         }
         .vm-field-label {
           position: absolute;
@@ -175,7 +176,7 @@ export default function LoginPage() {
         .vm-field-label.active {
           top: 14px; transform: translateY(0);
           font-size: 10px; font-weight: 600;
-          color: #ea580c; letter-spacing: 0.06em;
+          color: #1e3a8a; letter-spacing: 0.06em;
         }
         .vm-field-label.filled {
           top: 14px; transform: translateY(0);
@@ -193,7 +194,7 @@ export default function LoginPage() {
           font-weight: 600;
           font-family: inherit;
           color: #fff;
-          background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+          background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
           transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
           display: flex;
           align-items: center;
@@ -202,7 +203,7 @@ export default function LoginPage() {
         }
         .vm-submit:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(234,88,12,0.25);
+          box-shadow: 0 8px 24px rgba(30,58,138,0.3);
         }
         .vm-submit:active:not(:disabled) {
           transform: translateY(0);
@@ -232,7 +233,7 @@ export default function LoginPage() {
           align-items: center; justify-content: center;
           transition: all 0.2s ease;
         }
-        .vm-check.on { background: #ea580c; }
+        .vm-check.on { background: #1e3a8a; }
         .vm-check.off { background: transparent; border: 1.5px solid #d6cec8; }
 
         /* error */
@@ -280,16 +281,24 @@ export default function LoginPage() {
             transform: mounted ? 'none' : 'translateY(-8px)',
             transition: 'all 0.6s cubic-bezier(0.16,1,0.3,1)',
           }}>
-            <img
-              src="/logo.png?v=2"
-              alt="비모 ERP"
+            <div
               style={{
-                width: '120px', height: 'auto',
-                display: 'block',
+                width: '96px', height: '96px',
                 margin: '0 auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#1e3a8a',
+                color: '#fff',
+                fontSize: '36px',
+                fontWeight: 900,
+                letterSpacing: '-0.02em',
+                borderRadius: '22px',
+                boxShadow: '0 10px 30px rgba(30,58,138,0.25)',
                 animation: mounted ? 'logoIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both' : 'none',
               }}
-            />
+            >SH</div>
+            <div style={{ marginTop: 14, fontSize: 13, fontWeight: 700, letterSpacing: '0.08em', color: '#1e3a8a' }}>SEON Hub</div>
           </div>
 
           {/* 카드 */}

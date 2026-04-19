@@ -112,7 +112,7 @@ export default function DatePicker({ value, onChange, placeholder, minDate }: Da
         }`}
       >
         <div className="flex items-center gap-1.5">
-          <Calendar size={13} className={`flex-shrink-0 ${value ? 'text-orange-500' : 'text-gray-400'}`} />
+          <Calendar size={13} className={`flex-shrink-0 ${value ? 'text-blue-500' : 'text-gray-400'}`} />
           <span className={value ? 'text-gray-900 font-semibold' : 'text-[#d6d3d1]'}>
             {value ? formatDisplay(value) : placeholder}
           </span>
@@ -175,7 +175,7 @@ export default function DatePicker({ value, onChange, placeholder, minDate }: Da
                 <div
                   key={d}
                   className={`text-center text-xs font-semibold py-1 ${
-                    i === 0 ? 'text-red-400' : i === 6 ? 'text-orange-400' : 'text-gray-400'
+                    i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-400'
                   }`}
                 >
                   {d}
@@ -204,22 +204,22 @@ export default function DatePicker({ value, onChange, placeholder, minDate }: Da
                     className={`
                       relative h-8 w-8 mx-auto flex items-center justify-center rounded-full text-sm font-medium transition-all
                       ${isSelected
-                        ? 'bg-orange-500 text-white shadow-md shadow-orange-200'
+                        ? 'bg-blue-500 text-white shadow-md shadow-blue-200'
                         : isToday && !isSelected
-                        ? 'bg-orange-50 text-orange-600 font-bold'
+                        ? 'bg-blue-50 text-blue-800 font-bold'
                         : disabled
                         ? 'text-gray-200 cursor-not-allowed'
                         : colIdx === 0
                         ? 'text-red-400 hover:bg-red-50'
                         : colIdx === 6
-                        ? 'text-orange-400 hover:bg-orange-50'
+                        ? 'text-blue-400 hover:bg-blue-50'
                         : 'text-gray-700 hover:bg-gray-100'
                       }
                     `}
                   >
                     {day}
                     {isToday && !isSelected && (
-                      <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-orange-400" />
+                      <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-400" />
                     )}
                   </motion.button>
                 );
@@ -234,7 +234,7 @@ export default function DatePicker({ value, onChange, placeholder, minDate }: Da
                   onChange(todayStr);
                   setIsOpen(false);
                 }}
-                className="w-full text-xs text-orange-500 hover:text-orange-600 font-medium py-1 hover:bg-orange-50 rounded-lg transition-colors"
+                className="w-full text-xs text-blue-500 hover:text-blue-800 font-medium py-1 hover:bg-blue-50 rounded-lg transition-colors"
               >
                 오늘 선택
               </button>

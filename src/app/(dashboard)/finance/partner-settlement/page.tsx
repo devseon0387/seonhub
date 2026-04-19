@@ -192,7 +192,7 @@ export default function SettlementPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <p className="text-gray-500">데이터를 불러오는데 실패했습니다.</p>
-        <button onClick={loadData} className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm font-medium">다시 시도</button>
+        <button onClick={loadData} className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-800 transition-colors text-sm font-medium">다시 시도</button>
       </div>
     );
   }
@@ -223,7 +223,7 @@ export default function SettlementPage() {
                 {filter === tab.key && (
                   <motion.div
                     layoutId="settlement-tab"
-                    className="absolute inset-0 bg-orange-500 rounded-lg shadow-sm shadow-orange-500/20"
+                    className="absolute inset-0 bg-blue-500 rounded-lg shadow-sm shadow-blue-700/20"
                     transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                   />
                 )}
@@ -280,18 +280,18 @@ export default function SettlementPage() {
               initial={false}
               animate={{ width: grandTotal > 0 ? `${unpaidPct}%` : '0%' }}
               transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-              className="h-full bg-orange-500 rounded-full"
+              className="h-full bg-blue-500 rounded-full"
             />
           </div>
           <motion.div key={`legend-${selectedYM}-${filter}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.1 }} className="flex justify-between text-[12px]">
             <div className="flex items-center gap-1.5"><div className="w-2 h-1 bg-green-500 rounded-sm" /><span className="text-green-600 font-semibold">완료 {grandPaid.toLocaleString()}</span><span className="text-[#a8a29e]">({paidPct}%)</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-2 h-1 bg-orange-500 rounded-sm" /><span className="text-orange-500 font-semibold">대기 {grandUnpaid.toLocaleString()}</span><span className="text-[#a8a29e]">({unpaidPct}%)</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-1 bg-blue-500 rounded-sm" /><span className="text-blue-500 font-semibold">대기 {grandUnpaid.toLocaleString()}</span><span className="text-[#a8a29e]">({unpaidPct}%)</span></div>
           </motion.div>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800" />
           </div>
         ) : (
           <div style={{ overflowX: 'clip' }}>
@@ -331,7 +331,7 @@ export default function SettlementPage() {
                       >
                         <div className="flex items-center gap-[10px] min-w-0">
                           <div className={`w-[34px] h-[34px] rounded-full flex items-center justify-center flex-shrink-0 ${
-                            row.type === 'manager' ? 'bg-purple-500' : 'bg-orange-500'
+                            row.type === 'manager' ? 'bg-purple-500' : 'bg-blue-500'
                           }`}>
                             <User size={16} className="text-white" />
                           </div>
@@ -339,7 +339,7 @@ export default function SettlementPage() {
                             <div className="flex items-center gap-[6px]">
                               <span className="text-[15px] font-bold text-gray-900">{row.person.name}</span>
                               <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0 ${
-                                row.type === 'manager' ? 'bg-purple-50 text-purple-600' : 'bg-[#fff7ed] text-orange-500'
+                                row.type === 'manager' ? 'bg-purple-50 text-purple-600' : 'bg-[#eff6ff] text-blue-500'
                               }`}>
                                 {row.type === 'manager' ? '매니저' : '파트너'}
                               </span>
@@ -350,8 +350,8 @@ export default function SettlementPage() {
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0 ml-3">
-                          <div className={`text-[16px] font-extrabold tabular-nums ${row.unpaidAmount > 0 ? 'text-[#ea580c]' : 'text-[#16a34a]'}`}>
-                            {row.unpaidAmount > 0 ? row.unpaidAmount.toLocaleString() : '0'}<span className={`text-[11px] font-medium ${row.unpaidAmount > 0 ? 'text-[#ea580c]' : 'text-[#16a34a]'}`}>원</span>
+                          <div className={`text-[16px] font-extrabold tabular-nums ${row.unpaidAmount > 0 ? 'text-[#1e3a8a]' : 'text-[#16a34a]'}`}>
+                            {row.unpaidAmount > 0 ? row.unpaidAmount.toLocaleString() : '0'}<span className={`text-[11px] font-medium ${row.unpaidAmount > 0 ? 'text-[#1e3a8a]' : 'text-[#16a34a]'}`}>원</span>
                           </div>
                           <div className={`text-[10px] ${row.unpaidAmount > 0 ? 'text-[#a8a29e]' : 'text-[#16a34a]'}`}>
                             {row.unpaidAmount > 0
@@ -369,13 +369,13 @@ export default function SettlementPage() {
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            row.type === 'manager' ? 'bg-purple-500' : 'bg-orange-500'
+                            row.type === 'manager' ? 'bg-purple-500' : 'bg-blue-500'
                           }`}>
                             <User size={14} className="text-white" />
                           </div>
                           <span className="text-[14px] font-semibold text-gray-900 truncate">{row.person.name}</span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0 ${
-                            row.type === 'manager' ? 'bg-purple-50 text-purple-600' : 'bg-[#fff7ed] text-orange-500'
+                            row.type === 'manager' ? 'bg-purple-50 text-purple-600' : 'bg-[#eff6ff] text-blue-500'
                           }`}>
                             {row.type === 'manager' ? '매니저' : '파트너'}
                           </span>
@@ -387,7 +387,7 @@ export default function SettlementPage() {
                           <span className="text-[11px] text-[#a8a29e] flex-shrink-0">{row.episodeCount}회차</span>
                         </div>
                         <span className="text-[14px] font-semibold text-gray-900 text-right tabular-nums">{row.totalAmount.toLocaleString()}</span>
-                        <span className={`text-[14px] text-right font-semibold tabular-nums ${row.unpaidAmount > 0 ? 'text-orange-500' : 'text-[#a8a29e]'}`}>
+                        <span className={`text-[14px] text-right font-semibold tabular-nums ${row.unpaidAmount > 0 ? 'text-blue-500' : 'text-[#a8a29e]'}`}>
                           {row.unpaidAmount > 0 ? row.unpaidAmount.toLocaleString() : '0'}
                         </span>
                         <span className="text-[12px] text-right tabular-nums text-[#a8a29e]">
@@ -395,7 +395,7 @@ export default function SettlementPage() {
                         </span>
                         <div className="text-right">
                           {row.unpaidAmount > 0 ? (
-                            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#fff7ed] text-orange-500 font-semibold">미지급</span>
+                            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#eff6ff] text-blue-500 font-semibold">미지급</span>
                           ) : (
                             <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#f0fdf4] text-green-600 font-semibold">완료</span>
                           )}

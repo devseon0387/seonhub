@@ -1,7 +1,8 @@
 @import "tailwindcss";
+@import "../design/tokens.css";
 
 :root {
-  --accent: #ea580c;
+  --accent: #1e3a8a;
   --text-primary: #1c1917;
   --text-secondary: #78716c;
   --text-muted: #a8a29e;
@@ -10,13 +11,6 @@
   --card-bg:     #ffffff;
   --card-border: #ede9e6;
   --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-}
-
-@theme inline {
-  --color-background: #f5f4f2;
-  --color-foreground: var(--text-primary);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 html {
@@ -43,6 +37,16 @@ html, body { cursor: default; }
   border: 1px solid var(--card-border);
   box-shadow: var(--card-shadow);
   border-radius: 14px;
+}
+
+/* ── Typography utilities ── */
+@layer utilities {
+  .text-meta    { font-size: 10px; color: var(--color-ink-400); font-weight: 500; }
+  .text-caption { font-size: 11px; color: var(--color-ink-500); }
+  .text-body    { font-size: 13px; color: var(--color-ink-700); }
+  .text-section { font-size: 13px; font-weight: 700; color: var(--color-ink-900); }
+  .text-page    { font-size: 20px; font-weight: 700; color: var(--color-ink-900); }
+  .text-kicker  { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--color-ink-400); }
 }
 
 /* ── Scrollbar ── */

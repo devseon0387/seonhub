@@ -50,17 +50,17 @@ function UpdateCard({ entry, isLatest, index, id }: { entry: UpdateEntry; isLate
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.06, ease: 'easeOut' }}
       className={`bg-white border rounded-2xl px-6 py-5 relative transition-shadow hover:shadow-md ${
-        isLatest ? 'border-orange-200 shadow-sm' : 'border-[#ede9e6]'
+        isLatest ? 'border-blue-200 shadow-sm' : 'border-[#ede9e6]'
       }`}
     >
       {isLatest && (
-        <span className="absolute top-4 right-5 text-[10px] font-bold px-2.5 py-1 rounded-full bg-orange-500 text-white">
+        <span className="absolute top-4 right-5 text-[10px] font-bold px-2.5 py-1 rounded-full bg-blue-500 text-white">
           NEW
         </span>
       )}
 
       <div className="flex items-center gap-2 mb-1.5">
-        <span className="text-[15px] font-extrabold text-orange-500">{entry.version}</span>
+        <span className="text-[15px] font-extrabold text-blue-500">{entry.version}</span>
         <TagBadge tag={entry.tag} />
       </div>
 
@@ -118,7 +118,7 @@ export default function UpdatesPage() {
   const totalChanges = Object.values(stats).reduce((a, b) => a + b, 0);
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'erp', label: 'ERP' },
+    { key: 'erp', label: 'Hub' },
     { key: 'bibot', label: '비봇' },
   ];
 
@@ -134,7 +134,7 @@ export default function UpdatesPage() {
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">업데이트</h1>
-        <p className="text-gray-500 mt-1 text-sm">ERP와 비봇의 최신 변경 사항을 확인하세요</p>
+        <p className="text-gray-500 mt-1 text-sm">SEON Hub와 비봇의 최신 변경 사항을 확인하세요</p>
       </div>
 
       <div className="inline-flex gap-1 p-1 bg-white border border-[#ede9e6] rounded-xl">
@@ -147,7 +147,7 @@ export default function UpdatesPage() {
             {tab === t.key && (
               <motion.div
                 layoutId="update-tab"
-                className="absolute inset-0 bg-orange-500 rounded-lg shadow-sm shadow-orange-500/20"
+                className="absolute inset-0 bg-blue-500 rounded-lg shadow-sm shadow-blue-700/20"
                 transition={{ type: 'spring', stiffness: 380, damping: 30 }}
               />
             )}
@@ -160,7 +160,7 @@ export default function UpdatesPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-40">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800" />
         </div>
       ) : (
         <AnimatePresence mode="wait" initial={false}>
@@ -195,12 +195,12 @@ export default function UpdatesPage() {
               {latest && (
                 <div className="bg-white border border-[#ede9e6] rounded-2xl p-4">
                   <div className="text-[10px] font-bold text-[#a8a29e] tracking-wider uppercase mb-3">현재 버전</div>
-                  <div className="flex items-center gap-3 bg-[#fff7ed] rounded-xl p-3">
-                    <div className="w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-[11px] font-extrabold text-white flex-shrink-0">
-                      {tab === 'erp' ? 'ERP' : '비봇'}
+                  <div className="flex items-center gap-3 bg-[#eff6ff] rounded-xl p-3">
+                    <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-[11px] font-extrabold text-white flex-shrink-0">
+                      {tab === 'erp' ? 'Hub' : '비봇'}
                     </div>
                     <div>
-                      <div className="text-[15px] font-extrabold text-orange-500">{latest.version}</div>
+                      <div className="text-[15px] font-extrabold text-blue-500">{latest.version}</div>
                       <div className="text-[11px] text-[#a8a29e]">{daysAgo(latest.date)} 업데이트</div>
                     </div>
                   </div>
@@ -218,12 +218,12 @@ export default function UpdatesPage() {
                           key={u.id}
                           onClick={() => scrollTo(u.version)}
                           className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors ${
-                            isActive ? 'bg-[#fff7ed] text-orange-600' : 'text-[#78716c] hover:bg-[#fafaf9]'
+                            isActive ? 'bg-[#eff6ff] text-blue-800' : 'text-[#78716c] hover:bg-[#fafaf9]'
                           }`}
                         >
-                          <div className={`w-[6px] h-[6px] rounded-full flex-shrink-0 ${isActive ? 'bg-orange-500' : 'bg-[#d6cec8]'}`} />
+                          <div className={`w-[6px] h-[6px] rounded-full flex-shrink-0 ${isActive ? 'bg-blue-500' : 'bg-[#d6cec8]'}`} />
                           <div className="min-w-0">
-                            <div className={`text-[12px] font-semibold truncate ${isActive ? 'text-orange-600' : ''}`}>
+                            <div className={`text-[12px] font-semibold truncate ${isActive ? 'text-blue-800' : ''}`}>
                               {u.version} — {u.title}
                             </div>
                           </div>

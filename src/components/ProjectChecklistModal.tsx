@@ -57,7 +57,7 @@ export default function ProjectChecklistModal({
   const getWorkTypeIcon = (status: 'completed' | 'in_progress' | 'waiting') => {
     if (status === 'completed') {
       return (
-        <div className="w-4 h-4 rounded bg-orange-500 border-2 border-orange-500 flex items-center justify-center">
+        <div className="w-4 h-4 rounded bg-blue-500 border-2 border-blue-500 flex items-center justify-center">
           <Check size={10} className="text-white" strokeWidth={3} />
         </div>
       );
@@ -90,11 +90,11 @@ export default function ProjectChecklistModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-4 text-white">
+        <div className="bg-gradient-to-r from-blue-700 to-blue-800 px-6 py-4 text-white">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-xl font-bold">{project.title}</h3>
-              <p className="text-sm text-orange-100 mt-1">
+              <p className="text-sm text-blue-100 mt-1">
                 {completedEpisodesCount}개 / {episodes.length}개 회차 완료
               </p>
             </div>
@@ -109,10 +109,10 @@ export default function ProjectChecklistModal({
           {/* 전체 진행률 바 */}
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-orange-100">전체 진행률</span>
+              <span className="text-sm text-blue-100">전체 진행률</span>
               <span className="text-sm font-bold">{totalProgress}%</span>
             </div>
-            <div className="w-full bg-orange-400/30 rounded-full h-2">
+            <div className="w-full bg-blue-400/30 rounded-full h-2">
               <div
                 className="bg-white h-2 rounded-full transition-all duration-300"
                 style={{ width: `${totalProgress}%` }}
@@ -134,7 +134,7 @@ export default function ProjectChecklistModal({
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-0.5">
                   {isClientInfoComplete ? (
-                    <div className="w-5 h-5 rounded border-2 bg-orange-500 border-orange-500 flex items-center justify-center">
+                    <div className="w-5 h-5 rounded border-2 bg-blue-500 border-blue-500 flex items-center justify-center">
                       <Check size={14} className="text-white" strokeWidth={3} />
                     </div>
                   ) : (
@@ -155,7 +155,7 @@ export default function ProjectChecklistModal({
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-0.5">
                   {isPartnerAssigned ? (
-                    <div className="w-5 h-5 rounded border-2 bg-orange-500 border-orange-500 flex items-center justify-center">
+                    <div className="w-5 h-5 rounded border-2 bg-blue-500 border-blue-500 flex items-center justify-center">
                       <Check size={14} className="text-white" strokeWidth={3} />
                     </div>
                   ) : (
@@ -177,7 +177,7 @@ export default function ProjectChecklistModal({
           {/* 회차 제작 */}
           <div className="p-6">
             <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-              <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
               회차 제작 진행 상황
             </h4>
 
@@ -215,7 +215,7 @@ export default function ProjectChecklistModal({
                         </div>
                         <div className="flex-shrink-0 mt-0.5">
                           {isCompleted ? (
-                            <div className="w-5 h-5 rounded border-2 bg-orange-500 border-orange-500 flex items-center justify-center">
+                            <div className="w-5 h-5 rounded border-2 bg-blue-500 border-blue-500 flex items-center justify-center">
                               <Check size={14} className="text-white" strokeWidth={3} />
                             </div>
                           ) : (
@@ -234,16 +234,16 @@ export default function ProjectChecklistModal({
                                 e.stopPropagation();
                                 onEpisodeClick?.(episode);
                               }}
-                              className="flex-shrink-0 p-1 hover:bg-orange-50 rounded transition-colors"
+                              className="flex-shrink-0 p-1 hover:bg-blue-50 rounded transition-colors"
                               title="회차 상세 보기"
                             >
-                              <ExternalLink size={14} className="text-orange-500" />
+                              <ExternalLink size={14} className="text-blue-500" />
                             </button>
                           </div>
                           <div className="flex items-center gap-3 mt-1">
                             <span className={`text-xs font-semibold ${
                               progress === 100 ? 'text-green-600' :
-                              progress > 0 ? 'text-orange-600' : 'text-gray-400'
+                              progress > 0 ? 'text-blue-800' : 'text-gray-400'
                             }`}>
                               {progress}% 완료
                             </span>
@@ -296,7 +296,7 @@ export default function ProjectChecklistModal({
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all shadow-md font-medium text-sm"
+            className="px-4 py-2 bg-gradient-to-r from-blue-700 to-blue-800 text-white rounded-lg hover:from-blue-800 hover:to-blue-900 transition-all shadow-md font-medium text-sm"
           >
             닫기
           </button>

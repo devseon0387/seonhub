@@ -71,27 +71,27 @@ export default function PWAInstallPrompt() {
 
       {deferredPrompt ? (
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-600">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-800">
             <Download size={20} />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-semibold">비모 ERP 앱 설치</p>
+            <p className="text-sm font-semibold">SEON Hub 앱 설치</p>
             <p className="text-xs text-stone-400">홈 화면에 추가하여 앱처럼 사용</p>
           </div>
           <button
             onClick={handleInstall}
-            className="rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium hover:bg-orange-700"
+            className="rounded-lg bg-blue-800 px-3 py-1.5 text-sm font-medium hover:bg-blue-900"
           >
             설치
           </button>
         </div>
       ) : (
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-600">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-800">
             <Share size={20} />
           </div>
           <div>
-            <p className="text-sm font-semibold">비모 ERP 앱 설치</p>
+            <p className="text-sm font-semibold">SEON Hub 앱 설치</p>
             <p className="mt-1 text-xs leading-relaxed text-stone-400">
               하단의 <Share size={12} className="inline" /> 공유 버튼을 누른 후<br />
               <strong className="text-white">&quot;홈 화면에 추가&quot;</strong>를 선택하세요

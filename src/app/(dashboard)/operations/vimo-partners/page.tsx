@@ -137,8 +137,8 @@ function PartnerCard({ partner }: { partner: Partner }) {
     <div className="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
       {/* 상단: 아이콘 + 기수 배지 */}
       <div className="flex items-start justify-between mb-3">
-        <div className="w-11 h-11 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-          <User size={22} className="text-orange-500" />
+        <div className="w-11 h-11 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+          <User size={22} className="text-blue-500" />
         </div>
         <div className="flex flex-col items-end gap-1">
           {partner.generation && (

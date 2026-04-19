@@ -298,7 +298,7 @@ export default function PartnersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800" />
       </div>
     );
   }
@@ -314,7 +314,7 @@ export default function PartnersPage() {
         <button
           data-tour="tour-partner-new"
           onClick={() => setIsAddPartnerModalOpen(true)}
-          className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm font-semibold flex-shrink-0"
+          className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-800 transition-colors text-sm font-semibold flex-shrink-0"
         >
           + 새 파트너
         </button>
@@ -335,7 +335,7 @@ export default function PartnersPage() {
             {statusFilter === tab.key && (
               <motion.div
                 layoutId="partner-filter-pill"
-                className="absolute inset-0 bg-orange-500 rounded-lg sm:rounded-xl shadow-lg shadow-orange-500/30"
+                className="absolute inset-0 bg-blue-500 rounded-lg sm:rounded-xl shadow-lg shadow-blue-700/30"
                 transition={{ type: 'spring', stiffness: 380, damping: 30 }}
               />
             )}
@@ -358,9 +358,9 @@ export default function PartnersPage() {
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-5">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <p className="text-xs sm:text-sm font-medium text-gray-500">진행중 회차</p>
-            <div className="w-7 h-7 sm:w-9 sm:h-9 bg-orange-50 rounded-lg sm:rounded-xl flex items-center justify-center">
-              <Film size={14} className="text-orange-500 sm:hidden" />
-              <Film size={18} className="text-orange-500 hidden sm:block" />
+            <div className="w-7 h-7 sm:w-9 sm:h-9 bg-blue-50 rounded-lg sm:rounded-xl flex items-center justify-center">
+              <Film size={14} className="text-blue-500 sm:hidden" />
+              <Film size={18} className="text-blue-500 hidden sm:block" />
             </div>
           </div>
           <p className="text-xl sm:text-3xl font-bold text-gray-900">{summaryStats.totalInProgressEpisodes}</p>
@@ -380,9 +380,9 @@ export default function PartnersPage() {
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-5">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <p className="text-xs sm:text-sm font-medium text-gray-500">이번 달 지출</p>
-            <div className="w-7 h-7 sm:w-9 sm:h-9 bg-orange-50 rounded-lg sm:rounded-xl flex items-center justify-center">
-              <DollarSign size={14} className="text-orange-500 sm:hidden" />
-              <DollarSign size={18} className="text-orange-500 hidden sm:block" />
+            <div className="w-7 h-7 sm:w-9 sm:h-9 bg-blue-50 rounded-lg sm:rounded-xl flex items-center justify-center">
+              <DollarSign size={14} className="text-blue-500 sm:hidden" />
+              <DollarSign size={18} className="text-blue-500 hidden sm:block" />
             </div>
           </div>
           <p className="text-lg sm:text-3xl font-bold text-gray-900">₩{summaryStats.totalThisMonthRevenue.toLocaleString()}</p>
@@ -454,8 +454,8 @@ export default function PartnersPage() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center">
-                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-sm font-semibold text-orange-500">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-sm font-semibold text-blue-500">
                             {partner.name.charAt(0)}
                           </span>
                         </div>
@@ -465,7 +465,7 @@ export default function PartnersPage() {
                             {partner.role === 'admin' ? (
                               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">운영진</span>
                             ) : partner.generation ? (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 font-medium">{partner.generation}기</span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-800 font-medium">{partner.generation}기</span>
                             ) : null}
                           </div>
                           <div className="text-xs text-gray-400 truncate">
@@ -509,10 +509,10 @@ export default function PartnersPage() {
                             e.stopPropagation();
                             handleEditPartner(partner);
                           }}
-                          className="p-2 hover:bg-orange-50 rounded-lg transition-colors group"
+                          className="p-2 hover:bg-blue-50 rounded-lg transition-colors group"
                           title="수정"
                         >
-                          <Edit size={16} className="text-gray-400 group-hover:text-orange-500" />
+                          <Edit size={16} className="text-gray-400 group-hover:text-blue-500" />
                         </button>
                         <button
                           onClick={(e) => {
@@ -556,8 +556,8 @@ export default function PartnersPage() {
                 {/* 헤더 - 파트너 정보 */}
                 <div className="flex items-start justify-between mb-3 min-w-0">
                   <div className="flex items-center flex-1 min-w-0 overflow-hidden">
-                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-semibold text-orange-500">{partner.name.charAt(0)}</span>
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm font-semibold text-blue-500">{partner.name.charAt(0)}</span>
                     </div>
                     <div className="ml-2.5 flex-1 min-w-0">
                       <h3 className="text-[14px] font-semibold text-gray-900 flex items-center gap-1.5 min-w-0">
@@ -565,7 +565,7 @@ export default function PartnersPage() {
                         {partner.role === 'admin' ? (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium flex-shrink-0">운영진</span>
                         ) : partner.generation ? (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 font-medium flex-shrink-0">{partner.generation}기</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-800 font-medium flex-shrink-0">{partner.generation}기</span>
                         ) : null}
                       </h3>
                       <div className="flex items-center text-[12px] text-gray-500 mt-0.5">
@@ -635,7 +635,7 @@ export default function PartnersPage() {
                         e.stopPropagation();
                         handleEditPartner(partner);
                       }}
-                      className="p-2 hover:bg-orange-50 rounded-lg transition-colors"
+                      className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
                       title="수정"
                     >
                       <Edit size={18} className="text-gray-400" />
@@ -678,7 +678,7 @@ export default function PartnersPage() {
                   <span className="font-semibold text-gray-900">&quot;{partnerToDelete.name}&quot;</span> 파트너를<br />
                   정말 삭제하시겠습니까?
                 </p>
-                <p className="text-sm text-orange-600 text-center">
+                <p className="text-sm text-blue-800 text-center">
                   휴지통으로 이동되며, 30일 이내에 복구할 수 있습니다.
                 </p>
               </div>
@@ -818,7 +818,7 @@ export default function PartnersPage() {
                                         }}
                                         className={`flex flex-col items-center gap-1.5 p-2 rounded-xl transition-colors ${
                                           isSelected
-                                            ? 'bg-orange-50 ring-2 ring-orange-400'
+                                            ? 'bg-blue-50 ring-2 ring-blue-400'
                                             : 'hover:bg-gray-50'
                                         }`}
                                       >
@@ -844,7 +844,7 @@ export default function PartnersPage() {
                             placeholder="계좌번호 입력"
                             value={newPartner.bankAccount || ''}
                             onChange={(e) => setNewPartner({ ...newPartner, bankAccount: e.target.value })}
-                            className="flex-1 h-14 px-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 text-sm text-gray-900 placeholder-gray-400 transition-colors"
+                            className="flex-1 h-14 px-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-700/20 text-sm text-gray-900 placeholder-gray-400 transition-colors"
                           />
                         </div>
                       </div>
@@ -858,7 +858,7 @@ export default function PartnersPage() {
                             onClick={() => setNewPartner({ ...newPartner, partnerType: 'freelancer' })}
                             className={`h-14 rounded-xl font-semibold transition-colors ${
                               newPartner.partnerType === 'freelancer'
-                                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30'
+                                ? 'bg-blue-500 text-white shadow-lg shadow-blue-700/30'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                           >
@@ -869,7 +869,7 @@ export default function PartnersPage() {
                             onClick={() => setNewPartner({ ...newPartner, partnerType: 'business' })}
                             className={`h-14 rounded-xl font-semibold transition-colors ${
                               newPartner.partnerType === 'business'
-                                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30'
+                                ? 'bg-blue-500 text-white shadow-lg shadow-blue-700/30'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                           >
@@ -887,7 +887,7 @@ export default function PartnersPage() {
                           <button
                             type="button"
                             onClick={() => setIsGenerationDropdownOpen(!isGenerationDropdownOpen)}
-                            className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white text-left flex items-center justify-between transition-colors"
+                            className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-700 focus:border-blue-500 bg-white text-left flex items-center justify-between transition-colors"
                           >
                             <span className="text-gray-900 font-medium">{newPartner.generation}기</span>
                             <ChevronDown size={20} className="text-gray-400" />
@@ -902,7 +902,7 @@ export default function PartnersPage() {
                                     setNewPartner({ ...newPartner, generation: gen });
                                     setIsGenerationDropdownOpen(false);
                                   }}
-                                  className="w-full px-4 py-3 hover:bg-orange-50 text-left transition-colors first:rounded-t-xl last:rounded-b-xl"
+                                  className="w-full px-4 py-3 hover:bg-blue-50 text-left transition-colors first:rounded-t-xl last:rounded-b-xl"
                                 >
                                   <span className="text-gray-900 font-medium">{gen}기</span>
                                 </button>
@@ -926,7 +926,7 @@ export default function PartnersPage() {
                       <button
                         onClick={handleAddPartner}
                         disabled={!newPartner.name}
-                        className="flex-1 h-14 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none shadow-lg shadow-orange-500/30"
+                        className="flex-1 h-14 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-800 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none shadow-lg shadow-blue-700/30"
                       >
                         파트너 추가하기
                       </button>

@@ -2,13 +2,14 @@
  * Projects CRUD
  */
 import { createClient } from '../client';
-import type { Project, WorkContentType } from '@/types';
+import type { Project, ProjectMeta, ProjectType, WorkContentType } from '@/types';
 
 // ─── Row Types (Supabase snake_case) ─────────────────────────
 
 export interface ProjectRow {
   id: string;
   title: string;
+  type: string | null;
   description: string | null;
   client: string | null;
   client_id: string | null;
@@ -28,6 +29,7 @@ export interface ProjectRow {
   video_url: string | null;
   completed_at: string | null;
   work_type_costs: Record<string, unknown> | null;
+  meta: ProjectMeta | string | null;
   created_at: string;
   updated_at: string;
 }
@@ -36,9 +38,18 @@ export interface ProjectRow {
 
 export function projectFromRow(row: ProjectRow): Project {
   const partnerIds = row.partner_ids ?? (row.partner_id ? [row.partner_id] : []);
+  let meta: ProjectMeta | undefined;
+  if (row.meta != null) {
+    if (typeof row.meta === 'string') {
+      try { meta = JSON.parse(row.meta) as ProjectMeta; } catch { meta = undefined; }
+    } else {
+      meta = row.meta as ProjectMeta;
+    }
+  }
   return {
     id: row.id,
     title: row.title,
+    type: (row.type as ProjectType) ?? 'video',
     description: row.description ?? '',
     client: row.client ?? '',
     clientId: row.client_id ?? undefined,
@@ -60,6 +71,7 @@ export function projectFromRow(row: ProjectRow): Project {
     videoUrl: row.video_url ?? undefined,
     completedAt: row.completed_at ?? undefined,
     workTypeCosts: row.work_type_costs as Project['workTypeCosts'],
+    meta,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -69,6 +81,7 @@ export function projectToInsert(project: Omit<Project, 'id' | 'createdAt' | 'upd
   const partnerIds = project.partnerIds ?? (project.partnerId ? [project.partnerId] : []);
   return {
     title: project.title,
+    type: project.type ?? 'video',
     description: project.description,
     client: project.client,
     partner_id: partnerIds[0] ?? project.partnerId ?? null,
@@ -86,12 +99,14 @@ export function projectToInsert(project: Omit<Project, 'id' | 'createdAt' | 'upd
     video_url: project.videoUrl ?? null,
     completed_at: project.completedAt ?? null,
     work_type_costs: project.workTypeCosts ?? null,
+    meta: project.meta ?? null,
   };
 }
 
 export function projectToUpdate(project: Partial<Project>) {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (project.title !== undefined) row.title = project.title;
+  if (project.type !== undefined) row.type = project.type;
   if (project.description !== undefined) row.description = project.description;
   if (project.client !== undefined) row.client = project.client;
   if (project.partnerIds !== undefined) {
@@ -115,6 +130,7 @@ export function projectToUpdate(project: Partial<Project>) {
   if (project.videoUrl !== undefined) row.video_url = project.videoUrl;
   if (project.completedAt !== undefined) row.completed_at = project.completedAt;
   if (project.workTypeCosts !== undefined) row.work_type_costs = project.workTypeCosts;
+  if (project.meta !== undefined) row.meta = project.meta ?? null;
   return row;
 }
 

@@ -69,7 +69,7 @@ function MonthGrid({
           <div
             key={d}
             className={`text-center text-xs font-semibold py-1.5 ${
-              i === 0 ? 'text-red-400' : i === 6 ? 'text-orange-400' : 'text-gray-400'
+              i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-400'
             }`}
           >
             {d}
@@ -102,7 +102,7 @@ function MonthGrid({
               {/* 클릭 ripple */}
               {str === rippleDate && (
                 <motion.div
-                  className="absolute z-20 w-8 h-8 rounded-full bg-orange-400 pointer-events-none"
+                  className="absolute z-20 w-8 h-8 rounded-full bg-blue-400 pointer-events-none"
                   initial={{ scale: 1, opacity: 0.65 }}
                   animate={{ scale: 3, opacity: 0 }}
                   transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -119,21 +119,21 @@ function MonthGrid({
                   text-sm font-medium transition-colors
                   ${isHighlighted
                     ? isEndHighlight
-                      ? 'bg-orange-500 text-white shadow-md shadow-orange-200'
-                      : 'bg-orange-500 text-white shadow-md shadow-orange-200'
+                      ? 'bg-blue-500 text-white shadow-md shadow-blue-200'
+                      : 'bg-blue-500 text-white shadow-md shadow-blue-200'
                     : isToday
-                    ? 'bg-orange-50 text-orange-600 font-bold'
+                    ? 'bg-blue-50 text-blue-800 font-bold'
                     : colIdx === 0
                     ? 'text-red-400 hover:bg-red-50'
                     : colIdx === 6
-                    ? 'text-orange-400 hover:bg-orange-50'
+                    ? 'text-blue-400 hover:bg-blue-50'
                     : 'text-gray-700 hover:bg-gray-100'
                   }
                 `}
               >
                 {day}
                 {isToday && !isHighlighted && (
-                  <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-orange-400" />
+                  <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-400" />
                 )}
               </motion.button>
             </div>
@@ -244,7 +244,7 @@ export default function DateRangePicker({
                     type="button"
                     onClick={() => setSelecting('start')}
                     className={`text-sm font-semibold px-3 py-1.5 rounded-full transition-colors ${
-                      selecting === 'start' ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-400 hover:bg-orange-100'
+                      selecting === 'start' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-400 hover:bg-blue-100'
                     }`}
                   >
                     시작일 {startDate ? formatDisplay(startDate) : '선택'}
@@ -253,7 +253,7 @@ export default function DateRangePicker({
                   {/* 화살표 */}
                   <motion.span
                     className="text-gray-400 self-center text-base select-none"
-                    animate={transitioning ? { x: [0, 5, 0, 5, 0], color: ['#9ca3af', '#f97316', '#9ca3af'] } : {}}
+                    animate={transitioning ? { x: [0, 5, 0, 5, 0], color: ['#9ca3af', '#3b82f6', '#9ca3af'] } : {}}
                     transition={{ duration: 0.45, ease: 'easeInOut' }}
                   >
                     →
@@ -273,7 +273,7 @@ export default function DateRangePicker({
                       } : {}}
                       transition={{ duration: 0.55, delay: 0.1 }}
                       className={`text-sm font-semibold px-3 py-1.5 rounded-full transition-colors ${
-                        selecting === 'end' ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-400 hover:bg-orange-100'
+                        selecting === 'end' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-400 hover:bg-blue-100'
                       } ${!startDate ? 'opacity-40 cursor-not-allowed' : ''}`}
                     >
                       마감일 {endDate ? formatDisplay(endDate) : '선택'}
@@ -290,7 +290,7 @@ export default function DateRangePicker({
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.85 }}
                         transition={{ duration: 0.15 }}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-full border border-orange-200 text-orange-500 hover:bg-orange-50 transition-colors"
+                        className="text-xs font-semibold px-3 py-1.5 rounded-full border border-blue-200 text-blue-500 hover:bg-blue-50 transition-colors"
                       >
                         미정
                       </motion.button>
@@ -373,7 +373,7 @@ export default function DateRangePicker({
                   if (selecting === 'start') { onStartChange(todayStr); setSelecting('end'); }
                   else { onEndChange(todayStr); setIsOpen(false); }
                 }}
-                className="text-xs text-orange-500 hover:text-orange-600 font-medium"
+                className="text-xs text-blue-500 hover:text-blue-800 font-medium"
               >
                 오늘 선택
               </button>
@@ -405,7 +405,7 @@ export default function DateRangePicker({
                 : 'border-gray-200 hover:border-gray-300 bg-white'
             }`}
           >
-            <Calendar size={12} className={`flex-shrink-0 ${formatShort(startDate) ? 'text-orange-500' : 'text-gray-400'}`} />
+            <Calendar size={12} className={`flex-shrink-0 ${formatShort(startDate) ? 'text-blue-500' : 'text-gray-400'}`} />
             <span className={`truncate tabular-nums ${formatShort(startDate) ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
               {formatShort(startDate) || '시작일'}
             </span>
@@ -420,8 +420,8 @@ export default function DateRangePicker({
                 : 'border-gray-200 hover:border-gray-300 bg-white'
             }`}
           >
-            <Calendar size={12} className={`flex-shrink-0 ${endDate === 'tbd' ? 'text-orange-400' : endDate ? 'text-orange-500' : 'text-gray-400'}`} />
-            <span className={`truncate tabular-nums ${endDate === 'tbd' ? 'text-orange-500 font-medium' : endDate ? 'text-orange-600 font-medium' : 'text-gray-400'}`}>
+            <Calendar size={12} className={`flex-shrink-0 ${endDate === 'tbd' ? 'text-blue-400' : endDate ? 'text-blue-500' : 'text-gray-400'}`} />
+            <span className={`truncate tabular-nums ${endDate === 'tbd' ? 'text-blue-500 font-medium' : endDate ? 'text-blue-800 font-medium' : 'text-gray-400'}`}>
               {formatShort(endDate) || '마감일'}
             </span>
           </button>
@@ -444,7 +444,7 @@ export default function DateRangePicker({
               : 'border-gray-200 hover:border-gray-300'
           }`}
         >
-          <Calendar size={16} className={startDate ? 'text-orange-500' : 'text-gray-400'} />
+          <Calendar size={16} className={startDate ? 'text-blue-500' : 'text-gray-400'} />
           <span className={startDate ? 'text-gray-900 font-medium text-sm' : 'text-gray-400 text-sm'}>
             {startDate ? formatDisplay(startDate) : '시작일'}
           </span>
@@ -459,8 +459,8 @@ export default function DateRangePicker({
               : 'border-gray-200 hover:border-gray-300'
           }`}
         >
-          <Calendar size={16} className={endDate === 'tbd' ? 'text-orange-400' : endDate ? 'text-orange-500' : 'text-gray-400'} />
-          <span className={endDate === 'tbd' ? 'text-orange-500 font-medium text-sm' : endDate ? 'text-orange-600 font-medium text-sm' : 'text-gray-400 text-sm'}>
+          <Calendar size={16} className={endDate === 'tbd' ? 'text-blue-400' : endDate ? 'text-blue-500' : 'text-gray-400'} />
+          <span className={endDate === 'tbd' ? 'text-blue-500 font-medium text-sm' : endDate ? 'text-blue-800 font-medium text-sm' : 'text-gray-400 text-sm'}>
             {formatDisplay(endDate) || '예정 종료일 (선택)'}
           </span>
         </button>

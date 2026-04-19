@@ -88,7 +88,7 @@ export default function InvoicesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800" />
       </div>
     );
   }
@@ -107,7 +107,7 @@ export default function InvoicesPage() {
             {filter === key && (
               <motion.div
                 layoutId="invoice-filter-pill"
-                className="absolute inset-0 bg-orange-500 rounded-xl shadow-lg shadow-orange-500/30"
+                className="absolute inset-0 bg-blue-500 rounded-xl shadow-lg shadow-blue-700/30"
                 transition={{ type: 'spring', stiffness: 380, damping: 30 }}
               />
             )}
@@ -134,7 +134,7 @@ export default function InvoicesPage() {
           <button
             onClick={handleBatchComplete}
             disabled={updating}
-            className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl font-semibold text-sm hover:bg-orange-600 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-xl font-semibold text-sm hover:bg-blue-800 transition-colors disabled:opacity-50"
           >
             <Check size={14} />
             {updating ? '처리 중...' : `발행 완료 처리 (${selected.size}건)`}

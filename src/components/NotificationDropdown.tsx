@@ -97,11 +97,11 @@ export default function NotificationDropdown() {
   const getIcon = (type: string) => {
     switch (type) {
       case 'review':
-        return <CheckCircle size={18} className="text-orange-500" />;
+        return <CheckCircle size={18} className="text-blue-500" />;
       case 'deadline':
         return <AlertCircle size={18} className="text-red-500" />;
       case 'overdue':
-        return <Clock size={18} className="text-orange-500" />;
+        return <Clock size={18} className="text-blue-500" />;
       default:
         return <CheckCircle size={18} className="text-gray-500" />;
     }
@@ -135,10 +135,10 @@ export default function NotificationDropdown() {
           {/* 모달 컨텐츠 */}
           <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
             {/* 헤더 */}
-            <div className="flex items-center justify-between p-5 sm:p-6 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-orange-50">
+            <div className="flex items-center justify-between p-5 sm:p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-50">
               <div>
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <Bell size={20} className="text-orange-500" />
+                  <Bell size={20} className="text-blue-500" />
                   오늘 할 일
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
@@ -147,7 +147,7 @@ export default function NotificationDropdown() {
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-orange-100 rounded-lg transition-colors text-gray-400 hover:text-gray-600"
+                className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-gray-400 hover:text-gray-600"
               >
                 <X size={20} />
               </button>
@@ -175,8 +175,8 @@ export default function NotificationDropdown() {
                       <div
                         className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
                           item.checked
-                            ? 'bg-orange-500 border-orange-500'
-                            : 'border-gray-300 hover:border-orange-500'
+                            ? 'bg-blue-500 border-blue-500'
+                            : 'border-gray-300 hover:border-blue-500'
                         } ${item.count === 0 ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                       >
                         {item.checked && (

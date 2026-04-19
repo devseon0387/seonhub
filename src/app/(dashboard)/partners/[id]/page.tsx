@@ -255,7 +255,7 @@ export default function PartnerDetailPage() {
         <p className="text-gray-500">{error}</p>
         <button
           onClick={loadData}
-          className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-800 transition-colors"
         >
           <RefreshCw size={16} />
           다시 시도
@@ -270,7 +270,7 @@ export default function PartnerDetailPage() {
         <p className="text-gray-500">파트너를 찾을 수 없습니다.</p>
         <button
           onClick={() => router.push('/partners')}
-          className="text-orange-500 hover:text-orange-600 font-medium"
+          className="text-blue-500 hover:text-blue-800 font-medium"
         >
           파트너 목록으로 돌아가기
         </button>
@@ -383,9 +383,9 @@ export default function PartnerDetailPage() {
 
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <User size={24} className="text-orange-500 sm:hidden" />
-                <User size={28} className="text-orange-500 hidden sm:block" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <User size={24} className="text-blue-500 sm:hidden" />
+                <User size={28} className="text-blue-500 hidden sm:block" />
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{partner.name}</h1>
@@ -442,7 +442,7 @@ export default function PartnerDetailPage() {
                 onClick={() => setActiveTab(tab.key)}
                 className={`px-3 sm:px-4 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === tab.key
-                    ? 'border-orange-500 text-orange-600'
+                    ? 'border-blue-500 text-blue-800'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -450,7 +450,7 @@ export default function PartnerDetailPage() {
                 {tab.count > 0 && (
                   <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
                     activeTab === tab.key
-                      ? 'bg-orange-100 text-orange-600'
+                      ? 'bg-blue-100 text-blue-800'
                       : 'bg-gray-100 text-gray-500'
                   }`}>
                     {tab.count}
@@ -476,13 +476,13 @@ export default function PartnerDetailPage() {
                       {partner.phone ? (
                         <button
                           onClick={() => copyToClipboard(partner.phone!, '전화번호')}
-                          className="flex items-center gap-1.5 text-sm font-medium text-gray-900 hover:text-orange-600 transition-colors group/copy"
+                          className="flex items-center gap-1.5 text-sm font-medium text-gray-900 hover:text-blue-800 transition-colors group/copy"
                         >
                           {formatPhoneNumber(partner.phone)}
                           {copiedField === '전화번호' ? (
                             <Check size={13} className="text-green-500" />
                           ) : (
-                            <Copy size={13} className="text-gray-300 group-hover/copy:text-orange-400 transition-colors" />
+                            <Copy size={13} className="text-gray-300 group-hover/copy:text-blue-400 transition-colors" />
                           )}
                         </button>
                       ) : (
@@ -535,13 +535,13 @@ export default function PartnerDetailPage() {
                             [partner.bank, partner.bankAccount].filter(Boolean).join(' '),
                             '계좌번호'
                           )}
-                          className="flex items-center gap-1.5 text-sm font-medium text-gray-900 hover:text-orange-600 transition-colors group/copy"
+                          className="flex items-center gap-1.5 text-sm font-medium text-gray-900 hover:text-blue-800 transition-colors group/copy"
                         >
                           {[partner.bank, partner.bankAccount].filter(Boolean).join('  ')}
                           {copiedField === '계좌번호' ? (
                             <Check size={13} className="text-green-500" />
                           ) : (
-                            <Copy size={13} className="text-gray-300 group-hover/copy:text-orange-400 transition-colors" />
+                            <Copy size={13} className="text-gray-300 group-hover/copy:text-blue-400 transition-colors" />
                           )}
                         </button>
                       </div>
@@ -554,10 +554,10 @@ export default function PartnerDetailPage() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">통계 요약</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                  <div className="bg-orange-50 rounded-lg p-3 sm:p-4">
+                  <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
                     <div className="flex items-center justify-between mb-1 sm:mb-2">
-                      <Folder size={18} className="text-orange-500 sm:hidden" />
-                      <Folder size={20} className="text-orange-500 hidden sm:block" />
+                      <Folder size={18} className="text-blue-500 sm:hidden" />
+                      <Folder size={20} className="text-blue-500 hidden sm:block" />
                     </div>
                     <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats.totalProjects}</p>
                     <p className="text-[10px] sm:text-xs text-gray-600 mt-1">전체 프로젝트</p>
@@ -565,10 +565,10 @@ export default function PartnerDetailPage() {
                       진행중 {stats.inProgressProjects} · 완료 {stats.completedProjects}
                     </div>
                   </div>
-                  <div className="bg-orange-50 rounded-lg p-3 sm:p-4">
+                  <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
                     <div className="flex items-center justify-between mb-1 sm:mb-2">
-                      <Film size={18} className="text-orange-500 sm:hidden" />
-                      <Film size={20} className="text-orange-500 hidden sm:block" />
+                      <Film size={18} className="text-blue-500 sm:hidden" />
+                      <Film size={20} className="text-blue-500 hidden sm:block" />
                     </div>
                     <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats.totalEpisodes}</p>
                     <p className="text-[10px] sm:text-xs text-gray-600 mt-1">담당 회차</p>
@@ -587,10 +587,10 @@ export default function PartnerDetailPage() {
                       {new Date().toLocaleDateString('ko-KR', { month: 'long' })}
                     </div>
                   </div>
-                  <div className="bg-orange-50 rounded-lg p-3 sm:p-4">
+                  <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
                     <div className="flex items-center justify-between mb-1 sm:mb-2">
-                      <Activity size={18} className="text-orange-500 sm:hidden" />
-                      <Activity size={20} className="text-orange-500 hidden sm:block" />
+                      <Activity size={18} className="text-blue-500 sm:hidden" />
+                      <Activity size={20} className="text-blue-500 hidden sm:block" />
                     </div>
                     <p className="text-xs sm:text-sm font-bold text-gray-900">
                       {stats.lastActivity
@@ -661,7 +661,7 @@ export default function PartnerDetailPage() {
                       <Link
                         key={episode.id}
                         href={`/projects/${project.id}/episodes/${episode.id}`}
-                        className="block p-4 bg-gradient-to-r from-orange-50 to-orange-50 rounded-lg hover:shadow-md transition-shadow border-l-4 border-orange-500"
+                        className="block p-4 bg-gradient-to-r from-blue-50 to-blue-50 rounded-lg hover:shadow-md transition-shadow border-l-4 border-blue-500"
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
@@ -672,7 +672,7 @@ export default function PartnerDetailPage() {
                             </div>
                             <p className="text-sm text-gray-600">{episode.title}</p>
                           </div>
-                          <span className="px-2.5 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium whitespace-nowrap ml-2">
+                          <span className="px-2.5 py-1 bg-blue-100 text-blue-900 rounded-full text-xs font-medium whitespace-nowrap ml-2">
                             진행중
                           </span>
                         </div>
@@ -721,7 +721,7 @@ export default function PartnerDetailPage() {
                       <Link
                         key={project.id}
                         href={`/projects/${project.id}`}
-                        className="block p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-orange-400 hover:shadow-lg transition-[border-color,box-shadow]"
+                        className="block p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-blue-400 hover:shadow-lg transition-[border-color,box-shadow]"
                       >
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1 min-w-0">
@@ -733,7 +733,7 @@ export default function PartnerDetailPage() {
                               project.status === 'completed'
                                 ? 'bg-green-100 text-green-800'
                                 : project.status === 'in_progress'
-                                ? 'bg-orange-100 text-orange-800'
+                                ? 'bg-blue-100 text-blue-900'
                                 : project.status === 'on_hold'
                                 ? 'bg-yellow-100 text-yellow-800'
                                 : 'bg-gray-100 text-gray-800'
@@ -756,7 +756,7 @@ export default function PartnerDetailPage() {
                             </div>
                             <div className="bg-gray-50 rounded p-2">
                               <p className="text-xs text-gray-500">진행중</p>
-                              <p className="text-lg font-semibold text-orange-600">
+                              <p className="text-lg font-semibold text-blue-800">
                                 {projectEpisodes.filter(e => e.status === 'in_progress').length}
                               </p>
                             </div>
@@ -870,7 +870,7 @@ export default function PartnerDetailPage() {
                       <button
                         type="button"
                         onClick={() => setIsHistoryGenerationDropdownOpen(!isHistoryGenerationDropdownOpen)}
-                        className="w-full h-11 px-4 bg-white border-2 border-gray-200 rounded-xl text-left flex items-center justify-between hover:border-orange-300 focus:outline-none focus:border-orange-400 transition-colors"
+                        className="w-full h-11 px-4 bg-white border-2 border-gray-200 rounded-xl text-left flex items-center justify-between hover:border-blue-300 focus:outline-none focus:border-blue-400 transition-colors"
                       >
                         <span className="text-sm font-semibold text-gray-900">{newHistoryEntry.generation}기</span>
                         <ChevronDown
@@ -891,13 +891,13 @@ export default function PartnerDetailPage() {
                                 }}
                                 className={`w-full px-4 py-2.5 text-left text-sm transition-colors flex items-center justify-between ${
                                   newHistoryEntry.generation === gen
-                                    ? 'bg-orange-50 text-orange-700 font-semibold'
+                                    ? 'bg-blue-50 text-blue-900 font-semibold'
                                     : 'text-gray-800 hover:bg-gray-50'
                                 }`}
                               >
                                 <span>{gen}기</span>
                                 {partner.generation === gen && (
-                                  <span className="text-xs text-orange-400 font-medium">현재</span>
+                                  <span className="text-xs text-blue-400 font-medium">현재</span>
                                 )}
                               </button>
                             ))}
@@ -1026,7 +1026,7 @@ export default function PartnerDetailPage() {
                   <span className="font-semibold text-gray-900">&quot;{partner.name}&quot;</span> 파트너를<br />
                   정말 삭제하시겠습니까?
                 </p>
-                <p className="text-sm text-orange-600 text-center">
+                <p className="text-sm text-blue-800 text-center">
                   휴지통으로 이동되며, 30일 이내에 복구할 수 있습니다.
                 </p>
               </div>

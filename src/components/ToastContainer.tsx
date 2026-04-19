@@ -31,7 +31,7 @@ function Toast({ toast, onClose }: { toast: ToastType; onClose: () => void }) {
       case 'success': return '#34d399';
       case 'error':   return '#f87171';
       case 'warning': return '#fbbf24';
-      case 'info':    return '#fb923c';
+      case 'info':    return '#60a5fa';
     }
   };
 

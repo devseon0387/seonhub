@@ -59,8 +59,8 @@ export default function ChangePasswordPage() {
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           {/* 헤더 */}
           <div className="px-8 pt-8 pb-4 text-center">
-            <div className="inline-flex p-3 bg-orange-100 rounded-xl mb-4">
-              <Lock size={28} className="text-orange-600" />
+            <div className="inline-flex p-3 bg-blue-100 rounded-xl mb-4">
+              <Lock size={28} className="text-blue-800" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900">비밀번호 변경</h1>
             <p className="text-sm text-gray-500 mt-2">
@@ -77,7 +77,7 @@ export default function ChangePasswordPage() {
                   type={showPw ? 'text' : 'password'}
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-11 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent"
+                  className="w-full px-4 py-3 pr-11 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent"
                   placeholder="6자 이상 입력"
                   required
                 />
@@ -98,7 +98,7 @@ export default function ChangePasswordPage() {
                   type={showConfirm ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-11 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent"
+                  className="w-full px-4 py-3 pr-11 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent"
                   placeholder="비밀번호를 다시 입력"
                   required
                 />
@@ -122,7 +122,7 @@ export default function ChangePasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? '변경 중...' : '비밀번호 변경'}
             </button>

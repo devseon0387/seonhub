@@ -21,8 +21,8 @@ const DEFAULT_ROLES = [
 ];
 
 const ROLE_BADGE_CLASSES: Record<string, string> = {
-  admin: 'bg-orange-100 text-orange-700 border border-orange-200',
-  manager: 'bg-orange-100 text-orange-700 border border-orange-200',
+  admin: 'bg-blue-100 text-blue-900 border border-blue-200',
+  manager: 'bg-blue-100 text-blue-900 border border-blue-200',
 };
 
 function getRoleBadgeClass(role: string) {
@@ -300,7 +300,7 @@ export default function UsersSettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800" />
       </div>
     );
   }
@@ -309,8 +309,8 @@ export default function UsersSettingsPage() {
     <div className="max-w-3xl mx-auto space-y-8">
       {/* 헤더 */}
       <div className="flex items-start gap-4">
-        <div className="p-3 bg-orange-100 rounded-xl">
-          <Shield size={24} className="text-orange-600" />
+        <div className="p-3 bg-blue-100 rounded-xl">
+          <Shield size={24} className="text-blue-800" />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">계정 관리</h1>
@@ -321,7 +321,7 @@ export default function UsersSettingsPage() {
       {/* 새 계정 생성 */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-          <UserPlus size={18} className="text-orange-500" />
+          <UserPlus size={18} className="text-blue-500" />
           <h2 className="text-base font-semibold text-gray-800">새 계정 생성</h2>
         </div>
         <div className="px-6 py-5 space-y-4">
@@ -332,7 +332,7 @@ export default function UsersSettingsPage() {
                 type="text"
                 value={createName}
                 onChange={e => setCreateName(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                 placeholder="홍길동"
               />
             </div>
@@ -342,7 +342,7 @@ export default function UsersSettingsPage() {
                 type="email"
                 value={createEmail}
                 onChange={e => setCreateEmail(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                 placeholder="user@example.com"
               />
             </div>
@@ -353,7 +353,7 @@ export default function UsersSettingsPage() {
               <select
                 value={createRole}
                 onChange={e => setCreateRole(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
               >
                 {allRoleOptions.map(r => (
                   <option key={r.value} value={r.value}>{r.label}</option>
@@ -368,7 +368,7 @@ export default function UsersSettingsPage() {
                     type={showCreatePw ? 'text' : 'password'}
                     value={createPassword}
                     onChange={e => setCreatePassword(e.target.value)}
-                    className="w-full px-4 py-2.5 pr-10 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                    className="w-full px-4 py-2.5 pr-10 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                     placeholder="6자 이상"
                   />
                   <button
@@ -395,7 +395,7 @@ export default function UsersSettingsPage() {
             <button
               onClick={handleCreateUser}
               disabled={creating || !createName.trim() || !createEmail.trim() || !createPassword}
-              className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white text-sm font-semibold rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 text-white text-sm font-semibold rounded-xl hover:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <UserPlus size={15} />
               {creating ? '생성 중...' : '계정 생성'}
@@ -453,12 +453,12 @@ export default function UsersSettingsPage() {
               onChange={e => setNewRoleName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleAddRole(); }}
               placeholder="새 역할 이름 (예: PD, 에디터)"
-              className="flex-1 text-sm px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
+              className="flex-1 text-sm px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
             />
             <button
               onClick={handleAddRole}
               disabled={addingRole || !newRoleName.trim()}
-              className="flex items-center gap-1.5 px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-800 text-white text-sm font-medium rounded-lg hover:bg-blue-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus size={15} />
               추가
@@ -491,7 +491,7 @@ export default function UsersSettingsPage() {
               return (
                 <div key={profile.id} className="px-6 py-4 flex items-center gap-4">
                   {/* 아바타 */}
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                     {profile.role === 'admin' ? (
                       <Crown size={16} />
                     ) : (
@@ -554,7 +554,7 @@ export default function UsersSettingsPage() {
                             onChange={e => handleRoleChange(profile.id, e.target.value)}
                             className={`
                               text-xs font-medium px-3 py-1.5 rounded-full border appearance-none cursor-pointer
-                              focus:outline-none focus:ring-2 focus:ring-orange-300
+                              focus:outline-none focus:ring-2 focus:ring-blue-300
                               ${roleBadge}
                               ${updatingId === profile.id ? 'opacity-50 cursor-not-allowed' : ''}
                             `}
@@ -566,7 +566,7 @@ export default function UsersSettingsPage() {
                         </div>
                         <button
                           onClick={() => openEditModal(profile)}
-                          className="p-1.5 rounded-lg text-gray-300 hover:text-orange-500 hover:bg-orange-50 transition-all"
+                          className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-all"
                           title="계정 수정"
                         >
                           <Pencil size={14} />
@@ -683,7 +683,7 @@ export default function UsersSettingsPage() {
                     type="text"
                     value={editName}
                     onChange={e => setEditName(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent"
                     placeholder="이름"
                   />
                 </div>
@@ -693,7 +693,7 @@ export default function UsersSettingsPage() {
                     type="email"
                     value={editEmail}
                     onChange={e => setEditEmail(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent"
                     placeholder="이메일"
                   />
                 </div>
@@ -704,7 +704,7 @@ export default function UsersSettingsPage() {
                       type={showEditPw ? 'text' : 'password'}
                       value={editPassword}
                       onChange={e => setEditPassword(e.target.value)}
-                      className="w-full px-4 py-2.5 pr-11 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent"
+                      className="w-full px-4 py-2.5 pr-11 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent"
                       placeholder="변경하지 않으려면 비워두세요"
                     />
                     <button
@@ -730,7 +730,7 @@ export default function UsersSettingsPage() {
                 <button
                   onClick={handleEditSave}
                   disabled={editSaving}
-                  className="px-5 py-2.5 text-sm font-semibold text-white bg-orange-500 rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-5 py-2.5 text-sm font-semibold text-white bg-blue-500 rounded-xl hover:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editSaving ? '저장 중...' : '저장'}
                 </button>

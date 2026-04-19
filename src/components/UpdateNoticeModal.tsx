@@ -59,15 +59,15 @@ export default function UpdateNoticeModal() {
             {/* 헤더 */}
             <div className="flex items-start justify-between px-6 pt-6 pb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
-                  <Sparkles size={20} className="text-orange-600" />
+                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <Sparkles size={20} className="text-blue-800" />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">
                     {userName ? `${userName}님!` : '안녕하세요!'}
                   </h2>
                   <p className="text-sm text-gray-500">
-                    <span className="font-semibold text-orange-600">{latest.version}</span> 업데이트가 되었어요!
+                    <span className="font-semibold text-blue-800">{latest.version}</span> 업데이트가 되었어요!
                   </p>
                 </div>
               </div>
@@ -85,13 +85,13 @@ export default function UpdateNoticeModal() {
               {features.length > 0 && (
                 <div className="mb-4">
                   <div className="flex items-center gap-1.5 mb-2.5">
-                    <Sparkles size={14} className="text-orange-500" />
-                    <span className="text-xs font-bold text-orange-600 uppercase tracking-wider">새로운 기능</span>
+                    <Sparkles size={14} className="text-blue-500" />
+                    <span className="text-xs font-bold text-blue-800 uppercase tracking-wider">새로운 기능</span>
                   </div>
                   <ul className="space-y-2">
                     {features.map((item, i) => (
                       <li key={i} className="flex items-start gap-2.5 text-sm text-gray-800">
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
                         {item}
                       </li>
                     ))}
@@ -122,7 +122,7 @@ export default function UpdateNoticeModal() {
             <div className="px-6 py-4 border-t border-gray-100">
               <button
                 onClick={handleClose}
-                className="w-full py-2.5 bg-orange-500 text-white rounded-xl font-medium text-sm hover:bg-orange-600 transition-colors"
+                className="w-full py-2.5 bg-blue-500 text-white rounded-xl font-medium text-sm hover:bg-blue-800 transition-colors"
               >
                 확인했어요
               </button>

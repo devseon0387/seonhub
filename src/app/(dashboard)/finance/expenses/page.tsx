@@ -2,7 +2,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { CreditCard, Plus, Trash2, ChevronLeft, ChevronRight, X, RefreshCw, Ban, CalendarClock, Undo2 } from 'lucide-react';
-import { Expense, ExpenseCategory, PaymentType, SubscriptionStatus } from '@/types';
+import { Expense, ExpenseCategory, PaymentType, SubscriptionStatus, Currency } from '@/types';
+
+const CURRENCY_SYMBOL: Record<Currency, string> = { KRW: '원', USD: '$' };
+const CURRENCIES: { value: Currency; label: string }[] = [
+  { value: 'KRW', label: '원' },
+  { value: 'USD', label: '달러' },
+];
+function fmtMoney(amount: number, currency: Currency = 'KRW'): string {
+  const n = Number(amount || 0).toLocaleString();
+  return currency === 'USD' ? `$${n}` : `${n}원`;
+}
 import { motion, AnimatePresence } from 'framer-motion';
 import { getExpenses, insertExpense, updateExpense, deleteExpense } from '@/lib/supabase/db';
 
@@ -12,7 +22,7 @@ const CATEGORY_COLORS: Record<ExpenseCategory, { bg: string; text: string; bar: 
   '운영비': { bg: 'bg-blue-50', text: 'text-blue-700', bar: '#3b82f6' },
   '장비': { bg: 'bg-purple-50', text: 'text-purple-700', bar: '#a855f7' },
   '교통': { bg: 'bg-green-50', text: 'text-green-700', bar: '#22c55e' },
-  '식비': { bg: 'bg-orange-50', text: 'text-orange-700', bar: '#f97316' },
+  '식비': { bg: 'bg-blue-50', text: 'text-blue-900', bar: '#3b82f6' },
   '숙박': { bg: 'bg-pink-50', text: 'text-pink-700', bar: '#ec4899' },
   '소프트웨어': { bg: 'bg-cyan-50', text: 'text-cyan-700', bar: '#06b6d4' },
   '기타': { bg: 'bg-gray-100', text: 'text-gray-700', bar: '#a8a29e' },
@@ -54,6 +64,7 @@ type CancelModal = null | { expense: Expense };
 interface FormData {
   title: string;
   amount: string;
+  currency: Currency;
   category: ExpenseCategory;
   paymentType: PaymentType;
   expenseDate: string;
@@ -62,7 +73,7 @@ interface FormData {
 }
 
 const emptyForm: FormData = {
-  title: '', amount: '', category: '운영비', paymentType: 'one_time',
+  title: '', amount: '', currency: 'KRW', category: '운영비', paymentType: 'one_time',
   expenseDate: new Date().toISOString().slice(0, 10),
   description: '', spenderName: '',
 };
@@ -128,6 +139,7 @@ export default function ExpensesPage() {
     setForm({
       title: expense.title,
       amount: formatAmount(String(expense.amount)),
+      currency: expense.currency ?? 'KRW',
       category: expense.category,
       paymentType: expense.paymentType,
       expenseDate: expense.expenseDate,
@@ -145,6 +157,7 @@ export default function ExpensesPage() {
     if (modalMode === 'add') {
       await insertExpense({
         id: crypto.randomUUID(), title: form.title, amount: amt,
+        currency: form.currency,
         category: form.category, paymentType: form.paymentType,
         expenseDate: form.expenseDate, nextRenewalDate: nextRenewal,
         status: 'active',
@@ -153,7 +166,7 @@ export default function ExpensesPage() {
       });
     } else if (modalMode === 'edit' && editId) {
       await updateExpense(editId, {
-        title: form.title, amount: amt,
+        title: form.title, amount: amt, currency: form.currency,
         category: form.category, paymentType: form.paymentType,
         expenseDate: form.expenseDate, nextRenewalDate: nextRenewal,
         description: form.description || undefined,
@@ -205,7 +218,7 @@ export default function ExpensesPage() {
     return null;
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" /></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800" /></div>;
 
   return (
     <div className="space-y-5">
@@ -227,7 +240,7 @@ export default function ExpensesPage() {
             </div>
             <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"><ChevronRight size={14} className="text-[#a8a29e]" /></button>
           </div>
-          <button onClick={openAdd} className="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors flex-shrink-0">
+          <button onClick={openAdd} className="px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-semibold hover:bg-blue-800 transition-colors flex-shrink-0">
             + 지출 추가
           </button>
         </div>
@@ -266,7 +279,7 @@ export default function ExpensesPage() {
                       {sub.cancelReason && <span className="text-[11px] text-[#a8a29e]">· {sub.cancelReason}</span>}
                     </div>
                   </div>
-                  <span className="text-[14px] font-semibold tabular-nums whitespace-nowrap">{sub.amount.toLocaleString()}원</span>
+                  <span className="text-[14px] font-semibold tabular-nums whitespace-nowrap">{fmtMoney(sub.amount, sub.currency ?? 'KRW')}</span>
                   {sub.status === 'active' && (
                     <button onClick={(e) => { e.stopPropagation(); setCancelModal({ expense: sub }); }} className="p-1.5 rounded-lg hover:bg-red-50 text-[#d6d3d1] hover:text-red-500 transition-colors" title="해지 예약">
                       <Ban size={14} />
@@ -296,7 +309,7 @@ export default function ExpensesPage() {
                       </div>
                       {sub.cancelReason && <span className="text-[11px] text-[#a8a29e] block mt-0.5">{sub.cancelReason}</span>}
                     </div>
-                    <span className="text-[13px] text-[#a8a29e] tabular-nums whitespace-nowrap">{sub.amount.toLocaleString()}원</span>
+                    <span className="text-[13px] text-[#a8a29e] tabular-nums whitespace-nowrap">{fmtMoney(sub.amount, sub.currency ?? 'KRW')}</span>
                     <button onClick={(e) => handleReactivate(e, sub)} className="p-1.5 rounded-lg hover:bg-green-50 text-[#d6d3d1] hover:text-green-500 transition-colors" title="재활성화">
                       <RefreshCw size={13} />
                     </button>
@@ -402,7 +415,7 @@ export default function ExpensesPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0 ml-3">
-                      <span className="text-[15px] font-bold tabular-nums">{expense.amount.toLocaleString()}<span className="text-[10px] text-[#78716c] font-medium">원</span></span>
+                      <span className="text-[15px] font-bold tabular-nums">{fmtMoney(expense.amount, expense.currency ?? 'KRW')}</span>
                       {!isExpected && (
                         <button onClick={(e) => { e.stopPropagation(); handleDelete(expense.id); }} className="p-1.5 rounded-lg hover:bg-red-50 text-[#d6d3d1] hover:text-red-500 transition-colors">
                           <Trash2 size={14} />
@@ -450,7 +463,7 @@ export default function ExpensesPage() {
                         </div>
                         <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold text-center truncate ${CATEGORY_COLORS[expense.category].bg} ${CATEGORY_COLORS[expense.category].text}`}>{expense.category}</span>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold text-center truncate ${PAYMENT_COLORS[expense.paymentType].bg} ${PAYMENT_COLORS[expense.paymentType].text}`}>{paymentLabel(expense.paymentType)}</span>
-                        <span className="text-[14px] font-semibold text-right tabular-nums">{expense.amount.toLocaleString()}</span>
+                        <span className="text-[14px] font-semibold text-right tabular-nums">{fmtMoney(expense.amount, expense.currency ?? 'KRW')}</span>
                         <button onClick={(e) => { e.stopPropagation(); handleDelete(expense.id); }} className="p-1 rounded-lg hover:bg-red-50 text-[#d6d3d1] hover:text-red-500 transition-colors">
                           <Trash2 size={13} />
                         </button>
@@ -484,7 +497,7 @@ export default function ExpensesPage() {
               <div className="p-5 space-y-3">
                 <div>
                   <label className="text-[11px] font-semibold text-[#a8a29e] block mb-1">제목 *</label>
-                  <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="지출 내용" className="w-full px-3 py-2 border-[1.5px] border-[#ede9e6] rounded-[10px] text-[14px] font-medium focus:border-[#ea580c] focus:outline-none transition-colors" />
+                  <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="지출 내용" className="w-full px-3 py-2 border-[1.5px] border-[#ede9e6] rounded-[10px] text-[14px] font-medium focus:border-[#1e3a8a] focus:outline-none transition-colors" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -495,21 +508,29 @@ export default function ExpensesPage() {
                         onChange={e => setForm({ ...form, amount: formatAmount(e.target.value) })}
                         placeholder="0"
                         inputMode="numeric"
-                        className="w-full px-3 py-2 pr-7 border-[1.5px] border-[#ede9e6] rounded-[10px] text-[14px] font-medium focus:border-[#ea580c] focus:outline-none transition-colors tabular-nums"
+                        className="w-full px-3 py-2 pr-12 border-[1.5px] border-[#ede9e6] rounded-[10px] text-[14px] font-medium focus:border-[#1e3a8a] focus:outline-none transition-colors tabular-nums"
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-[#a8a29e]">원</span>
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-[#a8a29e]">{CURRENCY_SYMBOL[form.currency]}</span>
                     </div>
                   </div>
                   <div>
                     <label className="text-[11px] font-semibold text-[#a8a29e] block mb-1">날짜</label>
-                    <input type="date" value={form.expenseDate} onChange={e => setForm({ ...form, expenseDate: e.target.value })} className="w-full px-3 py-2 border-[1.5px] border-[#ede9e6] rounded-[10px] text-[14px] font-medium focus:border-[#ea580c] focus:outline-none transition-colors" />
+                    <input type="date" value={form.expenseDate} onChange={e => setForm({ ...form, expenseDate: e.target.value })} className="w-full px-3 py-2 border-[1.5px] border-[#ede9e6] rounded-[10px] text-[14px] font-medium focus:border-[#1e3a8a] focus:outline-none transition-colors" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-[#a8a29e] block mb-1">통화</label>
+                  <div className="flex gap-1.5">
+                    {CURRENCIES.map(c => (
+                      <button key={c.value} type="button" onClick={() => setForm({ ...form, currency: c.value })} className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${form.currency === c.value ? 'bg-blue-500 text-white' : 'bg-[#f5f5f4] text-[#78716c]'}`}>{c.label}</button>
+                    ))}
                   </div>
                 </div>
                 <div>
                   <label className="text-[11px] font-semibold text-[#a8a29e] block mb-1">카테고리</label>
                   <div className="flex gap-1.5 flex-wrap">
                     {CATEGORIES.map(cat => (
-                      <button key={cat} onClick={() => setForm({ ...form, category: cat })} className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${form.category === cat ? 'bg-orange-500 text-white' : 'bg-[#f5f5f4] text-[#78716c]'}`}>{cat}</button>
+                      <button key={cat} onClick={() => setForm({ ...form, category: cat })} className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${form.category === cat ? 'bg-blue-500 text-white' : 'bg-[#f5f5f4] text-[#78716c]'}`}>{cat}</button>
                     ))}
                   </div>
                 </div>
@@ -517,21 +538,21 @@ export default function ExpensesPage() {
                   <label className="text-[11px] font-semibold text-[#a8a29e] block mb-1">결제 유형</label>
                   <div className="flex gap-1.5">
                     {PAYMENT_TYPES.map(pt => (
-                      <button key={pt.value} onClick={() => setForm({ ...form, paymentType: pt.value })} className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${form.paymentType === pt.value ? 'bg-orange-500 text-white' : 'bg-[#f5f5f4] text-[#78716c]'}`}>{pt.label}</button>
+                      <button key={pt.value} onClick={() => setForm({ ...form, paymentType: pt.value })} className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${form.paymentType === pt.value ? 'bg-blue-500 text-white' : 'bg-[#f5f5f4] text-[#78716c]'}`}>{pt.label}</button>
                     ))}
                   </div>
                 </div>
                 <div>
                   <label className="text-[11px] font-semibold text-[#a8a29e] block mb-1">지출자</label>
-                  <input value={form.spenderName} onChange={e => setForm({ ...form, spenderName: e.target.value })} placeholder="이름" className="w-full px-3 py-2 border-[1.5px] border-[#ede9e6] rounded-[10px] text-[13px] focus:border-[#ea580c] focus:outline-none transition-colors" />
+                  <input value={form.spenderName} onChange={e => setForm({ ...form, spenderName: e.target.value })} placeholder="이름" className="w-full px-3 py-2 border-[1.5px] border-[#ede9e6] rounded-[10px] text-[13px] focus:border-[#1e3a8a] focus:outline-none transition-colors" />
                 </div>
                 <div>
                   <label className="text-[11px] font-semibold text-[#a8a29e] block mb-1">메모</label>
-                  <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="선택사항" className="w-full px-3 py-2 border-[1.5px] border-[#ede9e6] rounded-[10px] text-[13px] focus:border-[#ea580c] focus:outline-none transition-colors" />
+                  <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="선택사항" className="w-full px-3 py-2 border-[1.5px] border-[#ede9e6] rounded-[10px] text-[13px] focus:border-[#1e3a8a] focus:outline-none transition-colors" />
                 </div>
               </div>
               <div className="px-5 pb-5">
-                <button onClick={handleSubmit} disabled={saving || !form.title || !form.amount} className="w-full py-2.5 bg-orange-500 text-white rounded-xl text-[13px] font-semibold hover:bg-orange-600 transition-colors disabled:bg-gray-200 disabled:text-gray-400">
+                <button onClick={handleSubmit} disabled={saving || !form.title || !form.amount} className="w-full py-2.5 bg-blue-500 text-white rounded-xl text-[13px] font-semibold hover:bg-blue-800 transition-colors disabled:bg-gray-200 disabled:text-gray-400">
                   {saving ? '저장 중...' : modalMode === 'add' ? '추가' : '저장'}
                 </button>
               </div>
@@ -567,7 +588,7 @@ export default function ExpensesPage() {
                     value={cancelReason}
                     onChange={e => setCancelReason(e.target.value)}
                     placeholder="ex) 더 이상 사용하지 않음"
-                    className="w-full px-3 py-2 border-[1.5px] border-[#ede9e6] rounded-[10px] text-[13px] focus:border-[#ea580c] focus:outline-none transition-colors"
+                    className="w-full px-3 py-2 border-[1.5px] border-[#ede9e6] rounded-[10px] text-[13px] focus:border-[#1e3a8a] focus:outline-none transition-colors"
                   />
                 </div>
               </div>

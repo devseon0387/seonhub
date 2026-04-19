@@ -756,7 +756,7 @@ export default function EpisodeDetailPage() {
     const statusMap: Record<string, string> = {
       waiting: 'bg-gray-100 text-gray-800',
       in_progress: 'bg-yellow-100 text-yellow-800',
-      review: 'bg-orange-100 text-orange-800',
+      review: 'bg-blue-100 text-blue-900',
       completed: 'bg-green-100 text-green-800',
     };
     return statusMap[status] || statusMap.waiting;
@@ -804,7 +804,7 @@ export default function EpisodeDetailPage() {
                       value={editedEpisode.episodeNumber}
                       onChange={(e) => handleFieldChange('episodeNumber', Number(e.target.value))}
                       onBlur={handleFieldBlur}
-                      className="text-[13px] font-bold text-[#a8a29e] bg-orange-50/50 border-b-2 border-orange-400 border-t-0 border-l-0 border-r-0 rounded-none px-1 py-0.5 w-12 focus:outline-none focus:ring-0 appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      className="text-[13px] font-bold text-[#a8a29e] bg-blue-50/50 border-b-2 border-blue-400 border-t-0 border-l-0 border-r-0 rounded-none px-1 py-0.5 w-12 focus:outline-none focus:ring-0 appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <span className="text-[13px] font-bold text-[#a8a29e] ml-0.5">편</span>
                   </motion.div>
@@ -831,7 +831,7 @@ export default function EpisodeDetailPage() {
                       placeholder="회차 제목을 입력하세요"
                       onChange={(e) => handleFieldChange('title', e.target.value)}
                       onBlur={handleFieldBlur}
-                      className="text-[17px] sm:text-[21px] font-extrabold text-gray-900 bg-orange-50/50 border-b-2 border-orange-400 border-t-0 border-l-0 border-r-0 rounded-none px-1 py-0.5 focus:outline-none focus:ring-0 placeholder-gray-300 tracking-tight w-full"
+                      className="text-[17px] sm:text-[21px] font-extrabold text-gray-900 bg-blue-50/50 border-b-2 border-blue-400 border-t-0 border-l-0 border-r-0 rounded-none px-1 py-0.5 focus:outline-none focus:ring-0 placeholder-gray-300 tracking-tight w-full"
                     />
                   </motion.div>
                 ) : (
@@ -839,7 +839,7 @@ export default function EpisodeDetailPage() {
                     key={`title-display-${editedEpisode.title}`}
                     onClick={() => handleFieldClick('title')}
                     className="text-[17px] sm:text-[21px] font-extrabold cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5 -mx-1 tracking-tight"
-                    initial={{ color: editedFields.has('title') ? '#ea580c' : '#1c1917' }}
+                    initial={{ color: editedFields.has('title') ? '#1e3a8a' : '#1c1917' }}
                     animate={{ color: '#1c1917' }}
                     transition={{ duration: 0.6, delay: 1, ease: 'easeOut' }}
                   >
@@ -904,7 +904,7 @@ export default function EpisodeDetailPage() {
                 <span className="text-[#d6d3d1]">→</span>
                 <span
                   onClick={() => handleFieldClick('dueDate')}
-                  className="font-bold text-[#ea580c] cursor-pointer hover:text-orange-700 transition-colors"
+                  className="font-bold text-[#1e3a8a] cursor-pointer hover:text-blue-900 transition-colors"
                 >
                   {editedEpisode.dueDate ? (() => { const [,m,d] = editedEpisode.dueDate.split('T')[0].split('-').map(Number); return `${m}.${d}`; })() : '미정'}
                 </span>
@@ -989,11 +989,11 @@ export default function EpisodeDetailPage() {
                             </div>
                             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                               <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 bg-[#fafaf9] rounded-lg border border-[#f0ece9] text-[10px] sm:text-xs">
-                                <span className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${editedEpisode.paymentStatus === 'completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                                <span className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${editedEpisode.paymentStatus === 'completed' ? 'bg-green-500' : 'bg-blue-400'}`} />
                                 <span className="text-[#78716c]">{editedEpisode.paymentStatus === 'completed' ? '입금완료' : '입금전'}</span>
                               </div>
                               <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 bg-[#fafaf9] rounded-lg border border-[#f0ece9] text-[10px] sm:text-xs">
-                                <span className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${editedEpisode.invoiceStatus === 'completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                                <span className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${editedEpisode.invoiceStatus === 'completed' ? 'bg-green-500' : 'bg-blue-400'}`} />
                                 <span className="text-[#78716c]">{editedEpisode.invoiceStatus === 'completed' ? '발행완료' : '미발행'}</span>
                               </div>
                               <ChevronRight size={18} className="text-gray-400 ml-1" />
@@ -1001,14 +1001,14 @@ export default function EpisodeDetailPage() {
                           </div>
                           {/* 둘째 줄: 모바일에서 파트너/매니저/유보금 표시 */}
                           <div className="flex sm:hidden items-center gap-3 mt-2 text-[11px]">
-                            <span><span className="text-[#a8a29e]">파트너</span> <span className="font-bold text-orange-600">{totalPartner.toLocaleString()}</span></span>
-                            <span><span className="text-[#a8a29e]">매니저</span> <span className="font-bold text-orange-600">{totalManagement.toLocaleString()}</span></span>
+                            <span><span className="text-[#a8a29e]">파트너</span> <span className="font-bold text-blue-800">{totalPartner.toLocaleString()}</span></span>
+                            <span><span className="text-[#a8a29e]">매니저</span> <span className="font-bold text-blue-800">{totalManagement.toLocaleString()}</span></span>
                             <span><span className="text-[#a8a29e]">유보금</span> <span className="font-bold text-green-600">{reserve.toLocaleString()}</span></span>
                           </div>
                           {/* 데스크탑: 기존 인라인 표시 */}
                           <div className="hidden sm:flex items-center gap-3 text-[13px] mt-2">
-                            <span><span className="text-[#a8a29e]">파트너</span> <span className="font-bold text-orange-600">{totalPartner.toLocaleString()}</span></span>
-                            <span><span className="text-[#a8a29e]">매니저</span> <span className="font-bold text-orange-600">{totalManagement.toLocaleString()}</span></span>
+                            <span><span className="text-[#a8a29e]">파트너</span> <span className="font-bold text-blue-800">{totalPartner.toLocaleString()}</span></span>
+                            <span><span className="text-[#a8a29e]">매니저</span> <span className="font-bold text-blue-800">{totalManagement.toLocaleString()}</span></span>
                             <span><span className="text-[#a8a29e]">유보금</span> <span className="font-bold text-green-600">{reserve.toLocaleString()}</span></span>
                           </div>
                         </>
@@ -1060,7 +1060,7 @@ export default function EpisodeDetailPage() {
                             : 'border-[#f0ece9] bg-white sm:bg-[#fafaf9] text-[#78716c] hover:border-[#d6d3d1]'
                         }`}
                       >
-                        <span className={`w-[6px] h-[6px] rounded-full ${editedEpisode.paymentStatus === 'completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                        <span className={`w-[6px] h-[6px] rounded-full ${editedEpisode.paymentStatus === 'completed' ? 'bg-green-500' : 'bg-blue-400'}`} />
                         {editedEpisode.paymentStatus === 'completed' ? '입금 완료' : '입금 전'}
                       </button>
                       <DatePicker
@@ -1081,7 +1081,7 @@ export default function EpisodeDetailPage() {
                             : 'border-[#f0ece9] bg-white sm:bg-[#fafaf9] text-[#78716c] hover:border-[#d6d3d1]'
                         }`}
                       >
-                        <span className={`w-[6px] h-[6px] rounded-full ${editedEpisode.invoiceStatus === 'completed' ? 'bg-green-500' : 'bg-orange-400'}`} />
+                        <span className={`w-[6px] h-[6px] rounded-full ${editedEpisode.invoiceStatus === 'completed' ? 'bg-green-500' : 'bg-blue-400'}`} />
                         {editedEpisode.invoiceStatus === 'completed' ? '발행 완료' : '미발행'}
                       </button>
                       <DatePicker
@@ -1386,7 +1386,7 @@ export default function EpisodeDetailPage() {
                             className={`flex flex-col items-center justify-center gap-2 py-5 cursor-grab active:cursor-grabbing relative ${
                               index > 0 ? 'border-l border-gray-100' : ''
                             } ${draggedWorkType === workType ? 'opacity-40' : ''
-                            } ${dragOverWorkType === workType && draggedWorkType !== workType ? 'ring-2 ring-inset ring-orange-400' : ''
+                            } ${dragOverWorkType === workType && draggedWorkType !== workType ? 'ring-2 ring-inset ring-blue-400' : ''
                             } ${status === 'completed'
                                 ? 'bg-green-50/60'
                                 : isActive
@@ -1500,7 +1500,7 @@ export default function EpisodeDetailPage() {
                       transition={{ duration: 0.15 }}
                       className={`rounded-xl mb-3 cursor-grab active:cursor-grabbing ${
                         draggedWorkType === workType ? 'opacity-40' : ''
-                      } ${dragOverWorkType === workType && draggedWorkType !== workType ? 'ring-2 ring-orange-400 ring-offset-2' : ''
+                      } ${dragOverWorkType === workType && draggedWorkType !== workType ? 'ring-2 ring-blue-400 ring-offset-2' : ''
                       } ${
                         getWorkTypeStatus(workType) === 'completed'
                           ? allCompleted
@@ -1676,12 +1676,12 @@ export default function EpisodeDetailPage() {
                                       {/* 담당자 + 날짜 */}
                                       <div className="flex items-center gap-1 flex-shrink-0">
                                         {step.assigneeId && (
-                                          <div className="w-4 h-4 bg-orange-100 rounded-full flex items-center justify-center text-[7px] font-bold text-orange-600">
+                                          <div className="w-4 h-4 bg-blue-100 rounded-full flex items-center justify-center text-[7px] font-bold text-blue-800">
                                             {partners.find(p => p.id === step.assigneeId)?.name?.charAt(0) || '?'}
                                           </div>
                                         )}
                                         {step.dueDate && (
-                                          <span className={`text-[10px] font-semibold ${step.status === 'completed' ? 'text-gray-400' : 'text-orange-600'}`}>
+                                          <span className={`text-[10px] font-semibold ${step.status === 'completed' ? 'text-gray-400' : 'text-blue-800'}`}>
                                             {(() => { const [,m,d] = step.dueDate.split('-').map(Number); return `${m}/${d}`; })()}
                                           </span>
                                         )}
@@ -1773,8 +1773,8 @@ export default function EpisodeDetailPage() {
                                         >
                                           {step.assigneeId ? (
                                             <>
-                                              <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mr-2">
-                                                <User size={10} className="text-orange-500" />
+                                              <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mr-2">
+                                                <User size={10} className="text-blue-500" />
                                               </div>
                                               <span className="text-sm text-gray-900 truncate">
                                                 {partners.find(p => p.id === step.assigneeId)?.name}
@@ -1828,7 +1828,7 @@ export default function EpisodeDetailPage() {
                                                       className="w-full flex items-center px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
                                                       type="button"
                                                     >
-                                                      <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
+                                                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
                                                         {p.name.charAt(0)}
                                                       </div>
                                                       <span className="text-sm text-gray-900 truncate">{p.name}</span>
@@ -2015,7 +2015,7 @@ export default function EpisodeDetailPage() {
                               key={cat}
                               onClick={() => handleUpdateWorkStep(mwt, msid, 'category', cat)}
                               className={`flex-1 py-2 rounded-lg text-[12px] font-semibold transition-colors ${
-                                (mStep.category || '가편') === cat ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600'
+                                (mStep.category || '가편') === cat ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
                               }`}
                               type="button"
                             >{cat}</button>
@@ -2035,7 +2035,7 @@ export default function EpisodeDetailPage() {
                             key={opt.value}
                             onClick={() => handleUpdateWorkStep(mwt, msid, 'status', opt.value)}
                             className={`flex-1 py-2 rounded-lg text-[12px] font-semibold transition-colors ${
-                              mStep.status === opt.value ? 'bg-orange-500 text-white' : opt.color
+                              mStep.status === opt.value ? 'bg-blue-500 text-white' : opt.color
                             }`}
                             type="button"
                           >{opt.label}</button>
@@ -2052,7 +2052,7 @@ export default function EpisodeDetailPage() {
                       value={mStep.label}
                       onChange={(e) => handleUpdateWorkStep(mwt, msid, 'label', e.target.value)}
                       placeholder="작업 단계 이름"
-                      className="w-full px-3 py-2.5 border-[1.5px] border-[#ede9e6] rounded-xl text-[14px] font-medium focus:border-orange-400 focus:outline-none"
+                      className="w-full px-3 py-2.5 border-[1.5px] border-[#ede9e6] rounded-xl text-[14px] font-medium focus:border-blue-400 focus:outline-none"
                     />
                   </div>
 
@@ -2066,7 +2066,7 @@ export default function EpisodeDetailPage() {
                       >
                         {mStep.assigneeId ? (
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center text-[10px] font-bold text-orange-600 flex-shrink-0">
+                            <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-[10px] font-bold text-blue-800 flex-shrink-0">
                               {partners.find(p => p.id === mStep.assigneeId)?.name?.charAt(0) || '?'}
                             </div>
                             <span className="text-[14px] font-medium text-gray-900">{partners.find(p => p.id === mStep.assigneeId)?.name}</span>
@@ -2087,7 +2087,7 @@ export default function EpisodeDetailPage() {
                           >
                             <button
                               onClick={() => { handleUpdateWorkStep(mwt, msid, 'assigneeId', ''); setEditingField(null); }}
-                              className={`w-full flex items-center px-3 py-2.5 hover:bg-gray-50 text-left border-b border-gray-100 ${!mStep.assigneeId ? 'bg-orange-50' : ''}`}
+                              className={`w-full flex items-center px-3 py-2.5 hover:bg-gray-50 text-left border-b border-gray-100 ${!mStep.assigneeId ? 'bg-blue-50' : ''}`}
                               type="button"
                             >
                               <span className="text-[13px] text-gray-500">선택 안함</span>
@@ -2096,10 +2096,10 @@ export default function EpisodeDetailPage() {
                               <button
                                 key={p.id}
                                 onClick={() => { handleUpdateWorkStep(mwt, msid, 'assigneeId', p.id); setEditingField(null); }}
-                                className={`w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 text-left ${mStep.assigneeId === p.id ? 'bg-orange-50' : ''}`}
+                                className={`w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 text-left ${mStep.assigneeId === p.id ? 'bg-blue-50' : ''}`}
                                 type="button"
                               >
-                                <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
                                   {p.name.charAt(0)}
                                 </div>
                                 <span className="text-[13px] font-medium text-gray-900">{p.name}</span>
@@ -2228,7 +2228,7 @@ export default function EpisodeDetailPage() {
                     const v = Math.max(1, Math.min(50, parseInt(e.target.value) || 1));
                     setShortformModal(prev => prev ? { ...prev, count: v } : prev);
                   }}
-                  className="w-16 text-center text-lg font-semibold text-gray-900 border border-gray-200 rounded-xl py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400"
+                  className="w-16 text-center text-lg font-semibold text-gray-900 border border-gray-200 rounded-xl py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
                 />
                 <button
                   type="button"
@@ -2256,7 +2256,7 @@ export default function EpisodeDetailPage() {
                     }
                     setShortformModal(null);
                   }}
-                  className="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-xl hover:bg-orange-600 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-xl hover:bg-blue-800 transition-colors"
                   type="button"
                 >
                   추가
@@ -2354,7 +2354,7 @@ export default function EpisodeDetailPage() {
                                     ? 'bg-green-100/70 border-green-400/80 px-5 py-3 min-w-[140px] shadow-xl ring-2 ring-green-300/50'
                                     : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
                                     ? 'bg-yellow-100/80 border-yellow-400/90 px-5 py-3 min-w-[160px] shadow-2xl scale-110 ring-2 ring-yellow-300/50 tab-pulse'
-                                    : 'bg-orange-100/70 border-orange-400/80 px-5 py-3 min-w-[140px] shadow-xl ring-2 ring-orange-300/50'
+                                    : 'bg-blue-100/70 border-blue-400/80 px-5 py-3 min-w-[140px] shadow-xl ring-2 ring-blue-300/50'
                                   : status === 'completed'
                                   ? 'bg-green-100/40 border-green-300/50 px-3 py-1.5 min-w-[120px] opacity-70 hover:opacity-100 hover:shadow-lg'
                                   : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
@@ -2367,7 +2367,7 @@ export default function EpisodeDetailPage() {
                                       ? 'text-green-900'
                                       : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
                                       ? 'text-yellow-900'
-                                      : 'text-orange-900'
+                                      : 'text-blue-950'
                                     : status === 'completed'
                                     ? 'text-green-800'
                                     : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
@@ -2383,7 +2383,7 @@ export default function EpisodeDetailPage() {
                                         ? 'bg-green-200/60 text-green-900'
                                         : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
                                         ? 'bg-yellow-200/60 text-yellow-900'
-                                        : 'bg-orange-200/60 text-orange-900'
+                                        : 'bg-blue-200/60 text-blue-950'
                                       : status === 'completed'
                                       ? 'bg-green-100 text-green-700'
                                       : (status === 'in_progress' || (status === 'waiting' && hasPreviousCompleted))
@@ -2499,7 +2499,7 @@ export default function EpisodeDetailPage() {
                           });
                           showToast(`새 작업이 추가되었습니다.`);
                         }}
-                        className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all font-medium text-sm shadow-md flex items-center gap-1 flex-shrink-0"
+                        className="px-4 py-2 bg-gradient-to-r from-blue-700 to-blue-800 text-white rounded-lg hover:from-blue-800 hover:to-blue-900 transition-all font-medium text-sm shadow-md flex items-center gap-1 flex-shrink-0"
                       >
                         <Plus size={16} />
                         새 작업
@@ -2526,7 +2526,7 @@ export default function EpisodeDetailPage() {
                           <p className="text-gray-500 mb-4">작업 단계가 없습니다.</p>
                           <button
                             onClick={closeModal}
-                            className="px-4 py-2 bg-orange-500/90 backdrop-blur-sm text-white rounded-xl hover:bg-orange-600 transition-colors shadow-md"
+                            className="px-4 py-2 bg-blue-500/90 backdrop-blur-sm text-white rounded-xl hover:bg-blue-800 transition-colors shadow-md"
                           >
                             작업 단계 추가하기
                           </button>
@@ -2605,8 +2605,8 @@ export default function EpisodeDetailPage() {
                                   <div className="flex items-center gap-4 text-sm text-gray-600">
                                     {partner && (
                                       <div className="flex items-center gap-1">
-                                        <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                          <User size={10} className="text-orange-500" />
+                                        <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                          <User size={10} className="text-blue-500" />
                                         </div>
                                         <span>{partner.name}</span>
                                       </div>

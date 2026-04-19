@@ -16,6 +16,8 @@ import DateRangePicker from '@/components/DateRangePicker';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTutorial } from '@/components/tutorial/useTutorial';
 import { useToast } from '@/contexts/ToastContext';
+import DevProjectDetail from '@/components/project-detail/DevProjectDetail';
+import ContentProjectDetail from '@/components/project-detail/ContentProjectDetail';
 
 interface EpisodeWithProjectId extends Episode {
   projectId: string;
@@ -653,7 +655,7 @@ export default function ProjectDetailPage() {
   if (isLoadingProject) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800" />
       </div>
     );
   }
@@ -666,7 +668,7 @@ export default function ProjectDetailPage() {
           <p className="text-gray-500 mb-6">요청하신 프로젝트가 존재하지 않습니다.</p>
           <Link
             href="/projects"
-            className="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-800 transition-colors"
           >
             <ArrowLeft size={16} className="mr-2" />
             프로젝트 목록으로 돌아가기
@@ -674,6 +676,14 @@ export default function ProjectDetailPage() {
         </div>
       </div>
     );
+  }
+
+  // 프로젝트 타입별 분기: 개발/콘텐츠는 전용 컴포넌트로 렌더
+  if (project.type === 'dev') {
+    return <DevProjectDetail project={project} />;
+  }
+  if (project.type === 'content') {
+    return <ContentProjectDetail project={project} />;
   }
 
   return (
@@ -721,7 +731,7 @@ export default function ProjectDetailPage() {
           <div className="flex items-center gap-0.5 flex-shrink-0">
             <button
               onClick={() => setIsChecklistModalOpen(true)}
-              className="p-1.5 sm:p-2 text-orange-500 hover:bg-orange-50 rounded-xl transition-colors"
+              className="p-1.5 sm:p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"
               title="체크리스트"
             >
               <ClipboardCheck size={16} />
@@ -759,7 +769,7 @@ export default function ProjectDetailPage() {
             {activeTab === tab.key && (
               <motion.div
                 layoutId="project-tab-pill"
-                className="absolute inset-0 bg-orange-500 rounded-xl shadow-lg shadow-orange-500/30"
+                className="absolute inset-0 bg-blue-500 rounded-xl shadow-lg shadow-blue-700/30"
                 transition={{ type: 'spring', stiffness: 380, damping: 30 }}
               />
             )}
@@ -820,7 +830,7 @@ export default function ProjectDetailPage() {
                   <p className="text-sm font-medium text-gray-500 mb-2">클라이언트</p>
                   {selectedClient ? (
                     <div className="flex items-center p-2">
-                      <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
+                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
                         {selectedClient.charAt(0)}
                       </div>
                       <span className="text-sm font-medium text-gray-900 truncate">{selectedClient}</span>
@@ -837,7 +847,7 @@ export default function ProjectDetailPage() {
                     <div className="space-y-2">
                       {managers.map((manager) => manager && (
                         <div key={manager.id} className="flex items-center p-2">
-                          <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
+                          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
                             {manager.name.charAt(0)}
                           </div>
                           <p className="text-sm font-medium text-gray-900 truncate">{manager.name}</p>
@@ -856,8 +866,8 @@ export default function ProjectDetailPage() {
                     <div className="space-y-2">
                       {partners.map((partner) => partner && (
                         <div key={partner.id} className="flex items-center p-2">
-                          <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mr-2">
-                            <User size={16} className="text-orange-500" />
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mr-2">
+                            <User size={16} className="text-blue-500" />
                           </div>
                           <p className="text-sm font-medium text-gray-900 truncate">{partner.name}</p>
                         </div>
@@ -875,7 +885,7 @@ export default function ProjectDetailPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-500 mb-2">분류</p>
                   {selectedCategory ? (
-                    <div className="p-2 bg-orange-50 rounded-lg inline-block">
+                    <div className="p-2 bg-blue-50 rounded-lg inline-block">
                       <span className="text-sm font-medium text-gray-600">{selectedCategory}</span>
                     </div>
                   ) : (
@@ -891,7 +901,7 @@ export default function ProjectDetailPage() {
                       {project.workContent.map((work, idx) => (
                         <span
                           key={idx}
-                          className="px-3 py-1 bg-orange-50 text-orange-600 rounded text-xs font-medium"
+                          className="px-3 py-1 bg-blue-50 text-blue-800 rounded text-xs font-medium"
                         >
                           {work}
                         </span>
@@ -953,11 +963,11 @@ export default function ProjectDetailPage() {
                             <button
                               key={episode.id}
                               onClick={() => router.push(`/projects/${projectId}/episodes/${episode.id}`)}
-                              className="w-full flex items-center justify-between p-3 bg-orange-50 border border-gray-200 rounded-lg hover:bg-orange-100 transition-colors"
+                              className="w-full flex items-center justify-between p-3 bg-blue-50 border border-gray-200 rounded-lg hover:bg-blue-100 transition-colors"
                               type="button"
                             >
                               <div className="flex items-center space-x-2">
-                                <div className="w-7 h-7 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                                <div className="w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                                   {episode.episodeNumber}
                                 </div>
                                 <div className="text-left">
@@ -969,7 +979,7 @@ export default function ProjectDetailPage() {
                                   )}
                                 </div>
                               </div>
-                              <ChevronRight size={14} className="text-orange-600 flex-shrink-0" />
+                              <ChevronRight size={14} className="text-blue-800 flex-shrink-0" />
                             </button>
                           ))}
                         </div>
@@ -1058,7 +1068,7 @@ export default function ProjectDetailPage() {
                     {project.tags.map((tag, index) => (
                       <span
                         key={index}
-                        className="px-3 py-1 bg-orange-50 text-orange-600 rounded-full text-sm"
+                        className="px-3 py-1 bg-blue-50 text-blue-800 rounded-full text-sm"
                       >
                         #{tag}
                       </span>
@@ -1100,14 +1110,14 @@ export default function ProjectDetailPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-xs font-medium text-gray-500 mb-1">파트너 지급 (합산)</p>
-                    <p className={`text-lg font-semibold ${calculatedPartnerPayment === 0 ? 'text-gray-400' : 'text-orange-600'}`}>
+                    <p className={`text-lg font-semibold ${calculatedPartnerPayment === 0 ? 'text-gray-400' : 'text-blue-800'}`}>
                       {formatCurrency(calculatedPartnerPayment)}원
                     </p>
                   </div>
 
                   <div>
                     <p className="text-xs font-medium text-gray-500 mb-1">매니징 비용 (합산)</p>
-                    <p className={`text-lg font-semibold ${calculatedManagementFee === 0 ? 'text-gray-400' : 'text-orange-600'}`}>
+                    <p className={`text-lg font-semibold ${calculatedManagementFee === 0 ? 'text-gray-400' : 'text-blue-800'}`}>
                       {formatCurrency(calculatedManagementFee)}원
                     </p>
                   </div>
@@ -1119,7 +1129,7 @@ export default function ProjectDetailPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-xs font-medium text-gray-500 mb-1">유보금</p>
-                    <p className={`text-lg font-semibold ${calculatedReserve === 0 ? 'text-gray-400' : 'text-orange-600'}`}>
+                    <p className={`text-lg font-semibold ${calculatedReserve === 0 ? 'text-gray-400' : 'text-blue-800'}`}>
                       {formatCurrency(calculatedReserve)}원
                     </p>
                   </div>
@@ -1141,7 +1151,7 @@ export default function ProjectDetailPage() {
                 <p className="text-sm font-medium text-gray-700 mb-3">작업별 비용</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                   {/* 롱폼 */}
-                  <div className={`rounded-lg p-3 ${workTypeCosts['롱폼'].partnerCost === 0 && workTypeCosts['롱폼'].managementCost === 0 ? 'bg-gray-50' : 'bg-orange-50'}`}>
+                  <div className={`rounded-lg p-3 ${workTypeCosts['롱폼'].partnerCost === 0 && workTypeCosts['롱폼'].managementCost === 0 ? 'bg-gray-50' : 'bg-blue-50'}`}>
                     <p className={`text-xs font-semibold mb-2 ${workTypeCosts['롱폼'].partnerCost === 0 && workTypeCosts['롱폼'].managementCost === 0 ? 'text-gray-400' : 'text-gray-600'}`}>롱폼</p>
                     <div className="space-y-2">
                       <div>
@@ -1179,7 +1189,7 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* 본편 숏폼 */}
-                  <div className={`rounded-lg p-3 ${workTypeCosts['본편 숏폼'].partnerCost === 0 && workTypeCosts['본편 숏폼'].managementCost === 0 ? 'bg-gray-50' : 'bg-orange-50'}`}>
+                  <div className={`rounded-lg p-3 ${workTypeCosts['본편 숏폼'].partnerCost === 0 && workTypeCosts['본편 숏폼'].managementCost === 0 ? 'bg-gray-50' : 'bg-blue-50'}`}>
                     <p className={`text-xs font-semibold mb-2 ${workTypeCosts['본편 숏폼'].partnerCost === 0 && workTypeCosts['본편 숏폼'].managementCost === 0 ? 'text-gray-400' : 'text-gray-600'}`}>본편 숏폼</p>
                     <div className="space-y-2">
                       <div>
@@ -1198,7 +1208,7 @@ export default function ProjectDetailPage() {
                   </div>
 
                   {/* 썸네일 */}
-                  <div className={`rounded-lg p-3 ${workTypeCosts['썸네일'].partnerCost === 0 && workTypeCosts['썸네일'].managementCost === 0 ? 'bg-gray-50' : 'bg-orange-50'}`}>
+                  <div className={`rounded-lg p-3 ${workTypeCosts['썸네일'].partnerCost === 0 && workTypeCosts['썸네일'].managementCost === 0 ? 'bg-gray-50' : 'bg-blue-50'}`}>
                     <p className={`text-xs font-semibold mb-2 ${workTypeCosts['썸네일'].partnerCost === 0 && workTypeCosts['썸네일'].managementCost === 0 ? 'text-gray-400' : 'text-gray-600'}`}>썸네일</p>
                     <div className="space-y-2">
                       <div>
@@ -1249,7 +1259,7 @@ export default function ProjectDetailPage() {
           <div>
             <h2 className="text-sm sm:text-base font-semibold text-gray-900 flex items-center gap-2">
               진행 중인 회차
-              <span className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full text-xs font-semibold">
+              <span className="px-2 py-0.5 bg-blue-50 text-blue-800 rounded-full text-xs font-semibold">
                 {activeEpisodes.length}개
               </span>
             </h2>
@@ -1288,7 +1298,7 @@ export default function ProjectDetailPage() {
             </button>
             <button
               onClick={handleAddEpisode}
-              className="px-3 sm:px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-xs sm:text-sm"
+              className="px-3 sm:px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-800 transition-colors text-xs sm:text-sm"
             >
               + 회차 추가
             </button>
@@ -1335,7 +1345,7 @@ export default function ProjectDetailPage() {
                                       setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, episodeNumber: num } : ed));
                                     }
                                   }}
-                                  className="w-14 text-lg font-bold text-gray-900 bg-white border border-gray-300 rounded-lg px-2 py-1 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  className="w-14 text-lg font-bold text-gray-900 bg-white border border-gray-300 rounded-lg px-2 py-1 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-700/20 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                                 <span className="text-lg font-bold text-gray-900 ml-0.5">편</span>
                               </div>
@@ -1346,7 +1356,7 @@ export default function ProjectDetailPage() {
                                 onChange={(e) => {
                                   setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, title: e.target.value } : ed));
                                 }}
-                                className="flex-1 min-w-[120px] text-base font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-1 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 placeholder-gray-300"
+                                className="flex-1 min-w-[120px] text-base font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-1 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-700/20 placeholder-gray-300"
                               />
                             </div>
                           ) : (
@@ -1403,10 +1413,10 @@ export default function ProjectDetailPage() {
                                   <button
                                     type="button"
                                     onClick={() => setEditDropdown(isOpen ? null : { episodeId: episode.id, field: 'assignee' })}
-                                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:border-orange-400 transition-colors"
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:border-blue-400 transition-colors"
                                   >
-                                    <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                                      <User size={10} className="text-orange-500" />
+                                    <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                      <User size={10} className="text-blue-500" />
                                     </div>
                                     <span className="text-sm font-medium text-gray-900">{selectedPartner?.name || '파트너 선택'}</span>
                                     <ChevronDown size={14} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -1421,10 +1431,10 @@ export default function ProjectDetailPage() {
                                             setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, assignee: p.id } : ed));
                                             setEditDropdown(null);
                                           }}
-                                          className={`w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-orange-50 transition-colors text-left ${editEp?.assignee === p.id ? 'bg-orange-50' : ''}`}
+                                          className={`w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-blue-50 transition-colors text-left ${editEp?.assignee === p.id ? 'bg-blue-50' : ''}`}
                                         >
-                                          <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                                            <User size={11} className="text-orange-500" />
+                                          <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                            <User size={11} className="text-blue-500" />
                                           </div>
                                           <span className="text-sm font-medium text-gray-900">{p.name}</span>
                                         </button>
@@ -1444,7 +1454,7 @@ export default function ProjectDetailPage() {
                                   <button
                                     type="button"
                                     onClick={() => setEditDropdown(isOpen ? null : { episodeId: episode.id, field: 'manager' })}
-                                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:border-orange-400 transition-colors"
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:border-blue-400 transition-colors"
                                   >
                                     <UserCircle size={14} className="text-gray-400 flex-shrink-0" />
                                     <span className="text-sm font-medium text-gray-900">{selectedManager?.name || '매니저 선택'}</span>
@@ -1460,7 +1470,7 @@ export default function ProjectDetailPage() {
                                             setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, manager: p.id } : ed));
                                             setEditDropdown(null);
                                           }}
-                                          className={`w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-orange-50 transition-colors text-left ${editEp?.manager === p.id ? 'bg-orange-50' : ''}`}
+                                          className={`w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-blue-50 transition-colors text-left ${editEp?.manager === p.id ? 'bg-blue-50' : ''}`}
                                         >
                                           <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
                                             <UserCircle size={12} className="text-gray-500" />
@@ -1501,13 +1511,13 @@ export default function ProjectDetailPage() {
                                 ? (() => { const d = new Date(episode.startDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })()
                                 : '미정'}
                               {episode.dueDate && (
-                                <> <span className="text-[#d6d3d1]">→</span> <span className="text-[#ea580c] font-semibold">{(() => { const d = new Date(episode.dueDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })()}</span></>
+                                <> <span className="text-[#d6d3d1]">→</span> <span className="text-[#1e3a8a] font-semibold">{(() => { const d = new Date(episode.dueDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })()}</span></>
                               )}
                             </span>
                             {episode.workContent.length > 0 && (
                               <div className="hidden sm:flex items-center gap-1">
                                 {episode.workContent.map((work, idx) => (
-                                  <span key={idx} className="px-1.5 py-0.5 rounded text-[10px] font-semibold border bg-[#fff7ed] border-[#fed7aa] text-[#ea580c]">
+                                  <span key={idx} className="px-1.5 py-0.5 rounded text-[10px] font-semibold border bg-[#eff6ff] border-[#bfdbfe] text-[#1e3a8a]">
                                     {work}
                                   </span>
                                 ))}
@@ -1519,7 +1529,7 @@ export default function ProjectDetailPage() {
                         </div>
 
                         {!isEpisodeEditMode && (
-                          <ChevronRight size={18} className="text-gray-400 group-hover:text-orange-500 transition-colors flex-shrink-0 ml-2 sm:ml-4 hidden sm:block" />
+                          <ChevronRight size={18} className="text-gray-400 group-hover:text-blue-500 transition-colors flex-shrink-0 ml-2 sm:ml-4 hidden sm:block" />
                         )}
                       </div>
                     </div>
@@ -1552,7 +1562,7 @@ export default function ProjectDetailPage() {
         <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-2">
           <h2 className="text-sm sm:text-base font-semibold text-gray-900 flex items-center gap-2 flex-shrink-0">
             회차 관리
-            <span className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full text-xs font-semibold">
+            <span className="px-2 py-0.5 bg-blue-50 text-blue-800 rounded-full text-xs font-semibold">
               {episodes.length}개
             </span>
           </h2>
@@ -1591,7 +1601,7 @@ export default function ProjectDetailPage() {
           <button
             onClick={handleAddEpisode}
             data-tour="tour-detail-add-episode"
-            className="px-3 sm:px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-xs sm:text-sm"
+            className="px-3 sm:px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-800 transition-colors text-xs sm:text-sm"
           >
             + 회차 추가
           </button>
@@ -1640,7 +1650,7 @@ export default function ProjectDetailPage() {
                                     setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, episodeNumber: num } : ed));
                                   }
                                 }}
-                                className="w-14 text-lg font-bold text-gray-900 bg-white border border-gray-300 rounded-lg px-2 py-1 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                className="w-14 text-lg font-bold text-gray-900 bg-white border border-gray-300 rounded-lg px-2 py-1 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-700/20 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
                               <span className="text-lg font-bold text-gray-900 ml-0.5">편</span>
                             </div>
@@ -1651,7 +1661,7 @@ export default function ProjectDetailPage() {
                               onChange={(e) => {
                                 setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, title: e.target.value } : ed));
                               }}
-                              className="flex-1 min-w-[120px] text-base font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-1 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 placeholder-gray-300"
+                              className="flex-1 min-w-[120px] text-base font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-1 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-700/20 placeholder-gray-300"
                             />
                           </div>
                         ) : (
@@ -1708,10 +1718,10 @@ export default function ProjectDetailPage() {
                                 <button
                                   type="button"
                                   onClick={() => setEditDropdown(isOpen ? null : { episodeId: episode.id, field: 'assignee' })}
-                                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:border-orange-400 transition-colors"
+                                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:border-blue-400 transition-colors"
                                 >
-                                  <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                                    <User size={10} className="text-orange-500" />
+                                  <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                    <User size={10} className="text-blue-500" />
                                   </div>
                                   <span className="text-sm font-medium text-gray-900">{selectedPartner?.name || '파트너 선택'}</span>
                                   <ChevronDown size={14} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -1726,10 +1736,10 @@ export default function ProjectDetailPage() {
                                           setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, assignee: p.id } : ed));
                                           setEditDropdown(null);
                                         }}
-                                        className={`w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-orange-50 transition-colors text-left ${editEp?.assignee === p.id ? 'bg-orange-50' : ''}`}
+                                        className={`w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-blue-50 transition-colors text-left ${editEp?.assignee === p.id ? 'bg-blue-50' : ''}`}
                                       >
-                                        <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                                          <User size={11} className="text-orange-500" />
+                                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                          <User size={11} className="text-blue-500" />
                                         </div>
                                         <span className="text-sm font-medium text-gray-900">{p.name}</span>
                                       </button>
@@ -1749,7 +1759,7 @@ export default function ProjectDetailPage() {
                                 <button
                                   type="button"
                                   onClick={() => setEditDropdown(isOpen ? null : { episodeId: episode.id, field: 'manager' })}
-                                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:border-orange-400 transition-colors"
+                                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:border-blue-400 transition-colors"
                                 >
                                   <UserCircle size={14} className="text-gray-400 flex-shrink-0" />
                                   <span className="text-sm font-medium text-gray-900">{selectedManager?.name || '매니저 선택'}</span>
@@ -1765,7 +1775,7 @@ export default function ProjectDetailPage() {
                                           setEditingEpisodes(prev => prev.map(ed => ed.id === episode.id ? { ...ed, manager: p.id } : ed));
                                           setEditDropdown(null);
                                         }}
-                                        className={`w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-orange-50 transition-colors text-left ${editEp?.manager === p.id ? 'bg-orange-50' : ''}`}
+                                        className={`w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-blue-50 transition-colors text-left ${editEp?.manager === p.id ? 'bg-blue-50' : ''}`}
                                       >
                                         <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
                                           <UserCircle size={12} className="text-gray-500" />
@@ -1806,7 +1816,7 @@ export default function ProjectDetailPage() {
                               ? (() => { const d = new Date(episode.startDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })()
                               : '미정'}
                             {episode.dueDate && (
-                              <> <span className="text-[#d6d3d1]">→</span> <span className="text-[#ea580c] font-semibold">{(() => { const d = new Date(episode.dueDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })()}</span></>
+                              <> <span className="text-[#d6d3d1]">→</span> <span className="text-[#1e3a8a] font-semibold">{(() => { const d = new Date(episode.dueDate); return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; })()}</span></>
                             )}
                           </span>
                           {episode.workContent.length > 0 && (
@@ -1815,7 +1825,7 @@ export default function ProjectDetailPage() {
                                 <span key={idx} className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
                                   episode.status === 'completed'
                                     ? 'bg-[#f5f5f4] border-[#ede9e6] text-[#78716c]'
-                                    : 'bg-[#fff7ed] border-[#fed7aa] text-[#ea580c]'
+                                    : 'bg-[#eff6ff] border-[#bfdbfe] text-[#1e3a8a]'
                                 }`}>
                                   {work}
                                 </span>
@@ -1829,7 +1839,7 @@ export default function ProjectDetailPage() {
                     </div>
 
                       {!isEpisodeEditMode && (
-                        <ChevronRight size={18} className="text-gray-400 group-hover:text-orange-500 transition-colors flex-shrink-0 ml-2 sm:ml-4 hidden sm:block" />
+                        <ChevronRight size={18} className="text-gray-400 group-hover:text-blue-500 transition-colors flex-shrink-0 ml-2 sm:ml-4 hidden sm:block" />
                       )}
                     </div>
                   </div>
@@ -1872,7 +1882,7 @@ export default function ProjectDetailPage() {
               <p className="text-gray-600 mb-6">
                 <span className="font-semibold text-gray-900">"{project.title}"</span> 프로젝트를 삭제하시겠습니까?
                 <br />
-                <span className="text-sm text-orange-600">휴지통으로 이동되며, 30일 이내에 복구할 수 있습니다.</span>
+                <span className="text-sm text-blue-800">휴지통으로 이동되며, 30일 이내에 복구할 수 있습니다.</span>
               </p>
               <div className="flex justify-end space-x-3">
                 <button
@@ -1925,42 +1935,42 @@ export default function ProjectDetailPage() {
                     onClick={() => setActiveEditTab('basic')}
                     className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-all relative rounded-t-lg ${
                       activeEditTab === 'basic'
-                        ? 'text-orange-600 bg-gray-50 shadow-sm'
+                        ? 'text-blue-800 bg-gray-50 shadow-sm'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                   >
                     <FileText size={18} />
                     기본 정보
                     {activeEditTab === 'basic' && (
-                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-full" />
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-800 rounded-full" />
                     )}
                   </button>
                   <button
                     onClick={() => setActiveEditTab('workers')}
                     className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-all relative rounded-t-lg ${
                       activeEditTab === 'workers'
-                        ? 'text-orange-600 bg-gray-50 shadow-sm'
+                        ? 'text-blue-800 bg-gray-50 shadow-sm'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                   >
                     <Users size={18} />
                     작업자 정보
                     {activeEditTab === 'workers' && (
-                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-full" />
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-800 rounded-full" />
                     )}
                   </button>
                   <button
                     onClick={() => setActiveEditTab('budget')}
                     className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-all relative rounded-t-lg ${
                       activeEditTab === 'budget'
-                        ? 'text-orange-600 bg-gray-50 shadow-sm'
+                        ? 'text-blue-800 bg-gray-50 shadow-sm'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                   >
                     <DollarSign size={18} />
                     비용 정보
                     {activeEditTab === 'budget' && (
-                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-full" />
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-800 rounded-full" />
                     )}
                   </button>
                 </div>
@@ -1973,7 +1983,7 @@ export default function ProjectDetailPage() {
                     {/* 프로젝트 기본 정보 카드 */}
                     <div className="bg-gray-50 rounded-xl p-5 shadow-sm border border-gray-100">
                       <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <FileText size={18} className="text-orange-600" />
+                        <FileText size={18} className="text-blue-800" />
                         프로젝트 기본
                       </h3>
                       <div className="space-y-4">
@@ -1997,8 +2007,8 @@ export default function ProjectDetailPage() {
                               <button
                                 type="button"
                                 onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                                className={`w-full pl-10 pr-10 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all cursor-pointer font-medium text-left ${
-                                  (tempEditedProject.status || project?.status) === 'planning' ? 'border-orange-300 bg-orange-50 text-orange-700' :
+                                className={`w-full pl-10 pr-10 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent transition-all cursor-pointer font-medium text-left ${
+                                  (tempEditedProject.status || project?.status) === 'planning' ? 'border-blue-300 bg-blue-50 text-blue-900' :
                                   (tempEditedProject.status || project?.status) === 'in_progress' ? 'border-green-300 bg-green-50 text-green-700' :
                                   (tempEditedProject.status || project?.status) === 'completed' ? 'border-gray-300 bg-gray-50 text-gray-700' :
                                   'border-yellow-300 bg-yellow-50 text-yellow-700'
@@ -2012,7 +2022,7 @@ export default function ProjectDetailPage() {
                                 </span>
                               </button>
                               <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                {(tempEditedProject.status || project?.status) === 'planning' && <Clock size={16} className="text-orange-600" />}
+                                {(tempEditedProject.status || project?.status) === 'planning' && <Clock size={16} className="text-blue-800" />}
                                 {(tempEditedProject.status || project?.status) === 'in_progress' && <TrendingUp size={16} className="text-green-600" />}
                                 {(tempEditedProject.status || project?.status) === 'completed' && <CheckCircle2 size={16} className="text-gray-600" />}
                                 {(tempEditedProject.status || project?.status) === 'on_hold' && <Pause size={16} className="text-yellow-600" />}
@@ -2046,7 +2056,7 @@ export default function ProjectDetailPage() {
                                         <div className="flex-1 text-left">
                                           <div className="flex items-center gap-2">
                                             <span className="text-sm font-semibold text-gray-900">{status.label}</span>
-                                            {isSelected && <CheckCircle2 size={14} className="text-orange-600" />}
+                                            {isSelected && <CheckCircle2 size={14} className="text-blue-800" />}
                                           </div>
                                           <p className="text-xs text-gray-500 mt-0.5">{status.desc}</p>
                                         </div>
@@ -2068,7 +2078,7 @@ export default function ProjectDetailPage() {
                               <button
                                 type="button"
                                 onClick={() => setIsClientDropdownOpen(!isClientDropdownOpen)}
-                                className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-300 bg-gray-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white transition-all cursor-pointer font-medium text-gray-700 hover:border-gray-400 text-left"
+                                className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-300 bg-gray-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-blue-500 focus:bg-white transition-all cursor-pointer font-medium text-gray-700 hover:border-gray-400 text-left"
                               >
                                 {tempSelectedClient || '클라이언트를 선택하세요'}
                               </button>
@@ -2101,17 +2111,17 @@ export default function ProjectDetailPage() {
                                           setTempSelectedClient(client.name);
                                           setIsClientDropdownOpen(false);
                                         }}
-                                        className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-orange-50 transition-colors border-l-4 ${
-                                          isSelected ? 'bg-orange-50 border-orange-500' : 'border-transparent'
+                                        className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-blue-50 transition-colors border-l-4 ${
+                                          isSelected ? 'bg-blue-50 border-blue-500' : 'border-transparent'
                                         }`}
                                       >
-                                        <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                                          <Building2 size={15} className="text-orange-500" />
+                                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                          <Building2 size={15} className="text-blue-500" />
                                         </div>
                                         <div className="flex-1 text-left">
                                           <div className="flex items-center gap-2">
                                             <span className="text-sm font-semibold text-gray-900">{client.name}</span>
-                                            {isSelected && <CheckCircle2 size={14} className="text-orange-600" />}
+                                            {isSelected && <CheckCircle2 size={14} className="text-blue-800" />}
                                           </div>
                                         </div>
                                       </button>
@@ -2131,7 +2141,7 @@ export default function ProjectDetailPage() {
                           <textarea
                             value={tempEditedProject.description || ''}
                             onChange={(e) => setTempEditedProject({ ...tempEditedProject, description: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent min-h-[100px] transition-shadow resize-none"
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent min-h-[100px] transition-shadow resize-none"
                             placeholder="프로젝트에 대한 설명을 입력하세요"
                           />
                         </div>
@@ -2141,7 +2151,7 @@ export default function ProjectDetailPage() {
                     {/* 분류 및 작업 카드 */}
                     <div className="bg-gray-50 rounded-xl p-5 shadow-sm border border-gray-100">
                       <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <Tag size={18} className="text-orange-600" />
+                        <Tag size={18} className="text-blue-800" />
                         분류 및 작업
                       </h3>
                       <div className="space-y-4">
@@ -2157,14 +2167,14 @@ export default function ProjectDetailPage() {
                               <button
                                 type="button"
                                 onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                                className={`w-full pl-10 pr-10 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all cursor-pointer font-medium text-left ${
-                                  tempSelectedCategory ? 'border-orange-300 bg-orange-50 text-orange-700' : 'border-gray-300 bg-white text-gray-500'
+                                className={`w-full pl-10 pr-10 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent transition-all cursor-pointer font-medium text-left ${
+                                  tempSelectedCategory ? 'border-blue-300 bg-blue-50 text-blue-900' : 'border-gray-300 bg-white text-gray-500'
                                 }`}
                               >
                                 <span>{tempSelectedCategory || '선택하세요'}</span>
                               </button>
                               <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                <Palette size={16} className={tempSelectedCategory ? 'text-orange-600' : 'text-gray-400'} />
+                                <Palette size={16} className={tempSelectedCategory ? 'text-blue-800' : 'text-gray-400'} />
                               </div>
                               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                                 <ChevronRight size={16} className={`text-gray-500 transition-transform ${isCategoryDropdownOpen ? 'rotate-90' : 'rotate-0'}`} />
@@ -2200,15 +2210,15 @@ export default function ProjectDetailPage() {
                                           setTempSelectedCategory(category.value);
                                           setIsCategoryDropdownOpen(false);
                                         }}
-                                        className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-orange-50 transition-colors border-l-4 ${
-                                          isSelected ? 'bg-orange-50 border-orange-500' : 'border-transparent'
+                                        className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-blue-50 transition-colors border-l-4 ${
+                                          isSelected ? 'bg-blue-50 border-blue-500' : 'border-transparent'
                                         }`}
                                       >
-                                        <Palette size={16} className={`flex-shrink-0 ${isSelected ? 'text-orange-600' : 'text-gray-400'}`} />
+                                        <Palette size={16} className={`flex-shrink-0 ${isSelected ? 'text-blue-800' : 'text-gray-400'}`} />
                                         <div className="flex-1 text-left">
                                           <div className="flex items-center gap-2">
                                             <span className="text-sm font-semibold text-gray-900">{category.value}</span>
-                                            {isSelected && <CheckCircle2 size={14} className="text-orange-600" />}
+                                            {isSelected && <CheckCircle2 size={14} className="text-blue-800" />}
                                           </div>
                                           <p className="text-xs text-gray-500 mt-0.5">{category.desc}</p>
                                         </div>
@@ -2230,7 +2240,7 @@ export default function ProjectDetailPage() {
                               <button
                                 type="button"
                                 onClick={() => setIsChannelDropdownOpen(!isChannelDropdownOpen)}
-                                className={`w-full pl-10 pr-10 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all cursor-pointer font-medium text-left ${
+                                className={`w-full pl-10 pr-10 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent transition-all cursor-pointer font-medium text-left ${
                                   tempChannels.length > 0 ? 'border-purple-300 bg-purple-50 text-purple-700' : 'border-gray-300 bg-white text-gray-500'
                                 }`}
                               >
@@ -2293,7 +2303,7 @@ export default function ProjectDetailPage() {
                             <button
                               type="button"
                               onClick={() => setIsWorkContentDropdownOpen(!isWorkContentDropdownOpen)}
-                              className={`w-full pl-10 pr-10 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all cursor-pointer font-medium text-left ${
+                              className={`w-full pl-10 pr-10 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent transition-all cursor-pointer font-medium text-left ${
                                 tempWorkContent.length > 0 ? 'border-green-300 bg-green-50 text-green-700' : 'border-gray-300 bg-white text-gray-500'
                               }`}
                             >
@@ -2355,7 +2365,7 @@ export default function ProjectDetailPage() {
                     {/* 매니저 카드 */}
                     <div className="bg-gray-50 rounded-xl p-5 shadow-sm border border-gray-100">
                       <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <UserCircle size={18} className="text-orange-600" />
+                        <UserCircle size={18} className="text-blue-800" />
                         매니저 <span className="text-gray-400 text-xs font-normal">(선택)</span>
                       </h3>
                       <div className="space-y-3">
@@ -2369,13 +2379,13 @@ export default function ProjectDetailPage() {
                             {tempManagerIds.map((managerId) => {
                               const manager = allPartners.find(p => p.id === managerId);
                               return manager ? (
-                                <div key={managerId} className="flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-orange-25 border border-orange-100 rounded-lg group hover:shadow-md transition-all">
-                                  <div className="flex-shrink-0 w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center text-white font-semibold shadow-sm">
+                                <div key={managerId} className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-blue-50 border border-blue-100 rounded-lg group hover:shadow-md transition-all">
+                                  <div className="flex-shrink-0 w-10 h-10 bg-blue-800 rounded-full flex items-center justify-center text-white font-semibold shadow-sm">
                                     {manager.name.charAt(0)}
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-gray-900 truncate">{manager.name}</p>
-                                    <p className="text-xs text-orange-600 font-medium">매니저</p>
+                                    <p className="text-xs text-blue-800 font-medium">매니저</p>
                                   </div>
                                   <button
                                     onClick={() => setTempManagerIds(tempManagerIds.filter(id => id !== managerId))}
@@ -2392,18 +2402,18 @@ export default function ProjectDetailPage() {
                           <button
                             type="button"
                             onClick={() => setIsManagerDropdownOpen(!isManagerDropdownOpen)}
-                            className="w-full pl-10 pr-10 py-2.5 border-2 border-orange-300 bg-orange-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white transition-all cursor-pointer font-medium text-orange-700 hover:border-orange-400 text-left"
+                            className="w-full pl-10 pr-10 py-2.5 border-2 border-blue-300 bg-blue-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-blue-500 focus:bg-white transition-all cursor-pointer font-medium text-blue-900 hover:border-blue-400 text-left"
                           >
                             + 매니저 추가
                           </button>
                           <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                            <UserCircle size={16} className="text-orange-600" />
+                            <UserCircle size={16} className="text-blue-800" />
                           </div>
                           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                            <ChevronRight size={16} className={`text-orange-600 transition-transform ${isManagerDropdownOpen ? 'rotate-90' : 'rotate-0'}`} />
+                            <ChevronRight size={16} className={`text-blue-800 transition-transform ${isManagerDropdownOpen ? 'rotate-90' : 'rotate-0'}`} />
                           </div>
                           {isManagerDropdownOpen && allPartners.filter(p => !tempManagerIds.includes(p.id)).length > 0 && (
-                            <div className="absolute z-50 w-full mt-2 bg-white border-2 border-orange-200 rounded-xl shadow-xl max-h-64 overflow-y-auto animate-modal-content">
+                            <div className="absolute z-50 w-full mt-2 bg-white border-2 border-blue-200 rounded-xl shadow-xl max-h-64 overflow-y-auto animate-modal-content">
                               {allPartners.filter(p => !tempManagerIds.includes(p.id)).map((manager) => (
                                 <button
                                   key={manager.id}
@@ -2412,9 +2422,9 @@ export default function ProjectDetailPage() {
                                     setTempManagerIds([...tempManagerIds, manager.id]);
                                     setIsManagerDropdownOpen(false);
                                   }}
-                                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-orange-50 transition-colors border-l-4 border-transparent text-left"
+                                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-blue-50 transition-colors border-l-4 border-transparent text-left"
                                 >
-                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
+                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-700 to-blue-800 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
                                     {manager.name.charAt(0)}
                                   </div>
                                   <div className="flex-1">
@@ -2446,8 +2456,8 @@ export default function ProjectDetailPage() {
                               const partner = allPartners.find(p => p.id === partnerId);
                               return partner ? (
                                 <div key={partnerId} className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-green-25 border border-green-100 rounded-lg group hover:shadow-md transition-all">
-                                  <div className="flex-shrink-0 w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                                    <User size={20} className="text-orange-500" />
+                                  <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <User size={20} className="text-blue-500" />
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-gray-900 truncate">{partner.name}</p>
@@ -2490,8 +2500,8 @@ export default function ProjectDetailPage() {
                                   }}
                                   className="w-full px-4 py-3 flex items-center gap-3 hover:bg-green-50 transition-colors border-l-4 border-transparent text-left"
                                 >
-                                  <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                                    <User size={16} className="text-orange-500" />
+                                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                    <User size={16} className="text-blue-500" />
                                   </div>
                                   <div className="flex-1">
                                     <span className="text-sm font-semibold text-gray-900">{partner.name}</span>
@@ -2509,28 +2519,28 @@ export default function ProjectDetailPage() {
                 {activeEditTab === 'budget' && (
                   <div className="space-y-5">
                     {/* 전체 비용 카드 */}
-                    <div className="bg-gradient-to-br from-orange-50 to-orange-100/80 rounded-xl p-6 shadow-sm border-2 border-orange-200">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100/80 rounded-xl p-6 shadow-sm border-2 border-blue-200">
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-semibold text-orange-700">프로젝트 총 비용</h3>
-                        <DollarSign size={24} className="text-orange-500" />
+                        <h3 className="text-sm font-semibold text-blue-900">프로젝트 총 비용</h3>
+                        <DollarSign size={24} className="text-blue-500" />
                       </div>
                       <div className="relative">
                         <input
                           type="text"
                           value={formatCurrency(tempTotalAmount)}
                           onChange={(e) => updateTempTotalAmount(e.target.value)}
-                          className="w-full px-4 py-3 pr-16 text-3xl font-bold bg-gray-50 border-2 border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-400 transition-all"
+                          className="w-full px-4 py-3 pr-16 text-3xl font-bold bg-gray-50 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent text-gray-900 placeholder-gray-400 transition-all"
                           placeholder="0"
                         />
                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 font-medium">원</span>
                       </div>
-                      <p className="text-xs text-orange-600 mt-2">아래 작업별 비용의 합계와 다를 수 있습니다</p>
+                      <p className="text-xs text-blue-800 mt-2">아래 작업별 비용의 합계와 다를 수 있습니다</p>
                     </div>
 
                     {/* 작업별 비용 */}
                     <div className="bg-gray-50 rounded-xl p-5 shadow-sm border border-gray-100">
                       <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <Tag size={18} className="text-orange-600" />
+                        <Tag size={18} className="text-blue-800" />
                         작업별 비용 <span className="text-gray-400 text-xs font-normal">(선택)</span>
                       </h3>
                       <div className="grid grid-cols-2 gap-4">
@@ -2553,7 +2563,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['롱폼'].partnerCost)}
                                   onChange={(e) => updateTempWorkTypeCost('롱폼', 'partnerCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2566,7 +2576,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['롱폼'].managementCost)}
                                   onChange={(e) => updateTempWorkTypeCost('롱폼', 'managementCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2602,7 +2612,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['기획 숏폼'].partnerCost)}
                                   onChange={(e) => updateTempWorkTypeCost('기획 숏폼', 'partnerCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2615,7 +2625,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['기획 숏폼'].managementCost)}
                                   onChange={(e) => updateTempWorkTypeCost('기획 숏폼', 'managementCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2651,7 +2661,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['본편 숏폼'].partnerCost)}
                                   onChange={(e) => updateTempWorkTypeCost('본편 숏폼', 'partnerCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2664,7 +2674,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['본편 숏폼'].managementCost)}
                                   onChange={(e) => updateTempWorkTypeCost('본편 숏폼', 'managementCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2700,7 +2710,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['썸네일'].partnerCost)}
                                   onChange={(e) => updateTempWorkTypeCost('썸네일', 'partnerCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2713,7 +2723,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['썸네일'].managementCost)}
                                   onChange={(e) => updateTempWorkTypeCost('썸네일', 'managementCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2749,7 +2759,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['OAP'].partnerCost)}
                                   onChange={(e) => updateTempWorkTypeCost('OAP', 'partnerCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2762,7 +2772,7 @@ export default function ProjectDetailPage() {
                                   type="text"
                                   value={formatCurrency(tempWorkTypeCosts['OAP'].managementCost)}
                                   onChange={(e) => updateTempWorkTypeCost('OAP', 'managementCost', e.target.value)}
-                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 transition-all"
+                                  className="w-full px-3 py-2.5 pr-10 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent bg-gray-50 transition-all"
                                   placeholder="0"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-medium">원</span>
@@ -2795,7 +2805,7 @@ export default function ProjectDetailPage() {
                 <button
                   onClick={saveProjectEditModal}
                   disabled={isSavingProject}
-                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSavingProject ? '저장 중...' : '저장'}
                 </button>
@@ -2821,7 +2831,7 @@ export default function ProjectDetailPage() {
               <p className="text-gray-600 mb-6">
                 <span className="font-semibold text-gray-900">"{episodes.find(ep => ep.id === deleteEpisodeId)?.title}"</span>을(를) 삭제하시겠습니까?
                 <br />
-                <span className="text-sm text-orange-600">휴지통으로 이동되며, 30일 이내에 복구할 수 있습니다.</span>
+                <span className="text-sm text-blue-800">휴지통으로 이동되며, 30일 이내에 복구할 수 있습니다.</span>
               </p>
               <div className="flex justify-end space-x-3">
                 <button
@@ -2908,7 +2918,7 @@ function StatusBadge({ status }: { status: string }) {
   const statusMap: Record<string, { label: string; color: string; bgColor: string }> = {
     active: { label: '진행 중', color: 'text-green-700', bgColor: 'bg-green-100' },
     standby: { label: '대기', color: 'text-blue-700', bgColor: 'bg-blue-100' },
-    dormant: { label: '휴면', color: 'text-orange-700', bgColor: 'bg-orange-100' },
+    dormant: { label: '휴면', color: 'text-blue-900', bgColor: 'bg-blue-100' },
     inactive: { label: '비활성', color: 'text-gray-700', bgColor: 'bg-gray-100' },
   };
 
@@ -2925,7 +2935,7 @@ function StatusBadge({ status }: { status: string }) {
 function EpisodeStatusBadge({ status }: { status: string }) {
   const statusMap: Record<string, { label: string; color: string; bgColor: string }> = {
     waiting: { label: '대기', color: 'text-gray-700', bgColor: 'bg-gray-100' },
-    in_progress: { label: '진행 중', color: 'text-gray-600', bgColor: 'bg-orange-100' },
+    in_progress: { label: '진행 중', color: 'text-gray-600', bgColor: 'bg-blue-100' },
     review: { label: '검토', color: 'text-yellow-700', bgColor: 'bg-yellow-100' },
     completed: { label: '완료', color: 'text-gray-600', bgColor: 'bg-green-100' },
   };

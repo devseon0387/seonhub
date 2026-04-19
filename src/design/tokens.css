@@ -1,0 +1,53 @@
+/*
+ * SEON Hub 디자인 토큰 (source of truth)
+ *
+ * 이 파일이 프로젝트의 색/타이포/스페이싱/라디우스/모션 정의의 원천.
+ * 새 색상·폰트·스케일을 추가할 때 반드시 여기에 먼저 정의하고, 사용처는 var(--color-*) 경유.
+ * 하드코딩 금지 — 컴포넌트/페이지에서 임의 색(#xxxxxx) 사용 금지.
+ */
+
+@theme inline {
+  --color-background: #f5f4f2;
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* ── ink: 중립 warm 그레이 (텍스트/테두리/배경) ── */
+  --color-ink-50:  #fafaf9;
+  --color-ink-100: #f5f5f4;
+  --color-ink-200: #ede9e6;
+  --color-ink-300: #d6d3d1;
+  --color-ink-400: #a8a29e;
+  --color-ink-500: #78716c;
+  --color-ink-600: #57534e;
+  --color-ink-700: #44403c;
+  --color-ink-900: #1c1917;
+
+  /* ── brand: SEON Hub 네이비 ── */
+  --color-brand-50:  #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #1e3a8a;
+  --color-brand-700: #1e40af;
+
+  /* ── 시맨틱: 성공 ── */
+  --color-ok-50:  #f0fdf4;
+  --color-ok-500: #22c55e;
+  --color-ok-600: #16a34a;
+  --color-ok-700: #15803d;
+
+  /* ── 시맨틱: 경고 ── */
+  --color-warn-50:  #fef3c7;
+  --color-warn-500: #f59e0b;
+  --color-warn-600: #d97706;
+  --color-warn-700: #a16207;
+
+  /* ── 시맨틱: 에러 ── */
+  --color-bad-50:  #fef2f2;
+  --color-bad-100: #fee2e2;
+  --color-bad-500: #ef4444;
+  --color-bad-600: #dc2626;
+  --color-bad-700: #b91c1c;
+}

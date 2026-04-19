@@ -141,8 +141,8 @@ export default function ClientDetailPage() {
 
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Building2 size={28} className="text-orange-500" />
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Building2 size={28} className="text-blue-500" />
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">{client.name}</h1>
@@ -236,7 +236,7 @@ export default function ClientDetailPage() {
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <p className="text-sm font-medium text-gray-600">총 금액</p>
-            <p className="text-3xl font-bold text-orange-600 mt-2">
+            <p className="text-3xl font-bold text-blue-800 mt-2">
               {totalBudget.toLocaleString()}
               <span className="text-sm text-gray-500">원</span>
             </p>
@@ -249,7 +249,7 @@ export default function ClientDetailPage() {
             <h2 className="text-xl font-bold text-gray-900">프로젝트 목록</h2>
             <button
               onClick={() => setIsWizardOpen(true)}
-              className="px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm font-medium flex items-center gap-1.5"
+              className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-800 transition-colors text-sm font-medium flex items-center gap-1.5"
             >
               <Plus size={16} />
               새 프로젝트
@@ -272,7 +272,7 @@ export default function ClientDetailPage() {
                 {activeFilter === key && (
                   <motion.div
                     layoutId="client-project-filter-pill"
-                    className="absolute inset-0 bg-orange-500 rounded-lg sm:rounded-xl shadow-lg shadow-orange-500/30"
+                    className="absolute inset-0 bg-blue-500 rounded-lg sm:rounded-xl shadow-lg shadow-blue-700/30"
                     transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                   />
                 )}
@@ -334,7 +334,7 @@ export default function ClientDetailPage() {
                       </div>
 
                       {/* 프로젝트명 */}
-                      <h3 className="font-semibold text-gray-900 group-hover:text-orange-600 transition-colors text-sm leading-snug line-clamp-1 mb-3">
+                      <h3 className="font-semibold text-gray-900 group-hover:text-blue-800 transition-colors text-sm leading-snug line-clamp-1 mb-3">
                         {project.title}
                       </h3>
 
@@ -342,8 +342,8 @@ export default function ClientDetailPage() {
                       <div className="flex items-center gap-3 text-xs text-gray-400">
                         {partner ? (
                           <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <div className="w-4 h-4 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                              <User size={8} className="text-orange-500" />
+                            <div className="w-4 h-4 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                              <User size={8} className="text-blue-500" />
                             </div>
                             <span className="truncate">{partner.name}</span>
                           </div>
@@ -373,7 +373,6 @@ export default function ClientDetailPage() {
           onClose={() => setIsWizardOpen(false)}
           onComplete={handleWizardComplete}
           clients={allClients}
-          partners={allPartners}
           defaultClientId={client.id}
         />
       </div>
@@ -384,10 +383,10 @@ export default function ClientDetailPage() {
 // 상태 배지 컴포넌트
 function StatusBadge({ status }: { status: string }) {
   const statusMap: Record<string, { label: string; color: string }> = {
-    planning: { label: '시작 전', color: 'bg-orange-50 text-orange-600' },
+    planning: { label: '시작 전', color: 'bg-blue-50 text-blue-800' },
     in_progress: { label: '진행 중', color: 'bg-green-50 text-green-600' },
     completed: { label: '종료', color: 'bg-gray-100 text-gray-500' },
-    on_hold: { label: '보류', color: 'bg-orange-50 text-orange-500' },
+    on_hold: { label: '보류', color: 'bg-blue-50 text-blue-500' },
   };
 
   const { label, color } = statusMap[status] || statusMap.on_hold;

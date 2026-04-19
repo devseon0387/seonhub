@@ -86,13 +86,13 @@ export default function TrashPage() {
   const getItemIcon = (type: string) => {
     switch (type) {
       case 'project':
-        return <Folder size={20} className="text-orange-500" />;
+        return <Folder size={20} className="text-blue-500" />;
       case 'episode':
-        return <Film size={20} className="text-orange-500" />;
+        return <Film size={20} className="text-blue-500" />;
       case 'client':
         return <Briefcase size={20} className="text-green-500" />;
       case 'partner':
-        return <Users size={20} className="text-orange-500" />;
+        return <Users size={20} className="text-blue-500" />;
       default:
         return <Trash2 size={20} className="text-gray-500" />;
     }
@@ -125,7 +125,7 @@ export default function TrashPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800" />
       </div>
     );
   }
@@ -195,7 +195,7 @@ export default function TrashPage() {
                             <Calendar size={14} className="mr-1.5" />
                             <span>{new Date(item.deletedAt).toLocaleDateString('ko-KR')} 삭제</span>
                           </div>
-                          <span className={isExpiringSoon ? 'text-orange-600 font-medium' : ''}>
+                          <span className={isExpiringSoon ? 'text-blue-800 font-medium' : ''}>
                             {daysLeft}일 후 영구 삭제
                           </span>
                         </div>
@@ -204,7 +204,7 @@ export default function TrashPage() {
                     <div className="flex items-center space-x-2 ml-4">
                       <button
                         onClick={() => handleRestore(item)}
-                        className="px-4 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors flex items-center"
+                        className="px-4 py-2 bg-blue-50 text-blue-800 rounded-lg hover:bg-blue-100 transition-colors flex items-center"
                       >
                         <RotateCcw size={16} className="mr-2" />
                         복구

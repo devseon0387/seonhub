@@ -100,7 +100,7 @@ export default function PaymentsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-800" />
       </div>
     );
   }
@@ -119,7 +119,7 @@ export default function PaymentsPage() {
             {filter === key && (
               <motion.div
                 layoutId="payment-filter-pill"
-                className="absolute inset-0 bg-orange-500 rounded-xl shadow-lg shadow-orange-500/30"
+                className="absolute inset-0 bg-blue-500 rounded-xl shadow-lg shadow-blue-700/30"
                 transition={{ type: 'spring', stiffness: 380, damping: 30 }}
               />
             )}
@@ -131,18 +131,18 @@ export default function PaymentsPage() {
       </div>
 
       {/* 요약 바 */}
-      <div className="bg-orange-50 border border-orange-200 rounded-2xl px-6 py-4 flex items-center gap-6 flex-wrap">
+      <div className="bg-blue-50 border border-blue-200 rounded-2xl px-6 py-4 flex items-center gap-6 flex-wrap">
         <div className="flex items-center gap-2">
-          <Clock size={16} className="text-orange-600" />
-          <span className="text-sm font-medium text-orange-800">대기 {pendingCount}건</span>
+          <Clock size={16} className="text-blue-800" />
+          <span className="text-sm font-medium text-blue-900">대기 {pendingCount}건</span>
         </div>
-        <div className="h-4 w-px bg-orange-200" />
+        <div className="h-4 w-px bg-blue-200" />
         <div className="flex items-center gap-2">
           <AlertTriangle size={16} className="text-red-600" />
           <span className="text-sm font-medium text-red-700">연체 {overdueCount}건</span>
         </div>
-        <div className="h-4 w-px bg-orange-200" />
-        <span className="text-sm font-medium text-orange-800">총 미수금 {(totalReceivable / 10000).toFixed(0)}만원</span>
+        <div className="h-4 w-px bg-blue-200" />
+        <span className="text-sm font-medium text-blue-900">총 미수금 {(totalReceivable / 10000).toFixed(0)}만원</span>
       </div>
 
       {/* 일괄 처리 버튼 */}
@@ -151,7 +151,7 @@ export default function PaymentsPage() {
           <button
             onClick={handleBatchComplete}
             disabled={updating}
-            className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl font-semibold text-sm hover:bg-orange-600 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-xl font-semibold text-sm hover:bg-blue-800 transition-colors disabled:opacity-50"
           >
             <Check size={14} />
             {updating ? '처리 중...' : `입금 완료 처리 (${selected.size}건)`}
