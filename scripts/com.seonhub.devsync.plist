@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.seonhub.devsync</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-c</string>
+    <string>cd /Users/vimo/Desktop/Dev/hype5-erp && /opt/homebrew/bin/npm run sync:dev</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/vimo/Desktop/Dev/hype5-erp</string>
+
+  <key>StartInterval</key>
+  <integer>1800</integer>
+  <!-- 매 30분마다 실행 -->
+
+  <key>RunAtLoad</key>
+  <true/>
+  <!-- 로그인 직후 1회 즉시 실행 -->
+
+  <key>StandardOutPath</key>
+  <string>/Users/vimo/Library/Logs/seonhub-devsync.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/vimo/Library/Logs/seonhub-devsync.err.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>/Users/vimo</string>
+  </dict>
+</dict>
+</plist>
