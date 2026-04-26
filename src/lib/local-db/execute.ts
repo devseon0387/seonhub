@@ -1,4 +1,4 @@
-import { getDb, encodeRow, decodeRow } from './db';
+import { getSupabase, encodeRow, decodeRow } from './db';
 import { randomUUID } from 'crypto';
 
 export type Filter =
@@ -27,110 +27,123 @@ export interface ExecResult {
   error: { message: string; code?: string; details?: string; hint?: string } | null;
 }
 
-function buildWhere(filters: Filter[] = []): { sql: string; params: unknown[] } {
-  if (filters.length === 0) return { sql: '', params: [] };
-  const parts: string[] = [];
-  const params: unknown[] = [];
+type AnyBuilder = {
+  eq: (col: string, val: unknown) => AnyBuilder;
+  neq: (col: string, val: unknown) => AnyBuilder;
+  gt: (col: string, val: unknown) => AnyBuilder;
+  gte: (col: string, val: unknown) => AnyBuilder;
+  lt: (col: string, val: unknown) => AnyBuilder;
+  lte: (col: string, val: unknown) => AnyBuilder;
+  like: (col: string, val: unknown) => AnyBuilder;
+  ilike: (col: string, val: unknown) => AnyBuilder;
+  is: (col: string, val: unknown) => AnyBuilder;
+  in: (col: string, val: unknown[]) => AnyBuilder;
+  not: (col: string, op: string, val: unknown) => AnyBuilder;
+  or: (raw: string) => AnyBuilder;
+};
+
+function applyFilters<B extends AnyBuilder>(builder: B, filters: Filter[] = []): B {
+  let b = builder;
   for (const f of filters) {
-    if (f.op === 'eq') { parts.push(`"${f.col}" = ?`); params.push(f.val); }
-    else if (f.op === 'neq') { parts.push(`"${f.col}" != ?`); params.push(f.val); }
-    else if (f.op === 'gt') { parts.push(`"${f.col}" > ?`); params.push(f.val); }
-    else if (f.op === 'gte') { parts.push(`"${f.col}" >= ?`); params.push(f.val); }
-    else if (f.op === 'lt') { parts.push(`"${f.col}" < ?`); params.push(f.val); }
-    else if (f.op === 'lte') { parts.push(`"${f.col}" <= ?`); params.push(f.val); }
-    else if (f.op === 'like' || f.op === 'ilike') { parts.push(`"${f.col}" LIKE ?`); params.push(f.val); }
-    else if (f.op === 'is') {
-      if (f.val === null) parts.push(`"${f.col}" IS NULL`);
-      else parts.push(`"${f.col}" IS ?`), params.push(f.val);
-    }
-    else if (f.op === 'in') {
-      if (f.val.length === 0) { parts.push('0'); }
-      else { parts.push(`"${f.col}" IN (${f.val.map(() => '?').join(',')})`); params.push(...f.val); }
-    }
-    else if (f.op === 'or') { parts.push(`(${f.raw})`); }
+    if (f.op === 'eq') b = b.eq(f.col, f.val) as B;
+    else if (f.op === 'neq') b = b.neq(f.col, f.val) as B;
+    else if (f.op === 'gt') b = b.gt(f.col, f.val) as B;
+    else if (f.op === 'gte') b = b.gte(f.col, f.val) as B;
+    else if (f.op === 'lt') b = b.lt(f.col, f.val) as B;
+    else if (f.op === 'lte') b = b.lte(f.col, f.val) as B;
+    else if (f.op === 'like') b = b.like(f.col, f.val) as B;
+    else if (f.op === 'ilike') b = b.ilike(f.col, f.val) as B;
+    else if (f.op === 'is') b = b.is(f.col, f.val) as B;
+    else if (f.op === 'in') b = b.in(f.col, f.val) as B;
+    else if (f.op === 'or') b = b.or(f.raw) as B;
+    else if (f.op === 'not') b = b.not(f.col, f.op, f.val) as B;
   }
-  return { sql: parts.length ? ' WHERE ' + parts.join(' AND ') : '', params };
+  return b;
 }
 
-export function executeSpec(spec: QuerySpec): ExecResult {
+function decodeMany(table: string, data: unknown): unknown[] {
+  if (!Array.isArray(data)) return [];
+  return data.map((r) => decodeRow(table, r as Record<string, unknown>));
+}
+
+export async function executeSpec(spec: QuerySpec): Promise<ExecResult> {
   try {
-    const db = getDb();
+    const sb = getSupabase();
     const t = spec.table;
 
     if (spec.action === 'select') {
-      const where = buildWhere(spec.filters);
-      let sql = `SELECT ${spec.columns || '*'} FROM "${t}"${where.sql}`;
-      if (spec.order) sql += ` ORDER BY "${spec.order.col}" ${spec.order.ascending ? 'ASC' : 'DESC'}`;
-      if (spec.limit !== undefined) sql += ` LIMIT ${spec.limit}`;
-      if (spec.offset !== undefined) sql += ` OFFSET ${spec.offset}`;
-      const rows = db.prepare(sql).all(...where.params) as Record<string, unknown>[];
-      const decoded = rows.map((r) => decodeRow(t, r));
+      let q = sb.from(t).select(spec.columns || '*') as unknown as AnyBuilder & {
+        order: (col: string, opts: { ascending: boolean }) => AnyBuilder & { range: (a: number, b: number) => unknown; limit: (n: number) => unknown; single: () => Promise<{ data: unknown; error: unknown }>; maybeSingle: () => Promise<{ data: unknown; error: unknown }> };
+        range: (a: number, b: number) => unknown;
+        limit: (n: number) => unknown;
+        single: () => Promise<{ data: unknown; error: unknown }>;
+        maybeSingle: () => Promise<{ data: unknown; error: unknown }>;
+      };
+      q = applyFilters(q, spec.filters);
+      if (spec.order) q = q.order(spec.order.col, { ascending: spec.order.ascending }) as typeof q;
+      if (spec.offset !== undefined && spec.limit !== undefined) {
+        q = q.range(spec.offset, spec.offset + spec.limit - 1) as typeof q;
+      } else if (spec.limit !== undefined) {
+        q = q.limit(spec.limit) as typeof q;
+      }
       if (spec.single) {
-        if (decoded.length === 0) return { data: null, error: { message: 'No rows', code: 'PGRST116' } };
-        if (decoded.length > 1) return { data: null, error: { message: 'Multiple rows', code: 'PGRST116' } };
-        return { data: decoded[0], error: null };
+        const { data, error } = await q.single();
+        if (error) return { data: null, error: error as ExecResult['error'] };
+        return { data: decodeRow(t, data as Record<string, unknown>), error: null };
       }
       if (spec.maybeSingle) {
-        return { data: decoded[0] ?? null, error: null };
+        const { data, error } = await q.maybeSingle();
+        if (error) return { data: null, error: error as ExecResult['error'] };
+        return { data: data ? decodeRow(t, data as Record<string, unknown>) : null, error: null };
       }
-      return { data: decoded, error: null };
+      const { data, error } = await (q as unknown as Promise<{ data: unknown; error: unknown }>);
+      if (error) return { data: null, error: error as ExecResult['error'] };
+      return { data: decodeMany(t, data), error: null };
     }
 
     if (spec.action === 'insert' || spec.action === 'upsert') {
       const items = Array.isArray(spec.values) ? spec.values : [spec.values!];
-      const inserted: unknown[] = [];
-      const insertOne = (raw: Record<string, unknown>) => {
-        if (!raw.id) raw.id = randomUUID();
-        if (t !== 'trash' && !raw.created_at) raw.created_at = new Date().toISOString();
-        const row = encodeRow(t, raw);
-        const cols = Object.keys(row);
-        const placeholders = cols.map(() => '?').join(',');
-        const values = cols.map((c) => row[c]);
-        const quoted = cols.map((c) => `"${c}"`).join(',');
-        let sql: string;
-        if (spec.action === 'upsert') {
-          const conflict = spec.onConflict || 'id';
-          const updateClause = cols
-            .filter((c) => c !== conflict)
-            .map((c) => `"${c}" = excluded."${c}"`)
-            .join(', ');
-          sql = `INSERT INTO "${t}" (${quoted}) VALUES (${placeholders}) ON CONFLICT("${conflict}") DO UPDATE SET ${updateClause || `"${conflict}" = excluded."${conflict}"`}`;
-        } else {
-          sql = `INSERT INTO "${t}" (${quoted}) VALUES (${placeholders})`;
-        }
-        db.prepare(sql).run(...values);
-        const back = db.prepare(`SELECT * FROM "${t}" WHERE "id" = ?`).get(raw.id) as Record<string, unknown>;
-        inserted.push(decodeRow(t, back));
-      };
-      for (const item of items) insertOne(item as Record<string, unknown>);
-      if (spec.single) return { data: inserted[0], error: null };
-      return { data: inserted, error: null };
+      const encoded = items.map((raw) => {
+        const r = { ...(raw as Record<string, unknown>) };
+        if (!r.id) r.id = randomUUID();
+        if (t !== 'trash' && !r.created_at) r.created_at = new Date().toISOString();
+        return encodeRow(t, r);
+      });
+      let builder;
+      if (spec.action === 'upsert') {
+        builder = sb.from(t).upsert(encoded, spec.onConflict ? { onConflict: spec.onConflict } : undefined).select();
+      } else {
+        builder = sb.from(t).insert(encoded).select();
+      }
+      const { data, error } = await builder;
+      if (error) return { data: null, error: error as ExecResult['error'] };
+      const decoded = decodeMany(t, data);
+      if (spec.single) return { data: decoded[0] ?? null, error: null };
+      return { data: decoded, error: null };
     }
 
     if (spec.action === 'update') {
       const raw = spec.values as Record<string, unknown>;
-      const row = encodeRow(t, raw);
-      const cols = Object.keys(row);
-      if (cols.length === 0) return { data: null, error: { message: 'No fields to update' } };
-      const setClause = cols.map((c) => `"${c}" = ?`).join(', ');
-      const where = buildWhere(spec.filters);
-      const sql = `UPDATE "${t}" SET ${setClause}${where.sql}`;
-      const values = cols.map((c) => row[c]);
-      db.prepare(sql).run(...values, ...where.params);
+      const encoded = encodeRow(t, raw);
+      let q = sb.from(t).update(encoded) as unknown as AnyBuilder;
+      q = applyFilters(q, spec.filters);
       if (spec.returning) {
-        const selectSql = `SELECT * FROM "${t}"${where.sql}`;
-        const rows = db.prepare(selectSql).all(...where.params) as Record<string, unknown>[];
-        const decoded = rows.map((r) => decodeRow(t, r));
+        const { data, error } = await (q as unknown as { select: () => Promise<{ data: unknown; error: unknown }> }).select();
+        if (error) return { data: null, error: error as ExecResult['error'] };
+        const decoded = decodeMany(t, data);
         if (spec.single) return { data: decoded[0] ?? null, error: null };
         return { data: decoded, error: null };
       }
+      const { error } = await (q as unknown as Promise<{ error: unknown }>);
+      if (error) return { data: null, error: error as ExecResult['error'] };
       return { data: null, error: null };
     }
 
     if (spec.action === 'delete') {
-      const where = buildWhere(spec.filters);
-      const sql = `DELETE FROM "${t}"${where.sql}`;
-      db.prepare(sql).run(...where.params);
+      let q = sb.from(t).delete() as unknown as AnyBuilder;
+      q = applyFilters(q, spec.filters);
+      const { error } = await (q as unknown as Promise<{ error: unknown }>);
+      if (error) return { data: null, error: error as ExecResult['error'] };
       return { data: null, error: null };
     }
 
