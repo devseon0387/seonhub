@@ -29,7 +29,28 @@ try {
 }
 
 import { createClient } from '@supabase/supabase-js';
-import { scanDevProjects, type DevProject } from '../src/lib/dev/scan-projects';
+import { promises as fsp } from 'fs';
+import path from 'path';
+import { scanDevProjects, type DevProject, FAVICON_CANDIDATES } from '../src/lib/dev/scan-projects';
+
+async function faviconDataUrl(absPath: string): Promise<string | null> {
+  for (const rel of FAVICON_CANDIDATES) {
+    const full = path.join(absPath, rel);
+    try {
+      const buf = await fsp.readFile(full);
+      if (buf.length > 200_000) continue; // 200KB 초과 스킵 (DB 부담)
+      const ext = (rel.toLowerCase().split('.').pop() || '').replace(/[^a-z]/g, '');
+      const mime =
+        ext === 'svg' ? 'image/svg+xml' :
+        ext === 'ico' ? 'image/x-icon' :
+        ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' :
+        ext === 'webp' ? 'image/webp' :
+        'image/png';
+      return `data:${mime};base64,${buf.toString('base64')}`;
+    } catch { continue; }
+  }
+  return null;
+}
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -42,7 +63,9 @@ const sb = createClient(url, key, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-function toRow(p: DevProject) {
+async function toRow(p: DevProject) {
+  // Vercel에서도 보이도록 favicon을 base64 data URL로 인라인 (없으면 null)
+  const faviconData = p.faviconUrl ? await faviconDataUrl(p.absPath) : null;
   return {
     id: p.id,
     name: p.name,
@@ -60,7 +83,7 @@ function toRow(p: DevProject) {
     has_wireframes: p.hasWireframes ? 1 : 0,
     has_roadmap: p.hasRoadmap ? 1 : 0,
     has_erd: p.hasERD ? 1 : 0,
-    favicon_url: p.faviconUrl,
+    favicon_url: faviconData ?? p.faviconUrl,
     detected_services: p.detectedServices ? JSON.stringify(p.detectedServices) : null,
     git_dirty: p.gitDirty,
     git_ahead: p.gitAhead,
@@ -76,7 +99,7 @@ async function main() {
   const projects = result.projects;
   console.log(`[sync-dev] found ${projects.length} projects in ${Date.now() - started}ms`);
 
-  const rows = projects.map(toRow);
+  const rows = await Promise.all(projects.map(toRow));
   if (rows.length === 0) {
     console.warn('[sync-dev] no projects found, skipping upsert');
     return;
