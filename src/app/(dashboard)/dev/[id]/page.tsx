@@ -11,9 +11,14 @@ import DesignSystemShowcase from '@/components/DesignSystemShowcase';
 import WireframesGallery from '@/components/WireframesGallery';
 import RoadmapView from '@/components/RoadmapView';
 import ERDView from '@/components/ERDView';
+import ExternalWireframesGallery from '@/components/ExternalWireframesGallery';
+import ExternalDesignShowcase from '@/components/ExternalDesignShowcase';
+import EditableProjectName from '@/components/EditableProjectName';
+import BlueprintDoc from '@/components/BlueprintDoc';
 import { WIREFRAMES } from '@/wireframes/registry';
 import { ROADMAP } from '@/roadmap/roadmap';
 import { ERD } from '@/erd/erd';
+import { getProjectBlueprints } from '@/projects/registry';
 
 type Tab = 'overview' | 'design' | 'wireframes' | 'roadmap' | 'erd';
 
@@ -73,6 +78,7 @@ export default function DevProjectDetailPage({ params }: { params: Promise<{ id:
   }, [id]);
 
   const isSelf = id === SELF_ID;
+  const blueprints = useMemo(() => (isSelf ? null : getProjectBlueprints(id)), [isSelf, id]);
   const [c1, c2] = useMemo(() => pickGradient(id), [id]);
 
   if (loading) {
@@ -106,10 +112,25 @@ export default function DevProjectDetailPage({ params }: { params: Promise<{ id:
 
   const tabs: { key: Tab; label: string; icon: React.ElementType; show: boolean; count?: number }[] = [
     { key: 'overview', label: '개요', icon: Clock, show: true },
-    { key: 'design', label: '디자인 시스템', icon: Palette, show: project.hasDesignSystem },
-    { key: 'wireframes', label: '와이어프레임', icon: Frame, show: project.hasWireframes, count: isSelf ? WIREFRAMES.length : undefined },
-    { key: 'roadmap', label: '로드맵', icon: Map, show: project.hasRoadmap },
-    { key: 'erd', label: 'ERD', icon: Database, show: project.hasERD, count: isSelf ? ERD.entities.length : undefined },
+    {
+      key: 'design', label: '디자인 시스템', icon: Palette,
+      show: true,
+    },
+    {
+      key: 'wireframes', label: '와이어프레임', icon: Frame,
+      show: true,
+      count: blueprints?.wireframes?.length ?? (isSelf ? WIREFRAMES.length : undefined),
+    },
+    {
+      key: 'roadmap', label: '로드맵', icon: Map,
+      show: true,
+      count: blueprints?.roadmap?.phases.length ?? (isSelf ? ROADMAP.phases.length : undefined),
+    },
+    {
+      key: 'erd', label: 'ERD', icon: Database,
+      show: true,
+      count: blueprints?.erd?.entities.length ?? (isSelf ? ERD.entities.length : undefined),
+    },
   ];
 
   return (
@@ -137,7 +158,7 @@ export default function DevProjectDetailPage({ params }: { params: Promise<{ id:
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-page">{project.name}</h1>
+            <EditableProjectName id={project.id} fallback={project.name} variant="header" stopPropagation={false} />
             {project.isRunning && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-[0.05em] bg-emerald-50 text-emerald-700">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -194,40 +215,59 @@ export default function DevProjectDetailPage({ params }: { params: Promise<{ id:
       </div>
 
       {/* 탭 콘텐츠 */}
-      {tab === 'overview' && <OverviewPanel project={project} />}
+      {tab === 'overview' && <OverviewPanel project={project} hasBlueprints={blueprints} />}
       {tab === 'design' && (
         isSelf ? (
           <DesignSystemShowcase showHeader={false} />
+        ) : blueprints?.designSystemFile ? (
+          <ExternalDesignShowcase projectId={id} file={blueprints.designSystemFile} label={`${project.name} 디자인 시스템`} />
         ) : (
-          <ExternalOnlyPanel project={project} type="design" />
+          <BlueprintDoc projectId={id} kind="design" />
         )
       )}
       {tab === 'wireframes' && (
         isSelf ? (
           <WireframesGallery showHeader={false} linkPrefix="/wireframes" />
+        ) : blueprints?.wireframes && blueprints.wireframes.length > 0 ? (
+          <ExternalWireframesGallery projectId={id} wireframes={blueprints.wireframes} />
         ) : (
-          <ExternalOnlyPanel project={project} type="wireframes" />
+          <BlueprintDoc projectId={id} kind="wireframes" />
         )
       )}
       {tab === 'roadmap' && (
         isSelf ? (
           <RoadmapView roadmap={ROADMAP} showHeader={false} />
+        ) : blueprints?.roadmap ? (
+          <RoadmapView roadmap={blueprints.roadmap} showHeader={false} />
         ) : (
-          <ExternalOnlyPanel project={project} type="roadmap" />
+          <BlueprintDoc projectId={id} kind="roadmap" />
         )
       )}
       {tab === 'erd' && (
         isSelf ? (
           <ERDView erd={ERD} showHeader={false} />
+        ) : blueprints?.erd ? (
+          <ERDView erd={blueprints.erd} showHeader={false} />
         ) : (
-          <ExternalOnlyPanel project={project} type="erd" />
+          <BlueprintDoc projectId={id} kind="erd" />
         )
       )}
     </div>
   );
 }
 
-function OverviewPanel({ project }: { project: DevProject }) {
+function OverviewPanel({
+  project,
+  hasBlueprints,
+}: {
+  project: DevProject;
+  hasBlueprints: ReturnType<typeof getProjectBlueprints> | null;
+}) {
+  const badge = (folder: boolean, bp: boolean) => {
+    if (folder) return <span className="text-emerald-700">있음</span>;
+    if (bp) return <span className="text-emerald-700">있음 <span className="text-[10px] text-ink-500">(블루프린트)</span></span>;
+    return <span className="text-ink-400">없음</span>;
+  };
   const rows: { label: string; value: React.ReactNode }[] = [
     { label: '경로', value: <span className="font-mono text-[12px]">{project.path}</span> },
     { label: '절대 경로', value: <span className="font-mono text-[12px] text-ink-500">{project.absPath}</span> },
@@ -236,10 +276,10 @@ function OverviewPanel({ project }: { project: DevProject }) {
     { label: 'Git 브랜치', value: project.gitBranch ? <span className="font-mono inline-flex items-center gap-1"><GitBranch size={11} />{project.gitBranch}</span> : <span className="text-ink-400">—</span> },
     { label: '최근 수정', value: <span>{formatRelative(project.lastModified)}</span> },
     { label: 'package.json', value: project.hasPackageJson ? '있음' : '없음' },
-    { label: '디자인 시스템', value: project.hasDesignSystem ? <span className="text-emerald-700">있음</span> : <span className="text-ink-400">없음</span> },
-    { label: '와이어프레임', value: project.hasWireframes ? <span className="text-emerald-700">있음</span> : <span className="text-ink-400">없음</span> },
-    { label: '로드맵', value: project.hasRoadmap ? <span className="text-emerald-700">있음</span> : <span className="text-ink-400">없음</span> },
-    { label: 'ERD', value: project.hasERD ? <span className="text-emerald-700">있음</span> : <span className="text-ink-400">없음</span> },
+    { label: '디자인 시스템', value: badge(project.hasDesignSystem, !!hasBlueprints?.designSystemFile) },
+    { label: '와이어프레임', value: badge(project.hasWireframes, (hasBlueprints?.wireframes?.length ?? 0) > 0) },
+    { label: '로드맵', value: badge(project.hasRoadmap, !!hasBlueprints?.roadmap) },
+    { label: 'ERD', value: badge(project.hasERD, !!hasBlueprints?.erd) },
   ];
 
   return (

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>hype5 ERP — 프로젝트 타입 확장 시안 (카드 그리드 반영)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "SF Pro", sans-serif; background: #f5f4f2; color: #1c1917; padding: 28px 16px; }
+  .wrap { max-width: 1360px; margin: 0 auto; }
+  .h { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .lede { color: #78716c; margin-bottom: 24px; font-size: 13px; }
+
+  .block { background: white; border-radius: 14px; padding: 20px; margin-bottom: 20px; border: 1px solid #e7e5e4; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; color: #1e40af; background: #dbeafe; padding: 3px 9px; border-radius: 5px; margin-bottom: 8px; letter-spacing: 0.3px; }
+  .bt { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .bd { color: #78716c; font-size: 12.5px; margin-bottom: 16px; line-height: 1.55; }
+
+  /* ===== ERP 프레임 ===== */
+  .erp { display: flex; border: 1px solid #e7e5e4; border-radius: 10px; overflow: hidden; height: 700px; background: #f5f4f2; }
+  .rail { width: 52px; background: #1c1917; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+  .rlogo { width: 100%; height: 56px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .rlogo div { width: 32px; height: 32px; border-radius: 8px; background: #1e3a8a; color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; }
+  .ritems { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 4px; width: 100%; }
+  .ri { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.5); font-size: 14px; cursor: pointer; }
+  .ri.active { background: rgba(255,255,255,0.08); color: white; }
+
+  .panel { width: 200px; background: white; border-right: 1px solid #e7e5e4; padding: 14px 10px; flex-shrink: 0; }
+  .ptitle { font-size: 11px; color: #a8a29e; text-transform: uppercase; font-weight: 700; margin-bottom: 10px; padding: 0 6px; }
+  .ni { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: 13px; color: #44403c; cursor: pointer; margin-bottom: 1px; }
+  .ni.active { background: #eff6ff; color: #1e40af; font-weight: 600; }
+  .ni .i { font-size: 14px; width: 14px; text-align: center; color: #a8a29e; }
+  .ni.active .i { color: #1e40af; }
+  .nv { height: 1px; background: #e7e5e4; margin: 8px 6px; }
+
+  .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { height: 44px; background: white; border-bottom: 1px solid #e7e5e4; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 12px; color: #78716c; flex-shrink: 0; }
+  .crumb { display: flex; align-items: center; gap: 6px; }
+  .main { flex: 1; padding: 24px 28px; background: #f5f4f2; overflow: auto; }
+
+  .hdr { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .title { font-size: 26px; font-weight: 800; color: #111827; margin-bottom: 4px; letter-spacing: -0.01em; }
+  .subtitle { font-size: 13px; color: #6b7280; }
+  .btn-primary { background: #3b82f6; color: white; border: none; padding: 9px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+  /* 필터 탭 — 실제 스타일 (큰 흰 박스 + 파란 알약 선택) */
+  .filter-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+  .fbar { background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 8px; display: flex; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+  .fitem { padding: 12px 22px; border-radius: 12px; font-size: 14px; font-weight: 600; color: #4b5563; cursor: pointer; display: flex; align-items: center; gap: 8px; position: relative; }
+  .fitem.active { background: #3b82f6; color: white; box-shadow: 0 8px 20px rgba(29,78,216,0.25); }
+  .fc { background: #f3f4f6; color: #6b7280; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; min-width: 22px; text-align: center; }
+  .fitem.active .fc { background: rgba(255,255,255,0.22); color: white; }
+
+  .right-tools { display: flex; gap: 8px; align-items: center; }
+  .search { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px 14px; font-size: 13px; color: #9ca3af; display: flex; align-items: center; gap: 8px; min-width: 170px; }
+  .sort { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px 14px; font-size: 12px; color: #4b5563; }
+
+  /* 카드 그리드 */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .pcard { background: white; border: 1px solid #f3f4f6; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s; }
+  .pcard:hover { border-color: #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+  .pcard-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .pclient { font-size: 12px; color: #6b7280; font-weight: 500; }
+  .pstatus { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 5px; }
+  .ps-active { background: #dcfce7; color: #166534; }
+  .ps-standby { background: #fef3c7; color: #92400e; }
+  .ps-dormant { background: #f3f4f6; color: #4b5563; }
+  .pname { font-size: 17px; font-weight: 700; color: #111827; margin-bottom: 12px; line-height: 1.3; }
+  .pname:hover { color: #1e40af; }
+  .ppartner { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #9ca3af; margin-bottom: 8px; }
+  .pavatar { width: 16px; height: 16px; border-radius: 8px; background: #dbeafe; display: inline-flex; align-items: center; justify-content: center; color: #3b82f6; font-size: 9px; }
+  .pspacer { flex: 1; }
+  .pwork { border-top: 1px solid #f9fafb; padding-top: 8px; display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
+  .pwrow { display: flex; align-items: center; gap: 6px; }
+  .pdot { width: 4px; height: 4px; border-radius: 50%; }
+  .pdot-g { background: #10b981; }
+  .pdot-y { background: #d1d5db; }
+  .pwlabel { color: #6b7280; }
+  .pwlabel-muted { color: #9ca3af; }
+  .pchip-long { background: #dcfce7; color: #166534; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+  .pchip-short { background: #dbeafe; color: #1e40af; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+  .pchip-dev { background: #f3e8ff; color: #6d28d9; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+  .pchip-content { background: #fce7f3; color: #be185d; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+
+  /* 타입 배지 (새로 추가) */
+  .tbadge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; }
+  .tb-video { background: #fee2e2; color: #b91c1c; }
+  .tb-dev { background: #e0e7ff; color: #1e40af; }
+  .tb-content { background: #fce7f3; color: #be185d; }
+
+  /* 위저드 모달 */
+  .overlay { background: rgba(28,25,23,0.5); border-radius: 12px; padding: 40px; display: flex; justify-content: center; }
+  .wizard { background: white; border-radius: 14px; padding: 28px 32px; width: 100%; max-width: 640px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); position: relative; }
+  .wclose { position: absolute; top: 20px; right: 20px; width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #78716c; cursor: pointer; }
+  .steps { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+  .stepnum { width: 28px; height: 28px; border-radius: 14px; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .steplabel { font-size: 14px; font-weight: 700; color: #111827; margin-right: 12px; }
+  .dots { display: flex; gap: 4px; flex: 1; }
+  .dot { flex: 1; height: 3px; border-radius: 2px; background: #e5e7eb; }
+  .dot.cur { background: #3b82f6; }
+  .dot.done { background: #93c5fd; }
+
+  .wtitle { font-size: 19px; font-weight: 700; margin-bottom: 4px; color: #111827; }
+  .wsub { font-size: 13px; color: #6b7280; margin-bottom: 22px; }
+
+  .opt-card { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.15s; }
+  .opt-card:hover { border-color: #93c5fd; }
+  .opt-card.selected { border-color: #3b82f6; background: #eff6ff; }
+  .opt-ico { width: 44px; height: 44px; border-radius: 12px; background: #f9fafb; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .opt-card.selected .opt-ico { background: #dbeafe; }
+  .opt-title { font-size: 14px; font-weight: 700; color: #111827; margin-bottom: 2px; }
+  .opt-desc { font-size: 12px; color: #6b7280; }
+
+  .wfoot { display: flex; justify-content: space-between; margin-top: 28px; padding-top: 18px; border-top: 1px solid #f3f4f6; }
+  .btn-ghost { background: white; color: #9ca3af; border: 1px solid #e5e7eb; padding: 9px 16px; border-radius: 10px; font-size: 13px; font-weight: 500; cursor: pointer; }
+
+  /* 상세 */
+  .detail-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+  .dsmall { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+  .dtitle { font-size: 26px; font-weight: 800; color: #111827; margin-bottom: 4px; }
+  .dmeta { color: #6b7280; font-size: 13px; }
+  .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; background: white; border: 1px solid #f3f4f6; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+  .mg-label { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; font-weight: 600; }
+  .mg-value { font-size: 13px; font-weight: 600; color: #111827; }
+  .sec-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .sec-title { font-size: 14px; font-weight: 700; color: #111827; }
+  .sec-action { font-size: 12px; color: #3b82f6; cursor: pointer; font-weight: 600; }
+  .items { background: white; border: 1px solid #f3f4f6; border-radius: 12px; }
+  .item { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid #f9fafb; }
+  .item:last-child { border-bottom: none; }
+  .item-title { font-size: 13.5px; font-weight: 600; color: #111827; }
+  .item-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+  .st { padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; display: inline-block; }
+
+  .hint { margin-top: 14px; padding: 12px 16px; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 10px; font-size: 12.5px; color: #1e40af; }
+
+  .toc { background: white; border-radius: 12px; padding: 16px 22px; margin-bottom: 20px; border: 1px solid #e7e5e4; }
+  .toc h2 { font-size: 13px; margin-bottom: 8px; color: #44403c; font-weight: 700; }
+  .toc ul { list-style: none; font-size: 13px; }
+  .toc li { padding: 3px 0; color: #57534e; }
+  .toc li a { color: #3b82f6; text-decoration: none; font-weight: 600; }
+  .note { font-size: 12px; color: #6b7280; background: #fafaf9; border: 1px dashed #e5e7eb; padding: 12px 16px; border-radius: 10px; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="h">hype5 ERP — 프로젝트 타입 확장</div>
+  <p class="lede">실제 프로젝트 화면(카드 3열 그리드 + 큰 필터 박스)에 맞춰 타입 배지/필터/위저드 확장 시안</p>
+
+  <div class="toc">
+    <h2>시안</h2>
+    <ul>
+      <li><a href="#a">A안</a> — 카드 상단에 타입 배지 추가 (최소 변경, 카드 레이아웃 그대로)</li>
+      <li><a href="#b">B안</a> — 검색창 옆 "타입 ▾" 드롭다운 필터 추가 + 카드 배지</li>
+      <li><a href="#c">C안</a> — 카드 내부에 타입별 전용 정보 블록 (에피소드/스프린트/발행 카운트)</li>
+      <li><a href="#d">D안</a> — 위저드에 "프로젝트 타입" 선택 스텝 추가</li>
+      <li><a href="#e">E안</a> — 상세 페이지 타입별 메타/하위 단위 동적 전환</li>
+    </ul>
+  </div>
+
+  <!-- ===== A안: 카드 상단 타입 배지 ===== -->
+  <div class="block" id="a">
+    <span class="tag">A안</span>
+    <div class="bt">카드 상단에 타입 배지 추가 (최소 변경)</div>
+    <div class="bd">기존 카드 레이아웃(클라이언트 + 상태 / 프로젝트명 / 파트너 / 작업 현황) 그대로. 클라이언트 텍스트 앞에 작은 타입 배지만 추가.</div>
+    <div class="erp">
+      <div class="rail">
+        <div class="rlogo"><div>H5</div></div>
+        <div class="ritems"><div class="ri active">▦</div><div class="ri">✉</div></div>
+      </div>
+      <div class="panel">
+        <div class="ptitle">메인</div>
+        <div class="ni"><span class="i">✓</span>매니지먼트</div>
+        <div class="ni active"><span class="i">▤</span>프로젝트</div>
+        <div class="ni"><span class="i">₩</span>정산 관리</div>
+        <div class="ni"><span class="i">💳</span>지출 관리</div>
+        <div class="nv"></div>
+        <div class="ni"><span class="i">▣</span>클라이언트 관리</div>
+      </div>
+      <div class="content">
+        <div class="topbar"><div class="crumb">메인 <span>/</span> <span style="color:#111827;font-weight:500;">프로젝트</span></div><div>🔔</div></div>
+        <div class="main">
+          <div class="hdr">
+            <div><div class="title">프로젝트</div><div class="subtitle">진행 중인 프로젝트를 한눈에 관리하세요</div></div>
+            <button class="btn-primary">+ 새 프로젝트</button>
+          </div>
+          <div class="filter-row">
+            <div class="fbar">
+              <div class="fitem">전체 <span class="fc">12</span></div>
+              <div class="fitem active">진행 중 <span class="fc">8</span></div>
+              <div class="fitem">대기 <span class="fc">2</span></div>
+              <div class="fitem">휴면 <span class="fc">0</span></div>
+              <div class="fitem">비활성 <span class="fc">0</span></div>
+              <div class="fitem">아카이브 <span class="fc">2</span></div>
+            </div>
+            <div class="right-tools">
+              <div class="search">🔍 <span>검색...</span></div>
+              <div class="sort">일정순 ▾</div>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="pcard">
+              <div class="pcard-top">
+                <div style="display:flex;align-items:center;gap:6px;"><span class="tbadge tb-video">🎬 영상</span><span class="pclient">HYBE</span></div>
+                <span class="pstatus ps-active">진행 중</span>
+              </div>
+              <div class="pname">하이브 신사업 브랜딩 영상</div>
+              <div class="ppartner"><span class="pavatar">👤</span>주식회사 필름원 · 6/10회차</div>
+              <div class="pwork">
+                <div class="pwrow"><span class="pdot pdot-g"></span><span class="pwlabel">작업 진행 중</span><span class="pchip-long">롱폼 3개</span><span class="pchip-short">숏폼 2개</span></div>
+                <div class="pwrow"><span class="pdot pdot-y"></span><span class="pwlabel-muted">누적 작업 수</span><span class="pchip-long">롱폼 10개</span><span class="pchip-short">숏폼 8개</span></div>
+              </div>
+            </div>
+            <div class="pcard">
+              <div class="pcard-top">
+                <div style="display:flex;align-items:center;gap:6px;"><span class="tbadge tb-dev">💻 개발</span><span class="pclient">내부</span></div>
+                <span class="pstatus ps-active">진행 중</span>
+              </div>
+              <div class="pname">hype5 ERP v2</div>
+              <div class="ppartner"><span class="pavatar">👤</span>박개발, 정풀스택</div>
+              <div class="pwork">
+                <div class="pwrow"><span class="pdot pdot-g"></span><span class="pwlabel">이번 스프린트</span><span class="pchip-dev">S-12 · 8 이슈</span></div>
+                <div class="pwrow"><span class="pdot pdot-y"></span><span class="pwlabel-muted">누적</span><span class="pchip-dev">스프린트 12회 · 이슈 142</span></div>
+              </div>
+            </div>
+            <div class="pcard">
+              <div class="pcard-top">
+                <div style="display:flex;align-items:center;gap:6px;"><span class="tbadge tb-content">📱 콘텐츠</span><span class="pclient">올리브영</span></div>
+                <span class="pstatus ps-active">진행 중</span>
+              </div>
+              <div class="pname">인스타 릴스 3월 묶음</div>
+              <div class="ppartner"><span class="pavatar">👤</span>이콘텐츠 · 8/8 발행</div>
+              <div class="pwork">
+                <div class="pwrow"><span class="pdot pdot-g"></span><span class="pwlabel">이번 주 발행</span><span class="pchip-content">릴스 3개</span></div>
+                <div class="pwrow"><span class="pdot pdot-y"></span><span class="pwlabel-muted">누적 조회</span><span class="pchip-content">245만뷰</span></div>
+              </div>
+            </div>
+            <div class="pcard">
+              <div class="pcard-top">
+                <div style="display:flex;align-items:center;gap:6px;"><span class="tbadge tb-video">🎬 영상</span><span class="pclient">카카오엔터</span></div>
+                <span class="pstatus ps-standby">대기</span>
+              </div>
+              <div class="pname">카카오 웹드라마 6화</div>
+              <div class="ppartner"><span class="pavatar">👤</span>최PD · 0/6회차</div>
+              <div class="pwork">
+                <div class="pwrow"><span class="pdot pdot-y"></span><span class="pwlabel-muted">촬영 시작 예정</span><span class="pchip-long">2026-05-03</span></div>
+              </div>
+            </div>
+            <div class="pcard">
+              <div class="pcard-top">
+                <div style="display:flex;align-items:center;gap:6px;"><span class="tbadge tb-dev">💻 개발</span><span class="pclient">내부</span></div>
+                <span class="pstatus ps-active">진행 중</span>
+              </div>
+              <div class="pname">도화 V2 마이그레이션</div>
+              <div class="ppartner"><span class="pavatar">👤</span>정풀스택</div>
+              <div class="pwork">
+                <div class="pwrow"><span class="pdot pdot-g"></span><span class="pwlabel">이번 스프린트</span><span class="pchip-dev">S-7 · 5 이슈</span></div>
+              </div>
+            </div>
+            <div class="pcard">
+              <div class="pcard-top">
+                <div style="display:flex;align-items:center;gap:6px;"><span class="tbadge tb-content">📱 콘텐츠</span><span class="pclient">무신사</span></div>
+                <span class="pstatus ps-dormant">휴면</span>
+              </div>
+              <div class="pname">무신사 4월 카드뉴스</div>
+              <div class="ppartner"><span class="pavatar">👤</span>이콘텐츠 · 0/12 발행</div>
+              <div class="pwork">
+                <div class="pwrow"><span class="pdot pdot-y"></span><span class="pwlabel-muted">기획 대기중</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== B안: 드롭다운 필터 ===== -->
+  <div class="block" id="b">
+    <span class="tag">B안</span>
+    <div class="bt">검색창 옆 "타입" 드롭다운 필터 추가</div>
+    <div class="bd">상태 필터 바는 그대로. 우측 도구 영역에 타입 드롭다운 추가. 상태와 타입을 독립 축으로 AND 필터링.</div>
+    <div class="erp">
+      <div class="rail"><div class="rlogo"><div>H5</div></div><div class="ritems"><div class="ri active">▦</div></div></div>
+      <div class="panel"><div class="ptitle">메인</div><div class="ni active"><span class="i">▤</span>프로젝트</div></div>
+      <div class="content">
+        <div class="topbar"><div class="crumb">메인 / <span style="color:#111827;font-weight:500;">프로젝트</span></div></div>
+        <div class="main">
+          <div class="hdr"><div><div class="title">프로젝트</div><div class="subtitle">진행 중인 프로젝트를 한눈에 관리하세요</div></div><button class="btn-primary">+ 새 프로젝트</button></div>
+          <div class="filter-row">
+            <div class="fbar">
+              <div class="fitem active">전체 <span class="fc">12</span></div>
+              <div class="fitem">진행 중 <span class="fc">8</span></div>
+              <div class="fitem">대기 <span class="fc">2</span></div>
+              <div class="fitem">아카이브 <span class="fc">2</span></div>
+            </div>
+            <div class="right-tools">
+              <div class="search">🔍 <span>검색...</span></div>
+              <div class="sort" style="background:#eff6ff;color:#1e40af;border-color:#bfdbfe;font-weight:600;">🎬 영상만 ▾</div>
+              <div class="sort">일정순 ▾</div>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="pcard">
+              <div class="pcard-top"><div style="display:flex;gap:6px;align-items:center;"><span class="tbadge tb-video">🎬 영상</span><span class="pclient">HYBE</span></div><span class="pstatus ps-active">진행 중</span></div>
+              <div class="pname">하이브 신사업 브랜딩 영상</div>
+              <div class="ppartner"><span class="pavatar">👤</span>필름원 · 6/10회차</div>
+            </div>
+            <div class="pcard">
+              <div class="pcard-top"><div style="display:flex;gap:6px;align-items:center;"><span class="tbadge tb-video">🎬 영상</span><span class="pclient">카카오엔터</span></div><span class="pstatus ps-standby">대기</span></div>
+              <div class="pname">카카오 웹드라마 6화</div>
+              <div class="ppartner"><span class="pavatar">👤</span>최PD · 0/6회차</div>
+            </div>
+            <div class="pcard">
+              <div class="pcard-top"><div style="display:flex;gap:6px;align-items:center;"><span class="tbadge tb-video">🎬 영상</span><span class="pclient">올리브영</span></div><span class="pstatus ps-active">진행 중</span></div>
+              <div class="pname">올리브영 3월 광고</div>
+              <div class="ppartner"><span class="pavatar">👤</span>김PD · 2/4회차</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== C안: 카드 내부 타입 정보 블록 ===== -->
+  <div class="block" id="c">
+    <span class="tag">C안</span>
+    <div class="bt">카드 "작업 현황" 블록을 타입별 맞춤 지표로</div>
+    <div class="bd">기존 카드 하단 "롱폼/숏폼" 카운트 영역을 타입별로 다르게. 영상=롱폼/숏폼, 개발=스프린트/이슈, 콘텐츠=발행/조회수. 배지 없이 자연스럽게 구분.</div>
+    <div class="erp">
+      <div class="rail"><div class="rlogo"><div>H5</div></div><div class="ritems"><div class="ri active">▦</div></div></div>
+      <div class="panel"><div class="ptitle">메인</div><div class="ni active"><span class="i">▤</span>프로젝트</div></div>
+      <div class="content">
+        <div class="topbar"><div class="crumb">메인 / <span style="color:#111827;font-weight:500;">프로젝트</span></div></div>
+        <div class="main">
+          <div class="hdr"><div><div class="title">프로젝트</div><div class="subtitle">진행 중인 프로젝트를 한눈에 관리하세요</div></div><button class="btn-primary">+ 새 프로젝트</button></div>
+          <div class="grid" style="margin-top:8px;">
+            <div class="pcard" style="border-top:2px solid #b91c1c;">
+              <div class="pcard-top"><span class="pclient" style="color:#b91c1c;font-weight:700;">🎬 영상 제작</span><span class="pstatus ps-active">진행 중</span></div>
+              <div class="pname">하이브 신사업 브랜딩</div>
+              <div class="ppartner"><span class="pavatar">👤</span>필름원</div>
+              <div class="pwork">
+                <div class="pwrow"><span class="pdot pdot-g"></span><span class="pwlabel">작업 진행 중</span><span class="pchip-long">롱폼 3개</span><span class="pchip-short">숏폼 2개</span></div>
+                <div class="pwrow"><span class="pdot pdot-y"></span><span class="pwlabel-muted">에피소드</span><span class="pchip-long">6/10 완료</span></div>
+              </div>
+            </div>
+            <div class="pcard" style="border-top:2px solid #1e40af;">
+              <div class="pcard-top"><span class="pclient" style="color:#1e40af;font-weight:700;">💻 개발</span><span class="pstatus ps-active">진행 중</span></div>
+              <div class="pname">hype5 ERP v2</div>
+              <div class="ppartner"><span class="pavatar">👤</span>박개발, 정풀스택</div>
+              <div class="pwork">
+                <div class="pwrow"><span class="pdot pdot-g"></span><span class="pwlabel">이번 스프린트</span><span class="pchip-dev">S-12 · 오픈 23</span></div>
+                <div class="pwrow"><span class="pdot pdot-y"></span><span class="pwlabel-muted">배포</span><span class="pchip-dev">erp.hype5.co.kr</span></div>
+              </div>
+            </div>
+            <div class="pcard" style="border-top:2px solid #be185d;">
+              <div class="pcard-top"><span class="pclient" style="color:#be185d;font-weight:700;">📱 콘텐츠 제작</span><span class="pstatus ps-active">진행 중</span></div>
+              <div class="pname">올리브영 릴스 3월</div>
+              <div class="ppartner"><span class="pavatar">👤</span>이콘텐츠</div>
+              <div class="pwork">
+                <div class="pwrow"><span class="pdot pdot-g"></span><span class="pwlabel">이번 주</span><span class="pchip-content">발행 3건</span></div>
+                <div class="pwrow"><span class="pdot pdot-y"></span><span class="pwlabel-muted">누적</span><span class="pchip-content">8/8 발행 · 245만뷰</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="note" style="margin-top:16px;">카드 상단 테두리 색상으로도 타입 구분. 배지 대신 클라이언트 텍스트를 타입 라벨로 전환하는 변형.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== D안: 위저드 ===== -->
+  <div class="block" id="d">
+    <span class="tag">D안</span>
+    <div class="bt">생성 위저드 — "프로젝트 타입" 스텝 추가</div>
+    <div class="bd">기존 위저드의 "어떻게 시작할까요?" 이후에 "어떤 유형인가요?" 스텝 삽입. 옵션 카드 스타일도 동일.</div>
+    <div class="overlay">
+      <div class="wizard">
+        <div class="wclose">✕</div>
+        <div class="steps">
+          <div class="stepnum">2</div>
+          <div class="steplabel">타입</div>
+          <div class="dots">
+            <div class="dot done"></div>
+            <div class="dot cur"></div>
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          </div>
+        </div>
+        <div class="wtitle">어떤 유형의 프로젝트인가요?</div>
+        <div class="wsub">타입에 따라 이후 입력 필드와 하위 단위(에피소드/스프린트/콘텐츠)가 달라져요</div>
+        <div class="opt-card selected">
+          <div class="opt-ico">🎬</div>
+          <div style="flex:1;"><div class="opt-title">영상 제작</div><div class="opt-desc">에피소드 · 촬영 스케줄 · 감독/PD · 롱폼/숏폼</div></div>
+          <div style="color:#3b82f6;font-size:18px;">●</div>
+        </div>
+        <div class="opt-card">
+          <div class="opt-ico">💻</div>
+          <div style="flex:1;"><div class="opt-title">개발</div><div class="opt-desc">스프린트 · 리포 · 배포 URL · 담당 개발자</div></div>
+        </div>
+        <div class="opt-card">
+          <div class="opt-ico">📱</div>
+          <div style="flex:1;"><div class="opt-title">콘텐츠 제작</div><div class="opt-desc">플랫폼 · 발행 스케줄 · 조회수/성과</div></div>
+        </div>
+        <div class="wfoot"><button class="btn-ghost">← 이전</button><button class="btn-primary">다음 →</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== E안: 상세 ===== -->
+  <div class="block" id="e">
+    <span class="tag">E안</span>
+    <div class="bt">상세 페이지 타입별 메타/하위 단위 동적 전환</div>
+    <div class="bd">`/projects/[id]`가 타입에 따라 다른 메타 필드와 하위 단위를 표시. 영상→에피소드, 개발→스프린트, 콘텐츠→발행 아이템.</div>
+    <div class="erp">
+      <div class="rail"><div class="rlogo"><div>H5</div></div><div class="ritems"><div class="ri active">▦</div></div></div>
+      <div class="panel"><div class="ptitle">메인</div><div class="ni active"><span class="i">▤</span>프로젝트</div></div>
+      <div class="content">
+        <div class="topbar"><div class="crumb">메인 / 프로젝트 / <span style="color:#111827;font-weight:500;">hype5 ERP v2</span></div></div>
+        <div class="main">
+          <div class="detail-head">
+            <div>
+              <div class="dsmall"><span class="tbadge tb-dev">💻 개발</span></div>
+              <div class="dtitle">hype5 ERP v2</div>
+              <div class="dmeta">내부 · 2026-01-15 시작 · <span class="st ps-active">진행 중</span></div>
+            </div>
+            <button class="btn-primary">편집</button>
+          </div>
+          <div class="meta-grid">
+            <div><div class="mg-label">리포지토리</div><div class="mg-value">hype5/erp</div></div>
+            <div><div class="mg-label">스택</div><div class="mg-value">Next 16 · Supabase</div></div>
+            <div><div class="mg-label">배포 URL</div><div class="mg-value">erp.hype5.co.kr</div></div>
+            <div><div class="mg-label">담당 개발</div><div class="mg-value">박개발, 정풀스택</div></div>
+            <div><div class="mg-label">진행률</div><div class="mg-value">68%</div></div>
+            <div><div class="mg-label">이번 스프린트</div><div class="mg-value">S-12</div></div>
+            <div><div class="mg-label">총 이슈</div><div class="mg-value">142</div></div>
+            <div><div class="mg-label">오픈 이슈</div><div class="mg-value">23</div></div>
+          </div>
+          <div class="sec-head"><div class="sec-title">스프린트</div><div class="sec-action">+ 스프린트 추가</div></div>
+          <div class="items">
+            <div class="item"><div><div class="item-title">S-12 · 프로젝트 타입 확장</div><div class="item-meta">2026-04-15 ~ 04-29 · 8 이슈 (3 완료)</div></div><span class="st ps-active">진행 중</span></div>
+            <div class="item"><div><div class="item-title">S-11 · 사이드바 리디자인</div><div class="item-meta">2026-04-01 ~ 04-14 · 12 이슈 (12 완료)</div></div><span class="st ps-dormant">완료</span></div>
+            <div class="item"><div><div class="item-title">S-10 · 지출 관리 MVP</div><div class="item-meta">2026-03-18 ~ 03-31 · 9 이슈 (9 완료)</div></div><span class="st ps-dormant">완료</span></div>
+          </div>
+          <div class="hint">💡 <b>영상 타입</b>이면 이 섹션이 <b>에피소드</b> 리스트(현재 구조), <b>콘텐츠 타입</b>이면 <b>발행 아이템</b> 리스트로 자동 전환</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block" style="background:#fafaf9;">
+    <div class="bt" style="font-size:15px;">제안 구현 순서</div>
+    <ol style="font-size:13px;color:#44403c;padding-left:20px;line-height:1.9;">
+      <li><b>스키마</b> — `projects.type` enum (`video`/`dev`/`content`) 추가, 기존 데이터 `video`로 마이그레이션</li>
+      <li><b>A안</b> — 카드 상단 타입 배지만 (1~2시간)</li>
+      <li><b>D안</b> — 위저드 2스텝에 타입 선택 삽입</li>
+      <li><b>B안</b> — 드롭다운 타입 필터 추가</li>
+      <li><b>C안</b> — 카드 하단 "작업 현황"을 타입별 맞춤 지표로</li>
+      <li><b>E안</b> — 상세 페이지 타입별 메타/하위 단위 분기 (가장 무거움)</li>
+    </ol>
+    <div class="note">하위 단위(에피소드/스프린트/콘텐츠)는 공통 테이블 `work_items` + `item_kind`로 묶고, UI만 타입별 라벨/필드 분기하는 게 정산·지출 모듈과의 재사용에 유리.</div>
+  </div>
+
+</div>
+</body>
+</html>

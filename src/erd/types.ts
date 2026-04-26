@@ -50,4 +50,5 @@ export interface Relationship {
   color: string;           // 선 + crow's foot 색 (group 색과 매칭)
   path: string;            // 완전한 SVG path ("M x y C cx cy, cx cy, x y")
   labelPos?: { x: number; y: number }; // verb 라벨 위치 (없으면 비표시)
+  explanation?: string;    // 초보자 뷰용 한글 해설. 없으면 자동 생성.
 }

@@ -8,6 +8,7 @@ import {
   insertProject, insertClient, upsertEpisodes, updateEpisodeFields,
   ChecklistRow,
 } from '@/lib/supabase/db';
+import type { ManagementInitialData } from '@/lib/supabase/db/bootstrap';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { Calendar, Plus, Bell, X, Link2, Search, ChevronLeft, ChevronRight, User, FolderOpen, Building2 } from 'lucide-react';
 import { Project, Episode, Partner, Client, WorkContentType, WorkStep } from '@/types';
@@ -83,12 +84,16 @@ function itemToRow(item: ChecklistItem): Omit<ChecklistRow, 'id' | 'user_id' | '
   };
 }
 
-export default function ManagementMain() {
+interface ManagementMainProps {
+  initialData: ManagementInitialData;
+}
+
+export default function ManagementMain({ initialData }: ManagementMainProps) {
   const toast = useToast();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [partners, setPartners] = useState<Partner[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [allEpisodes, setAllEpisodes] = useState<(Episode & { projectId: string })[]>([]);
+  const [projects, setProjects] = useState<Project[]>(initialData.projects);
+  const [partners, setPartners] = useState<Partner[]>(initialData.partners);
+  const [clients, setClients] = useState<Client[]>(initialData.clients);
+  const [allEpisodes, setAllEpisodes] = useState<(Episode & { projectId: string })[]>(initialData.episodes);
   const [activeTab, setActiveTab] = useState<'today' | 'week' | 'checklist'>('today');
   const [mobileChecklistOpen, setMobileChecklistOpen] = useState(false);
   const [quickViewEpisode, setQuickViewEpisode] = useState<(Episode & { projectId: string }) | null>(null);
@@ -199,7 +204,7 @@ export default function ManagementMain() {
   };
 
   // 체크리스트 상태
-  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>(() => initialData.checklists.map(rowToItem));
   const [newItemText, setNewItemText] = useState('');
   const [newItemReminder, setNewItemReminder] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -378,7 +383,7 @@ export default function ManagementMain() {
     notificationPermission.current = permission;
   };
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     const [projectsData, partnersData, clientsData, episodesData, checklistRows] = await Promise.all([
@@ -397,13 +402,11 @@ export default function ManagementMain() {
   }, []);
 
   useEffect(() => {
-    loadData();
-
-    // 알림 권한 상태 초기화
+    // 초기 데이터는 서버에서 prefetch됨 (ManagementInitialData). 여기서는 알림 권한만 초기화.
     if ('Notification' in window) {
       notificationPermission.current = Notification.permission;
     }
-  }, [loadData]);
+  }, []);
 
   useSupabaseRealtime(['projects', 'episodes', 'partners', 'clients'], loadData);
 

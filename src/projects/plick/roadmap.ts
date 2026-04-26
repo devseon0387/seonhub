@@ -1,0 +1,131 @@
+import type { Roadmap } from '@/roadmap/types';
+
+export const PLICK_ROADMAP: Roadmap = {
+  project: 'Plick',
+  version: 1,
+  updated: '2026-04-21',
+  vision:
+    '음악 커버·플레이리스트 영상을 브라우저에서 바로 만드는 툴. 프리뷰 품질 그대로 영상으로 뽑는 게 핵심. 장기적으로 GPU 하드웨어 인코딩·NVIDIA 클라우드 배포까지 가는 상용 도구.',
+  currentPhaseId: 'p3-render-quality',
+  phases: [
+    {
+      id: 'p1-mvp-editor',
+      title: 'MVP 에디터',
+      status: 'done',
+      start: '2025-09-01',
+      end: '2026-01-31',
+      summary: '브라우저 단일 페이지에서 트랙 업로드 → 자막·레이아웃 편집 → 미리보기 → MP4 다운로드까지 완결.',
+      goal: '외부 의존 없이 브라우저 1개로 영상 1편 완성 가능.',
+      items: [
+        { title: 'Next.js 16 + React 19 셋업', status: 'done' },
+        { title: '트랙 업로드 + 드래그 정렬 (@dnd-kit)', status: 'done' },
+        { title: 'WaveSurfer.js 웨이브폼 에디터 + 트림', status: 'done' },
+        { title: 'PreviewCanvas 실시간 렌더 (8 레이아웃)', status: 'done' },
+        { title: 'mp4-muxer 기반 브라우저 MP4 출력', status: 'done' },
+        { title: 'Timeline · TrackPanel · SettingsPanel UI', status: 'done' },
+      ],
+    },
+    {
+      id: 'p2-lyrics-sync',
+      title: '자막 동기화 + 누끼',
+      status: 'done',
+      start: '2026-02-01',
+      end: '2026-03-31',
+      summary: 'Whisper forced-align으로 자동 자막 싱크 + @imgly로 인물 누끼 (앨범 커버 분리).',
+      goal: '업로드한 음원 자동 자막 + 인물 이미지 배경 제거까지 자동화.',
+      items: [
+        { title: 'forced-alignment 파이프라인 (lib/forced-alignment.ts)', status: 'done' },
+        { title: 'SubtitleSegment 데이터 모델 + 에디터 모달', status: 'done' },
+        { title: '@imgly/background-removal 통합 (인물 누끼)', status: 'done' },
+        { title: 'lyrics-splitter 라인 분리 로직', status: 'done' },
+      ],
+    },
+    {
+      id: 'p3-render-quality',
+      title: '렌더 품질 + 프리뷰-렌더 일치',
+      status: 'in-progress',
+      start: '2026-04-01',
+      target: '2026-06-15',
+      summary: 'Remotion 도입해 프리뷰와 최종 출력을 동일 파이프라인으로 통합. 현재는 canvas와 출력 간 미세 차이 발생.',
+      goal: '프리뷰에서 보이는 그대로 MP4로 뽑힘 (픽셀 단위 일치).',
+      items: [
+        { title: 'Remotion 렌더러 프로토타입', status: 'todo', note: '현재 canvas-renderer 대체 검토' },
+        { title: '프리뷰 경로와 렌더 경로 코드 통합', status: 'todo' },
+        { title: '레이아웃별 회귀 테스트 (8 레이아웃)', status: 'todo' },
+        { title: '자막·누끼 양쪽 경로 동작 확인', status: 'todo' },
+      ],
+    },
+    {
+      id: 'p4-gpu-accel',
+      title: 'GPU 하드웨어 인코딩',
+      status: 'planned',
+      target: '2026-08-31',
+      summary: '브라우저 WebCodecs + OS 하드웨어 인코더 자동 감지. 렌더 시간 1/5로 단축 목표.',
+      goal: 'M-series / NVIDIA / Intel QuickSync 자동 감지해 가능하면 HW 인코딩.',
+      items: [
+        { title: 'WebCodecs 지원 여부 런타임 감지', status: 'todo' },
+        { title: 'H.264 / HEVC 하드웨어 인코더 fallback 체인', status: 'todo' },
+        { title: '벤치마크 (1080p 3분 영상)', status: 'todo' },
+      ],
+    },
+    {
+      id: 'p5-account-cloud',
+      title: '계정 + 클라우드 저장',
+      status: 'planned',
+      target: '2026-10-31',
+      summary: '현재 브라우저 메모리 only → 로그인 + 프로젝트 클라우드 저장 + 템플릿 재사용.',
+      goal: '다른 기기에서도 이어 작업. 템플릿·렌더 이력 영구 보존.',
+      items: [
+        { title: 'signup/login 실제 DB 연동 (현재 501 상태)', status: 'todo' },
+        { title: 'projects/tracks/subtitles 테이블 (ERD 참조)', status: 'todo' },
+        { title: '프로젝트 목록 + 불러오기 UI', status: 'todo' },
+        { title: '템플릿 저장/적용 플로우', status: 'todo' },
+      ],
+    },
+    {
+      id: 'p6-commercial',
+      title: '상용화 · 클라우드 렌더',
+      status: 'planned',
+      target: '2027-02-28',
+      summary: 'NVIDIA 클라우드 GPU 워커 풀 + 결제 + 렌더 크레딧 과금.',
+      goal: '유료 플랜으로 고화질·장시간·대량 렌더 제공.',
+      items: [
+        { title: 'render_jobs 큐 시스템', status: 'todo' },
+        { title: 'NVIDIA L4 / A10 워커 인프라', status: 'todo' },
+        { title: '결제 + 크레딧 차감', status: 'todo' },
+        { title: '워터마크 프리 / 해상도 무제한 플랜', status: 'todo' },
+      ],
+    },
+  ],
+  decisions: [
+    {
+      date: '2026-04-01',
+      title: 'Remotion 도입 결정',
+      why: '프리뷰-렌더 불일치 이슈를 근본 해결하려면 단일 렌더 파이프라인 필요. 커스텀 canvas-renderer 유지 비용이 큼.',
+      alt: 'canvas-renderer 개선 계속 — 포기. 디버깅 범위가 계속 커졌음.',
+    },
+    {
+      date: '2026-02-10',
+      title: 'forced-alignment를 클라이언트에서 실행',
+      why: '서버 없이도 동작해야 하는 MVP 원칙. Whisper 클라이언트 모델이 3분 트랙에 10초 이내라 허용 범위.',
+      alt: '서버 Whisper API 호출 — 나중에 유료 플랜 선택지로 남김.',
+    },
+  ],
+  openQuestions: [
+    'Remotion + WebCodecs를 동시에 쓸 때 호환성이 어떻게 되나?',
+    'GPU 클라우드로 갈 때 Remotion의 Lambda 모드를 쓸지, 자체 워커를 둘지.',
+    '템플릿 공유 마켓을 열 것인가 (유저간 공유)?',
+  ],
+  risks: [
+    {
+      title: '프리뷰-렌더 불일치 재발',
+      mitigation: 'Remotion 전환 후 8개 레이아웃 회귀 테스트 자동화. 픽셀 diff 임계값 도입.',
+      severity: 'high',
+    },
+    {
+      title: 'HW 인코더 기기 파편화',
+      mitigation: 'WebCodecs 미지원 시 순수 소프트웨어 fallback 보장. 사용자에게 예상 시간 표시.',
+      severity: 'med',
+    },
+  ],
+};

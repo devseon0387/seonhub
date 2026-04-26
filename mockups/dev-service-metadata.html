@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Dev Workspace — 서비스 메타데이터 시안</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+  :root {
+    --ink-900: #1c1917;
+    --ink-700: #44403c;
+    --ink-600: #57534e;
+    --ink-500: #78716c;
+    --ink-400: #a8a29e;
+    --ink-300: #d6d3d1;
+    --ink-200: #e7e5e4;
+    --ink-100: #f5f5f4;
+    --ink-50:  #fafaf9;
+    --brand: #1e3a8a;
+    --brand-light: #eff6ff;
+    --accent-green: #10b981;
+    --accent-orange: #f59e0b;
+    --accent-red: #ef4444;
+    --bg: #fafaf9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Pretendard Variable', -apple-system, sans-serif; background: var(--bg); color: var(--ink-900); padding: 48px 24px 120px; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .lead { font-size: 14px; color: var(--ink-500); margin-bottom: 48px; }
+  .variant { margin-bottom: 72px; }
+  .variant-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+  .variant-tag { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; padding: 3px 8px; background: var(--ink-900); color: white; border-radius: 6px; }
+  .variant-title { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .variant-desc { font-size: 13px; color: var(--ink-500); margin-bottom: 20px; line-height: 1.55; max-width: 780px; }
+  .pros { display: flex; gap: 16px; margin-bottom: 24px; font-size: 12px; }
+  .pros span { color: var(--ink-600); }
+  .pros strong { color: var(--ink-900); }
+
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+  /* 공통 카드 베이스 */
+  .card {
+    background: white; border: 1px solid var(--ink-200); border-radius: 16px; padding: 16px;
+    position: relative; transition: all .15s ease;
+  }
+  .card:hover { border-color: var(--ink-300); box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+  .card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 15px; color: white; letter-spacing: -0.02em;
+    flex-shrink: 0;
+  }
+  .ic-plick { background: linear-gradient(135deg, #7c3aed, #a78bfa); }
+  .ic-menu  { background: linear-gradient(135deg, #f59e0b, #fb923c); }
+  .ic-seon  { background: linear-gradient(135deg, #1e3a8a, #3b82f6); }
+  .name { font-size: 13px; font-weight: 700; letter-spacing: -0.01em; }
+  .path { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-400); margin-top: 2px; }
+  .status {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .status.running { background: #d1fae5; color: #047857; }
+  .status.running::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #10b981; animation: pulse 1.6s infinite; }
+  .status.idle { background: var(--ink-100); color: var(--ink-500); }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .tech { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+  .tech span {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    padding: 2px 6px; background: var(--ink-50); border: 1px solid var(--ink-200);
+    border-radius: 4px; color: var(--ink-600);
+  }
+
+  .footer {
+    padding-top: 12px; border-top: 1px solid var(--ink-100);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; color: var(--ink-400);
+  }
+  .footer .port { font-family: 'JetBrains Mono', monospace; color: var(--brand); font-weight: 700; }
+
+  /* ─────────────────────────────── Variant A — Status pill + 서비스 뱃지 행 */
+  .a-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .svc {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 600;
+    padding: 3px 8px; border-radius: 999px;
+    background: var(--ink-50); border: 1px solid var(--ink-200); color: var(--ink-700);
+  }
+  .svc::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+  .svc.vercel::before { background: #000; }
+  .svc.supabase::before { background: #3ecf8e; }
+  .svc.github::before { background: #181717; }
+  .svc.sqlite::before { background: #003b57; }
+  .svc.cloudflare::before { background: #f48120; }
+  .svc.dev::before { background: var(--ink-400); }
+  .svc.prod { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
+  .svc.prod::before { background: #10b981; }
+
+  /* ─────────────────────────────── Variant B — 서비스 아이콘 그리드 */
+  .b-grid { display: grid; grid-template-columns: repeat(auto-fill, 32px); gap: 6px; padding: 8px 0; }
+  .b-logo {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 12px;
+    color: white; position: relative;
+  }
+  .b-logo.vercel { background: #000; }
+  .b-logo.supabase { background: #3ecf8e; color: #1c1c1c; }
+  .b-logo.github { background: #24292f; }
+  .b-logo.sqlite { background: #003b57; }
+  .b-logo.cloudflare { background: #f48120; }
+  .b-logo[data-status="live"]::after {
+    content: ''; position: absolute; top: -3px; right: -3px;
+    width: 10px; height: 10px; border-radius: 50%; background: #10b981;
+    border: 2px solid white;
+  }
+  .b-deploy-url {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--brand); margin-top: 8px; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .b-deploy-url::after { content: '↗'; font-size: 10px; opacity: 0.6; }
+
+  /* ─────────────────────────────── Variant C — 확장 패널 (구조화 리스트) */
+  .c-panel {
+    margin-top: 12px; padding: 10px 12px;
+    background: var(--ink-50); border: 1px solid var(--ink-200); border-radius: 10px;
+    display: grid; grid-template-columns: 60px 1fr; gap: 4px 12px;
+    font-size: 11.5px;
+  }
+  .c-panel dt { color: var(--ink-500); font-weight: 600; }
+  .c-panel dd { color: var(--ink-900); font-weight: 500; display: flex; align-items: center; gap: 6px; }
+  .c-panel dd .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .c-panel dd .vercel-dot { background: #000; }
+  .c-panel dd .supabase-dot { background: #3ecf8e; }
+  .c-panel dd .github-dot { background: #24292f; }
+  .c-panel dd .sqlite-dot { background: #003b57; }
+  .c-panel dd .cloudflare-dot { background: #f48120; }
+  .c-panel dd .live-dot { background: #10b981; }
+  .c-panel dd .idle-dot { background: var(--ink-400); }
+  .c-panel dd a { color: var(--brand); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; }
+  .c-panel dd .muted { color: var(--ink-400); }
+
+  /* ─────────────────────────────── Variant D — 코너 리본 + 서비스 도트 */
+  .d-card { overflow: hidden; }
+  .d-ribbon {
+    position: absolute; top: 12px; right: 12px;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .d-ribbon.live { background: #d1fae5; color: #047857; }
+  .d-ribbon.live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #10b981; }
+  .d-ribbon.dev { background: var(--ink-900); color: white; }
+  .d-dots { display: inline-flex; gap: 4px; align-items: center; margin-left: 6px; }
+  .d-dot {
+    width: 16px; height: 16px; border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 9px; color: white;
+  }
+  .d-dot.vercel { background: #000; }
+  .d-dot.supabase { background: #3ecf8e; color: #1c1c1c; }
+  .d-dot.github { background: #24292f; }
+  .d-dot.sqlite { background: #003b57; }
+
+  /* 테이블 뷰 변형 (보너스) */
+  .table-demo {
+    background: white; border: 1px solid var(--ink-200); border-radius: 16px; overflow: hidden;
+  }
+  .table-demo table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .table-demo th { text-align: left; padding: 10px 14px; background: var(--ink-50); border-bottom: 1px solid var(--ink-200); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-500); }
+  .table-demo td { padding: 12px 14px; border-bottom: 1px solid var(--ink-100); }
+  .table-demo tr:last-child td { border-bottom: none; }
+  .cell-ic { display: flex; align-items: center; gap: 8px; }
+  .cell-ic .icon { width: 28px; height: 28px; border-radius: 6px; font-size: 11px; }
+  .cell-svc { display: flex; gap: 4px; }
+  .mini-svc {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    padding: 2px 6px; border-radius: 4px; font-weight: 600;
+  }
+  .mini-svc.vercel { background: #000; color: white; }
+  .mini-svc.supabase { background: #3ecf8e; color: #1c1c1c; }
+  .mini-svc.github { background: #24292f; color: white; }
+  .mini-svc.sqlite { background: #003b57; color: white; }
+  .mini-svc.none { background: var(--ink-100); color: var(--ink-500); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Dev Workspace — 서비스 메타데이터 시안</h1>
+    <p class="lead">
+      각 프로젝트가 어떤 배포·DB·VCS 서비스를 쓰는지 카드에서 바로 보이게 하는 4가지 방향.
+      샘플: <strong>Plick</strong> (로컬 개발) · <strong>메뉴한컷</strong> (Vercel 배포) · <strong>SEON Hub</strong> (자체 SQLite + GitHub).
+    </p>
+
+    <!-- ────────────────────────────── Variant A -->
+    <section class="variant">
+      <div class="variant-head">
+        <span class="variant-tag">Variant A</span>
+        <h2 class="variant-title">Status pill + 서비스 뱃지 행</h2>
+      </div>
+      <p class="variant-desc">
+        기존 기술 스택 뱃지 아래에 "서비스 뱃지" 한 줄을 추가. 배포된 곳은 초록색 강조(prod),
+        나머지는 중립 회색. 가장 적은 공간 차지. 기존 카드 구조 거의 그대로 유지.
+      </p>
+      <div class="pros">
+        <span><strong>✓</strong> 정보 밀도 우수</span>
+        <span><strong>✓</strong> 기존 카드 수정 최소</span>
+        <span><strong>✗</strong> URL 직접 노출 X (클릭으로 해결)</span>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <div class="card-head">
+            <div class="icon ic-plick">PL</div>
+            <div style="flex:1; min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <strong class="name">Plick</strong>
+                <span class="status idle">idle</span>
+              </div>
+              <div class="path">~/Desktop/Dev/Plick</div>
+            </div>
+          </div>
+          <div class="tech">
+            <span>Next.js 16</span><span>TS</span><span>Tailwind</span>
+          </div>
+          <div class="a-badges">
+            <span class="svc dev">로컬 개발</span>
+            <span class="svc github">GitHub</span>
+            <span class="svc supabase">Supabase (예정)</span>
+          </div>
+          <div class="footer" style="margin-top:10px">
+            <span>12일 전 · <span class="port">:3000</span> · main</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="icon ic-menu">메</div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <strong class="name">메뉴한컷</strong>
+                <span class="status running">running</span>
+              </div>
+              <div class="path">~/Desktop/Dev/menu-prompt</div>
+            </div>
+          </div>
+          <div class="tech">
+            <span>Next.js 16</span><span>TS</span><span>JSON</span>
+          </div>
+          <div class="a-badges">
+            <span class="svc prod vercel">Vercel · Live</span>
+            <span class="svc github">GitHub</span>
+          </div>
+          <div class="footer" style="margin-top:10px">
+            <span>3일 전 · <span class="port">:3500</span> · main</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="icon ic-seon">SH</div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <strong class="name">SEON Hub</strong>
+                <span class="status running">running</span>
+              </div>
+              <div class="path">~/Desktop/Dev/hype5-erp</div>
+            </div>
+          </div>
+          <div class="tech">
+            <span>Next.js 16</span><span>TS</span><span>SQLite</span>
+          </div>
+          <div class="a-badges">
+            <span class="svc sqlite">SQLite</span>
+            <span class="svc github">GitHub</span>
+            <span class="svc dev">로컬 전용</span>
+          </div>
+          <div class="footer" style="margin-top:10px">
+            <span>방금 · <span class="port">:3100</span> · beta</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────── Variant B -->
+    <section class="variant">
+      <div class="variant-head">
+        <span class="variant-tag">Variant B</span>
+        <h2 class="variant-title">서비스 로고 그리드 + 배포 URL</h2>
+      </div>
+      <p class="variant-desc">
+        각 서비스를 브랜드 컬러의 로고 박스로 표시 (V=Vercel, S=Supabase, G=GitHub).
+        라이브 서비스엔 초록 상태 점. 배포된 카드엔 URL이 직접 노출되어 클릭 한 번에 접속.
+      </p>
+      <div class="pros">
+        <span><strong>✓</strong> 시각적으로 가장 인식 빠름 (로고)</span>
+        <span><strong>✓</strong> 배포 URL 1클릭</span>
+        <span><strong>✗</strong> 공간 차지 많음</span>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <div class="card-head">
+            <div class="icon ic-plick">PL</div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <strong class="name">Plick</strong>
+                <span class="status idle">idle</span>
+              </div>
+              <div class="path">~/Desktop/Dev/Plick</div>
+            </div>
+          </div>
+          <div class="tech">
+            <span>Next.js 16</span><span>TS</span><span>Tailwind</span>
+          </div>
+          <div class="b-grid">
+            <div class="b-logo github" title="GitHub">G</div>
+            <div class="b-logo supabase" title="Supabase (예정)" style="opacity:.5">S</div>
+          </div>
+          <div class="footer">
+            <span>12일 전 · <span class="port">:3000</span></span>
+            <span style="color:var(--ink-400)">로컬 전용</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="icon ic-menu">메</div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <strong class="name">메뉴한컷</strong>
+                <span class="status running">running</span>
+              </div>
+              <div class="path">~/Desktop/Dev/menu-prompt</div>
+            </div>
+          </div>
+          <div class="tech">
+            <span>Next.js 16</span><span>TS</span><span>JSON</span>
+          </div>
+          <div class="b-grid">
+            <div class="b-logo vercel" data-status="live" title="Vercel — Live">V</div>
+            <div class="b-logo github" title="GitHub">G</div>
+          </div>
+          <a href="#" class="b-deploy-url">menu-prompt.vercel.app</a>
+          <div class="footer" style="margin-top:8px">
+            <span>3일 전 · <span class="port">:3500</span></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="icon ic-seon">SH</div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <strong class="name">SEON Hub</strong>
+                <span class="status running">running</span>
+              </div>
+              <div class="path">~/Desktop/Dev/hype5-erp</div>
+            </div>
+          </div>
+          <div class="tech">
+            <span>Next.js 16</span><span>TS</span><span>SQLite</span>
+          </div>
+          <div class="b-grid">
+            <div class="b-logo sqlite" title="SQLite">Sq</div>
+            <div class="b-logo github" title="GitHub">G</div>
+          </div>
+          <div class="footer">
+            <span>방금 · <span class="port">:3100</span></span>
+            <span style="color:var(--ink-400)">로컬 전용</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────── Variant C -->
+    <section class="variant">
+      <div class="variant-head">
+        <span class="variant-tag">Variant C</span>
+        <h2 class="variant-title">구조화 메타 패널 (dt/dd 리스트)</h2>
+      </div>
+      <p class="variant-desc">
+        카드 본문 아래에 작은 메타 패널. Deploy / Database / VCS 3행이 깔끔하게 정렬되고
+        각 서비스명 옆에 컬러 도트 + URL을 직접 표시. 정보 탐색이 가장 명확.
+      </p>
+      <div class="pros">
+        <span><strong>✓</strong> 정보 구조 명확 (어떤 게 뭐인지 라벨링됨)</span>
+        <span><strong>✓</strong> URL + 상태 한 번에</span>
+        <span><strong>✗</strong> 카드 높이 제일 커짐</span>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <div class="card-head">
+            <div class="icon ic-plick">PL</div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <strong class="name">Plick</strong>
+                <span class="status idle">idle</span>
+              </div>
+              <div class="path">~/Desktop/Dev/Plick</div>
+            </div>
+          </div>
+          <div class="tech"><span>Next.js 16</span><span>TS</span><span>Tailwind</span></div>
+          <dl class="c-panel">
+            <dt>배포</dt>
+            <dd><span class="dot idle-dot"></span><span class="muted">로컬 전용</span></dd>
+            <dt>DB</dt>
+            <dd><span class="dot supabase-dot"></span><span class="muted">Supabase (예정)</span></dd>
+            <dt>VCS</dt>
+            <dd><span class="dot github-dot"></span><a href="#">github.com/vimo/plick</a></dd>
+          </dl>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="icon ic-menu">메</div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <strong class="name">메뉴한컷</strong>
+                <span class="status running">running</span>
+              </div>
+              <div class="path">~/Desktop/Dev/menu-prompt</div>
+            </div>
+          </div>
+          <div class="tech"><span>Next.js 16</span><span>TS</span><span>JSON</span></div>
+          <dl class="c-panel">
+            <dt>배포</dt>
+            <dd><span class="dot vercel-dot"></span><a href="#">menu-prompt.vercel.app</a></dd>
+            <dt>DB</dt>
+            <dd><span class="muted">JSON 파일 기반</span></dd>
+            <dt>VCS</dt>
+            <dd><span class="dot github-dot"></span><a href="#">github.com/vimo/menu-prompt</a></dd>
+          </dl>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div class="icon ic-seon">SH</div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <strong class="name">SEON Hub</strong>
+                <span class="status running">running</span>
+              </div>
+              <div class="path">~/Desktop/Dev/hype5-erp</div>
+            </div>
+          </div>
+          <div class="tech"><span>Next.js 16</span><span>TS</span><span>SQLite</span></div>
+          <dl class="c-panel">
+            <dt>배포</dt>
+            <dd><span class="dot idle-dot"></span><span class="muted">로컬 전용 (의도)</span></dd>
+            <dt>DB</dt>
+            <dd><span class="dot sqlite-dot"></span>SQLite (hype5.db)</dd>
+            <dt>VCS</dt>
+            <dd><span class="dot github-dot"></span><a href="#">github.com/vimo/hype5-erp</a></dd>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────── Variant D -->
+    <section class="variant">
+      <div class="variant-head">
+        <span class="variant-tag">Variant D</span>
+        <h2 class="variant-title">코너 리본 (LIVE / DEV) + 서비스 도트</h2>
+      </div>
+      <p class="variant-desc">
+        카드 우상단에 "LIVE" (초록) 또는 "DEV" (검정) 리본으로 배포 상태를 즉시 판단. 푸터 우측에
+        서비스 로고 미니 타일(V·S·G 등)로 어떤 스택인지 표시. 한 눈에 빠르게 훑을 때 가장 효율적.
+      </p>
+      <div class="pros">
+        <span><strong>✓</strong> 글로벌 훑어보기 최적 (어느 게 살아있나 즉시)</span>
+        <span><strong>✓</strong> 공간 효율</span>
+        <span><strong>✗</strong> URL·레파지토리 링크는 드릴인 필요</span>
+      </div>
+
+      <div class="cards">
+        <div class="card d-card">
+          <span class="d-ribbon dev">DEV</span>
+          <div class="card-head">
+            <div class="icon ic-plick">PL</div>
+            <div style="flex:1;min-width:0;">
+              <strong class="name">Plick</strong>
+              <div class="path">~/Desktop/Dev/Plick</div>
+            </div>
+          </div>
+          <div class="tech"><span>Next.js 16</span><span>TS</span><span>Tailwind</span></div>
+          <div class="footer">
+            <span>12일 전 · <span class="port">:3000</span></span>
+            <div class="d-dots">
+              <span class="d-dot github" title="GitHub">G</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card d-card">
+          <span class="d-ribbon live">LIVE</span>
+          <div class="card-head">
+            <div class="icon ic-menu">메</div>
+            <div style="flex:1;min-width:0;">
+              <strong class="name">메뉴한컷</strong>
+              <div class="path">~/Desktop/Dev/menu-prompt</div>
+            </div>
+          </div>
+          <div class="tech"><span>Next.js 16</span><span>TS</span><span>JSON</span></div>
+          <div class="footer">
+            <span>3일 전 · <span class="port">:3500</span></span>
+            <div class="d-dots">
+              <span class="d-dot vercel" title="Vercel">V</span>
+              <span class="d-dot github" title="GitHub">G</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card d-card">
+          <span class="d-ribbon dev">LOCAL</span>
+          <div class="card-head">
+            <div class="icon ic-seon">SH</div>
+            <div style="flex:1;min-width:0;">
+              <strong class="name">SEON Hub</strong>
+              <div class="path">~/Desktop/Dev/hype5-erp</div>
+            </div>
+          </div>
+          <div class="tech"><span>Next.js 16</span><span>TS</span><span>SQLite</span></div>
+          <div class="footer">
+            <span>방금 · <span class="port">:3100</span></span>
+            <div class="d-dots">
+              <span class="d-dot sqlite" title="SQLite">Sq</span>
+              <span class="d-dot github" title="GitHub">G</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────── 보너스: 테이블 뷰 확장 -->
+    <section class="variant">
+      <div class="variant-head">
+        <span class="variant-tag">Bonus</span>
+        <h2 class="variant-title">테이블 뷰 — Deploy / DB / VCS 컬럼 추가</h2>
+      </div>
+      <p class="variant-desc">
+        카드 뷰와 별개로, 기존 테이블 뷰에도 서비스 컬럼을 추가하면 "어느 게 배포됐지?"를
+        정렬/필터로 찾기 쉬움. Variant 중 어느 것과도 호환.
+      </p>
+
+      <div class="table-demo">
+        <table>
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Status</th>
+              <th>Deploy</th>
+              <th>DB</th>
+              <th>VCS</th>
+              <th>Modified</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="cell-ic">
+                  <div class="icon ic-plick">PL</div>
+                  <div>
+                    <div style="font-weight:700">Plick</div>
+                    <div class="path">~/Desktop/Dev/Plick</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="status idle">idle</span></td>
+              <td><span class="mini-svc none">local</span></td>
+              <td><span class="mini-svc none">—</span></td>
+              <td><span class="mini-svc github">github</span></td>
+              <td style="color:var(--ink-500)">12일 전</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="cell-ic">
+                  <div class="icon ic-menu">메</div>
+                  <div>
+                    <div style="font-weight:700">메뉴한컷</div>
+                    <div class="path">~/Desktop/Dev/menu-prompt</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="status running">running</span></td>
+              <td><span class="mini-svc vercel">vercel</span></td>
+              <td><span class="mini-svc none">json</span></td>
+              <td><span class="mini-svc github">github</span></td>
+              <td style="color:var(--ink-500)">3일 전</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="cell-ic">
+                  <div class="icon ic-seon">SH</div>
+                  <div>
+                    <div style="font-weight:700">SEON Hub</div>
+                    <div class="path">~/Desktop/Dev/hype5-erp</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="status running">running</span></td>
+              <td><span class="mini-svc none">local</span></td>
+              <td><span class="mini-svc sqlite">sqlite</span></td>
+              <td><span class="mini-svc github">github</span></td>
+              <td style="color:var(--ink-500)">방금</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div style="margin-top:48px; padding:20px; background:white; border:1px solid var(--ink-200); border-radius:12px;">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:10px;">추천 조합</h3>
+      <p style="font-size:13px;color:var(--ink-600);line-height:1.6;">
+        <strong>카드 뷰 = Variant D</strong> (LIVE/DEV 리본 + 서비스 도트) — 훑어볼 때 가장 빠름.<br>
+        <strong>드릴인 상세 = Variant C 스타일 패널</strong> — 실제 URL·레파지토리 링크 열람.<br>
+        <strong>테이블 뷰 = Bonus 컬럼 추가</strong> — 필터/정렬로 빠르게 찾기.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutDashboard, FolderOpen, Settings, Briefcase, Trash2,
   Megaphone, LogOut, Shield, Menu, X, CreditCard, ClipboardCheck,
-  Code2, Palette, Frame, Map, Database,
+  Code2, Palette, Frame, Map, Database, PencilRuler,
 } from 'lucide-react';
 import DashboardContent from '@/components/DashboardContent';
 import BibotWidget from '@/components/BibotWidget';
@@ -43,11 +43,18 @@ const SECTIONS: Section[] = [
       { type: 'link', href: '/clients',    label: '클라이언트 관리', icon: Briefcase       },
       { type: 'divider' },
       { type: 'link', href: '/dev',        label: 'Dev Workspace', icon: Code2 },
+      { type: 'link', href: '/updates',    label: '업데이트', icon: Megaphone },
+    ],
+  },
+  {
+    key: 'blueprints',
+    icon: PencilRuler,
+    label: '블루프린트',
+    items: [
       { type: 'link', href: '/design',     label: '디자인 시스템', icon: Palette },
       { type: 'link', href: '/wireframes', label: '와이어프레임', icon: Frame },
       { type: 'link', href: '/roadmap',    label: '로드맵', icon: Map },
       { type: 'link', href: '/erd',        label: 'ERD', icon: Database },
-      { type: 'link', href: '/updates',    label: '업데이트', icon: Megaphone },
     ],
   },
 ];
