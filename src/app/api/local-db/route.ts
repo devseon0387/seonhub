@@ -10,7 +10,7 @@ export async function POST(req: Request) {
 
   try {
     const spec = (await req.json()) as QuerySpec;
-    const result = executeSpec(spec);
+    const result = await executeSpec(spec);
     return NextResponse.json(result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
