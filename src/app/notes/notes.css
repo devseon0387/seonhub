@@ -1,0 +1,507 @@
+/*
+ * SEON Hub Notes — A 시안 (NOTION-CLEAN) 토큰
+ *
+ * .notes-app scope 안에서만 적용 → SEON Hub 다른 화면 (ERP 베이지 톤) 과 분리.
+ * 라이트 모드만 (다크 X). Pretendard Variable + JetBrains Mono.
+ */
+
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css');
+
+.notes-app {
+  /* 컬러 */
+  --bg: #ffffff;
+  --bg-soft: #f7f7f5;
+  --bg-hover: #f1f1ef;
+  --text: #37352f;
+  --text-sub: #6b6962;
+  --text-muted: #9b9a93;
+  --border: #e9e9e7;
+  --accent: #2383e2;
+  --accent-soft: #e7f1fb;
+  --pin: #ffb627;
+
+  /* 라운드 */
+  --r-sm: 6px;   /* 사이드바 아이템, 작은 버튼 */
+  --r-md: 8px;   /* 카드, 검색, 모달 */
+  --r-pill: 999px;
+
+  /* 그림자 */
+  --shadow-elev: 0 16px 48px rgba(0, 0, 0, 0.12);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.04);
+
+  /* 폰트 */
+  --font-sans: 'Pretendard Variable', Pretendard, -apple-system,
+    BlinkMacSystemFont, system-ui, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas,
+    monospace;
+
+  /* 본문 타이포 */
+  --fs-body: 15px;
+  --lh-body: 1.75;
+
+  /* 적용 */
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 풀스크린 레이아웃 — SEON Hub root chrome 무시. fixed inset-0 으로 viewport 점거. */
+.notes-app {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.notes-sidebar {
+  background: var(--bg-soft);
+  border-right: 1px solid var(--border);
+  padding: 16px 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.notes-main {
+  background: var(--bg);
+  overflow-y: auto;
+}
+
+/* 사이드바 — workspace 헤더 */
+.ns-ws {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 14px;
+}
+.ns-ws-av {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #2383e2, #1c6cb8);
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+.ns-ws-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* 검색 박스 */
+.ns-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin: 0 4px 12px;
+}
+.ns-search:hover {
+  background: var(--bg-hover);
+}
+.ns-search .kbd {
+  margin-left: auto;
+  padding: 1px 5px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* 사이드바 — 섹션 라벨 */
+.ns-section {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 12px 10px 6px;
+}
+
+/* 사이드바 — 아이템 */
+.ns-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  font-size: 13.5px;
+  color: var(--text-sub);
+  cursor: pointer;
+  user-select: none;
+}
+.ns-item:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.ns-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 500;
+}
+.ns-item-ico {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.ns-item.sub { padding-left: 24px; }
+.ns-item.sub2 { padding-left: 38px; }
+
+.ns-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 12px 8px;
+}
+
+.ns-add {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 6px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ns-add:hover { color: var(--text); }
+
+/* Empty state */
+.notes-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.notes-empty .ne-inner {
+  text-align: center;
+  max-width: 360px;
+}
+.notes-empty .ne-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.notes-empty .ne-desc {
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+/* 메인 컨텐츠 공통 */
+.notes-content {
+  padding: 32px 40px;
+  max-width: 100%;
+}
+
+/* ───────────────────────────── Home ───────────────────────────── */
+.home-page {
+  padding: 32px 40px 80px;
+}
+.home-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+.home-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.home-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  color: var(--text-muted);
+  width: 280px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.home-search:hover {
+  background: var(--bg-hover);
+}
+.home-search .kbd {
+  margin-left: auto;
+  padding: 2px 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.home-section {
+  margin-bottom: 32px;
+}
+.home-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.home-empty {
+  padding: 24px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  background: var(--bg-soft);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-md);
+}
+
+/* 핀 카드 그리드 */
+.pin-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.pin-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 14px;
+  position: relative;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 96px;
+}
+.pin-card:hover {
+  border-color: var(--accent);
+}
+.pin-card .pin-mark {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  color: var(--pin);
+}
+.pin-card .pin-ico {
+  color: var(--text-muted);
+}
+.pin-card .pin-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+  padding-right: 22px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pin-card .pin-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: auto;
+}
+
+/* 최근 리스트 */
+.recent-list {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.recent-row {
+  display: grid;
+  grid-template-columns: 84px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+.recent-row:first-child {
+  border-top: 0;
+}
+.recent-row:hover {
+  background: var(--bg-hover);
+}
+.recent-row .time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.recent-row .title {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recent-row .path {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* 카테고리 그리드 */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.cat-card {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 18px;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.15s;
+}
+.cat-card:hover {
+  background: var(--bg);
+  border-color: var(--accent);
+}
+.cat-card .cat-ico {
+  color: var(--text-sub);
+}
+.cat-card .cat-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.cat-card .cat-count {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ──────────────────────────── 검색 모달 (⌘K) ──────────────────────────── */
+.search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.32);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 18vh 16px 16px;
+}
+.search-modal {
+  width: 100%;
+  max-width: 600px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-elev);
+  overflow: hidden;
+  animation: search-pop 0.12s ease-out;
+}
+@keyframes search-pop {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.search-input-wrap .search-ico {
+  color: var(--text-muted);
+}
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  color: var(--text);
+  background: transparent;
+}
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+.search-results {
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 6px;
+}
+.search-empty {
+  padding: 24px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13.5px;
+}
+.search-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  font-size: 13.5px;
+  color: var(--text);
+  text-decoration: none;
+}
+.search-result:hover,
+.search-result.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.search-result .sr-path {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+.search-result.active .sr-path {
+  color: var(--accent);
+  opacity: 0.7;
+}
+.search-footer {
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 14px;
+}
+.search-footer .kbd {
+  padding: 1px 5px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-sub);
+}

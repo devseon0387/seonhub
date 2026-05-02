@@ -14,7 +14,7 @@ export async function getMyProfile(): Promise<{ id: string; role: string; name: 
     .from('user_profiles')
     .select('*')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
   if (error) { console.error('[DB] getMyProfile:', error.message); return null; }
   return data;
@@ -81,7 +81,7 @@ export async function getNeedsPasswordChange(): Promise<boolean> {
     .from('user_profiles')
     .select('needs_password_change')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
   return data?.needs_password_change === true;
 }
@@ -108,7 +108,7 @@ export async function getTutorialDone(): Promise<Record<string, boolean>> {
     .from('user_profiles')
     .select('tutorial_done')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
   return (data?.tutorial_done as Record<string, boolean>) ?? {};
 }
@@ -123,7 +123,7 @@ export async function setTutorialPageDone(pageKey: string): Promise<boolean> {
     .from('user_profiles')
     .select('tutorial_done')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
   const current = (data?.tutorial_done as Record<string, boolean>) ?? {};
   const updated = { ...current, [pageKey]: true };
