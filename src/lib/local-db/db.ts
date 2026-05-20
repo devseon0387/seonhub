@@ -40,6 +40,11 @@ const BOOL_COLUMNS: Record<string, Set<string>> = {
   strategy_docs: new Set(['pinned']),
 };
 
+// Content Lab: theories.tags = JSON-stringified array (TEXT),
+//              theory_queries.filter = JSON-stringified object (TEXT)
+JSON_COLUMNS.theories = new Set(['tags']);
+JSON_COLUMNS.theory_queries = new Set(['filter']);
+
 export function encodeRow(table: string, row: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   const jsonCols = JSON_COLUMNS[table] ?? new Set();

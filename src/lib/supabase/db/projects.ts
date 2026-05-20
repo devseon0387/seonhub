@@ -2,7 +2,7 @@
  * Projects CRUD
  */
 import { createClient } from '../client';
-import type { Project, ProjectMeta, ProjectType, WorkContentType } from '@/types';
+import type { Project, ProjectFormat, ProjectMeta, ProjectType, WorkContentType } from '@/types';
 
 // ─── Row Types (Supabase snake_case) ─────────────────────────
 
@@ -17,6 +17,7 @@ export interface ProjectRow {
   partner_ids: string[] | null;
   manager_ids: string[] | null;
   category: string | null;
+  format: string | null;
   channels: string[] | null;
   status: string;
   total_amount: number;
@@ -57,6 +58,7 @@ export function projectFromRow(row: ProjectRow): Project {
     partnerIds,
     managerIds: row.manager_ids ?? [],
     category: row.category ?? undefined,
+    format: (row.format as ProjectFormat) ?? undefined,
     channels: row.channels ?? undefined,
     status: row.status as Project['status'],
     budget: {
@@ -88,6 +90,7 @@ export function projectToInsert(project: Omit<Project, 'id' | 'createdAt' | 'upd
     partner_ids: partnerIds,
     manager_ids: project.managerIds ?? [],
     category: project.category ?? null,
+    format: project.format ?? null,
     status: project.status,
     total_amount: project.budget?.totalAmount ?? 0,
     partner_payment: project.budget?.partnerPayment ?? 0,
@@ -117,6 +120,7 @@ export function projectToUpdate(project: Partial<Project>) {
   }
   if (project.managerIds !== undefined) row.manager_ids = project.managerIds;
   if (project.category !== undefined) row.category = project.category;
+  if (project.format !== undefined) row.format = project.format ?? null;
   if (project.status !== undefined) row.status = project.status;
   if (project.budget) {
     row.total_amount = project.budget.totalAmount;

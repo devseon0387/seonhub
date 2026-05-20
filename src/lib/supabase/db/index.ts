@@ -15,3 +15,4 @@ export * from './portfolio';
 export * from './inquiries';
 export * from './users';
 export * from './expenses';
+export * from './project-uploads';

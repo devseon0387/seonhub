@@ -27,6 +27,111 @@ export type ProjectStatus = 'planning' | 'in_progress' | 'completed' | 'on_hold'
 // 프로젝트 유형 (영상 제작 / 개발 / 콘텐츠 제작)
 export type ProjectType = 'video' | 'dev' | 'content';
 
+// 영상 포맷 (롱폼 / 숏폼) — Content Studio
+export type ProjectFormat = 'longform' | 'shortform';
+
+// 업로드 플랫폼 — 숏폼 다중 업로드용
+export type UploadPlatform =
+  | 'youtube'
+  | 'instagram'
+  | 'tiktok'
+  | 'naver_clip'
+  | 'daangn_story';
+
+export const UPLOAD_PLATFORM_LABEL: Record<UploadPlatform, string> = {
+  youtube: 'YouTube',
+  instagram: 'Instagram',
+  tiktok: 'TikTok',
+  naver_clip: '네이버 클립',
+  daangn_story: '당근 스토리',
+};
+
+// ─── Content Lab (이론/논문) ──────────────────────────
+export type TheoryStatus = 'hypothesis' | 'testing' | 'validated' | 'refuted' | 'archived';
+export type TheoryTemplate = 'performance' | 'planning' | 'marketing' | 'empty';
+export type EvidenceRole = 'supports' | 'refutes' | 'neutral';
+
+export const THEORY_STATUS_LABEL: Record<TheoryStatus, string> = {
+  hypothesis: '가설',
+  testing: '검증 중',
+  validated: '입증',
+  refuted: '반증',
+  archived: '보관',
+};
+
+export const THEORY_TEMPLATE_LABEL: Record<TheoryTemplate, string> = {
+  performance: '성과 가설',
+  planning: '기획 패턴',
+  marketing: '마케팅 관찰',
+  empty: '빈 페이지',
+};
+
+export const EVIDENCE_ROLE_LABEL: Record<EvidenceRole, string> = {
+  supports: '지지',
+  refutes: '반증',
+  neutral: '중립',
+};
+
+export interface Theory {
+  id: string;
+  title: string;
+  status: TheoryStatus;
+  template?: TheoryTemplate;
+  tags: string[];
+  authorId?: string;
+  abstract?: string;
+  hypothesis?: string;
+  background?: string;
+  method?: string;
+  analysis?: string;
+  conclusion?: string;
+  implications?: string;
+  references?: string;
+  body?: string;           // BlockNote document JSON (문자열)
+  canvas?: string;         // Excalidraw scene JSON (문자열)
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TheoryEvidence {
+  id: string;
+  theoryId: string;
+  projectId: string;
+  role: EvidenceRole;
+  note?: string;
+  createdAt: string;
+}
+
+export interface TheoryQueryFilter {
+  format?: 'longform' | 'shortform';
+  tags?: string[];
+  platforms?: string[];
+  minViews?: number;
+  maxViews?: number;
+}
+
+export interface TheoryQuery {
+  id: string;
+  theoryId: string;
+  role: EvidenceRole;
+  label?: string;
+  filter: TheoryQueryFilter;
+  createdAt: string;
+}
+
+export interface ProjectUpload {
+  id: string;
+  projectId: string;
+  platform: UploadPlatform;
+  url?: string;
+  publishedAt?: string;
+  viewCount: number;
+  lastSyncedAt?: string;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // 프로젝트 비용 정보
 export interface ProjectBudget {
   totalAmount: number; // 전체 프로젝트 비용 (클라이언트로부터 받는 총 금액)
@@ -47,6 +152,7 @@ export interface Project {
   partnerIds: string[]; // 담당 파트너 목록 (복수)
   managerIds: string[]; // 매니저 목록
   category?: string; // 프로젝트 카테고리
+  format?: ProjectFormat; // 영상 포맷 (롱폼/숏폼) — Content Studio 전용
   channels?: string[]; // 상영 채널 (복수 선택)
   status: ProjectStatus;
   budget: ProjectBudget; // 비용 정보

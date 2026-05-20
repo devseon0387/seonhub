@@ -10,6 +10,10 @@
     "sync:dev": "tsx --conditions=react-server scripts/sync-dev-projects.ts"
   },
   "dependencies": {
+    "@blocknote/core": "^0.51.1",
+    "@blocknote/mantine": "^0.51.1",
+    "@blocknote/react": "^0.51.1",
+    "@excalidraw/excalidraw": "^0.18.1",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.97.0",
     "@tiptap/extension-link": "^3.20.1",

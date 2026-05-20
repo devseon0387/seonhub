@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutDashboard, FolderOpen, Settings, Briefcase, Trash2,
   Megaphone, LogOut, Shield, Menu, X, CreditCard, ClipboardCheck,
-  Code2, Palette, Frame, Map, Database, PencilRuler,
+  Code2, Palette, Frame, Map, Database, PencilRuler, Clapperboard, FlaskConical,
 } from 'lucide-react';
 import DashboardContent from '@/components/DashboardContent';
 import BibotWidget from '@/components/BibotWidget';
@@ -37,6 +37,8 @@ const SECTIONS: Section[] = [
     items: [
       { type: 'link', href: '/management', label: '매니지먼트', icon: ClipboardCheck  },
       { type: 'link', href: '/projects',   label: '프로젝트',   icon: FolderOpen      },
+      { type: 'link', href: '/content-studio', label: 'Content Studio', icon: Clapperboard },
+      { type: 'link', href: '/lab', label: 'Content Lab', icon: FlaskConical },
       { type: 'divider' },
       { type: 'link', href: '/finance/expenses', label: '지출 관리', icon: CreditCard },
       { type: 'divider' },
